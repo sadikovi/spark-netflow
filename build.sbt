@@ -99,3 +99,5 @@ releaseProcess := Seq[ReleaseStep](
   pushChanges,
   releaseStepTask(spPublish)
 )
+
+credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
