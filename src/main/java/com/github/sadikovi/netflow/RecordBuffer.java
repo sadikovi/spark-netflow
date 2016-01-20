@@ -32,6 +32,9 @@ public class RecordBuffer implements Iterable<Object[]> {
   // length of the buffer, usually 32768
   public static final int BUFFER_LENGTH = 32768;
 
+  // length of buffer (option 1)
+  public static final int BUFFER_LENGTH_1 = 3276800;
+
   /**
    * Create RecordBuffer with default buffer length.
    *

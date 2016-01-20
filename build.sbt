@@ -2,13 +2,13 @@ name := "spark-netflow"
 
 organization := "com.github.sadikovi"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.5"
 
 crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-sparkVersion := "1.5.1"
+sparkVersion := "1.4.1"
 
 val testSparkVersion = settingKey[String]("The version of Spark to test against.")
 

@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow
 
+import scala.util.Try
+
 import org.apache.spark.Logging
 import org.apache.spark.sql.types.{StructType, StructField, DataType, LongType, IntegerType, ShortType}
 
@@ -27,23 +29,26 @@ import com.github.sadikovi.netflow.version.NetflowV5
 /** Schema resolver for Netflow versions. Also provides mapping for a particular column name. */
 private[netflow] object SchemaResolver extends Logging {
   // Netflow version 5
-  final val V5 = "5"
+  final val V5: Short = 5
 
   /** Get specific mapper for Netflow version */
-  def getMapperForVersion(version: String): Mapper = version match {
+  def getMapperForVersion(version: Short): Mapper = version match {
     case V5 => MapperV5
     case other => throw new UnsupportedOperationException(
       s"Netflow version ${other} is not supported")
   }
 
   /** Resolve schema for a specific version */
-  def getSchemaForVersion(version: String): StructType = {
+  def getSchemaForVersion(version: Short): StructType = {
     getMapperForVersion(version).getFullSchema()
   }
 
-  /** validate version of Netflow. If version is not supported throws exception */
-  def validateVersion(version: String): Unit = {
-    val mapper = getMapperForVersion(version)
+  /**
+   * Validate version of Netflow statically.
+   * Will check actual supported version when creating mapper.
+   */
+  def validateVersion(possibleVersion: String): Option[Short] = {
+    Try(possibleVersion.toShort).toOption
   }
 }
 

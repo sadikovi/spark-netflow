@@ -49,10 +49,11 @@ private[netflow] class NetflowRelation(
     private val parameters: Map[String, String])
     (@transient val sqlContext: SQLContext) extends HadoopFsRelation with Logging {
 
-  // Netflow version
-  private val version = parameters.getOrElse("version",
+  // Resolve Netflow version
+  private val possibleVersion = parameters.getOrElse("version",
     sys.error("'version' must be specified for Netflow data"))
-  SchemaResolver.validateVersion(version)
+  private val version = SchemaResolver.validateVersion(possibleVersion).getOrElse(
+    sys.error(s"Invalid version specified: ${possibleVersion}"))
 
   override def dataSchema: StructType = SchemaResolver.getSchemaForVersion(version)
 
@@ -73,7 +74,7 @@ private[netflow] class NetflowRelation(
       // return union of NetflowFileRDD which are designed to read only one file and store data in
       // one partition
       new UnionRDD[Row](sqlContext.sparkContext, inputFiles.map { status =>
-        val metadata = Seq(NetflowMetadata(status.getPath.toString, fields))
+        val metadata = Seq(NetflowMetadata(version, status.getPath.toString, fields))
         new NetflowFileRDD(sqlContext.sparkContext, metadata, 1)
       })
     }

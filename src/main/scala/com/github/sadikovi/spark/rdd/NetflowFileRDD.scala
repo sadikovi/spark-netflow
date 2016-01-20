@@ -29,7 +29,7 @@ import com.github.sadikovi.netflow.{NetflowReader, NetflowHeader, RecordBuffer}
 import com.github.sadikovi.netflow.version.NetflowV5
 
 /** Netflow metadata includes path to the file and columns to fetch */
-private[spark] case class NetflowMetadata(path: String, fields: Array[Long])
+private[spark] case class NetflowMetadata(version: Short, path: String, fields: Array[Long])
 
 /** NetflowFilePartition to hold sequence of file paths */
 private[spark] class NetflowFilePartition[T<:NetflowMetadata: ClassTag] (
@@ -94,8 +94,14 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       // build Netflow reader and check whether it can be read
       val nr = new NetflowReader(stm)
       val hr = nr.readHeader()
+      // actual version of the file
+      val actualVersion = hr.getFlowVersion()
       // compression flag is second bit in header flags
       val isCompressed = (hr.getHeaderFlags() & 0x2) > 0
+
+      // currently we cannot resolve version and proceed with parsing, we require pre-set version.
+      require(actualVersion == elem.version,
+        s"Expected version ${elem.version}, got ${actualVersion}")
 
       logInfo(s"""
         > Netflow: {
@@ -108,7 +114,7 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         > }
       """.stripMargin('>'))
 
-      val recordBuffer = nr.readData(hr, elem.fields, RecordBuffer.BUFFER_LENGTH)
+      val recordBuffer = nr.readData(hr, elem.fields, RecordBuffer.BUFFER_LENGTH_1)
       buffer = buffer ++ recordBuffer.iterator().asScala
     }
 
