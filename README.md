@@ -1,2 +1,2 @@
 # spark-netflow
-NetFlow datasource Spark SQL and DataFrames
+NetFlow data source Spark SQL and DataFrames
