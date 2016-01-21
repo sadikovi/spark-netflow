@@ -8,7 +8,7 @@ crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-sparkVersion := "1.4.1"
+sparkVersion := "1.5.0"
 
 val testSparkVersion = settingKey[String]("The version of Spark to test against.")
 

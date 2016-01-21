@@ -22,12 +22,15 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.Logging
 import org.apache.spark.rdd.{RDD, UnionRDD}
 import org.apache.spark.sql.{SQLContext, Row}
-import org.apache.spark.sql.sources.{HadoopFsRelation, HadoopFsRelationProvider, OutputWriterFactory}
+import org.apache.spark.sql.sources.{DataSourceRegister, HadoopFsRelation, HadoopFsRelationProvider, OutputWriterFactory}
 import org.apache.spark.sql.types.{StructType, StructField, IntegerType}
 
 import com.github.sadikovi.spark.rdd.{NetflowFileRDD, NetflowMetadata}
 
-class DefaultSource extends HadoopFsRelationProvider {
+class DefaultSource extends HadoopFsRelationProvider with DataSourceRegister {
+
+  override def shortName(): String = "netflow"
+
   /**
    * Create relation for Netflow data. Options include path to the Netflow files, flow version
    * of the files, e.g. V5, V7, etc. All files must be of the same version.
