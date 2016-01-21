@@ -61,6 +61,9 @@ private trait Mapper {
 
   def getInternalColumns(): Array[Long]
 
+  // get first internal column for quick scanning
+  def getFirstInternalColumn(): Array[Long]
+
   def getInternalColumnForName(name: String): Long
 }
 
@@ -74,6 +77,8 @@ private object MapperV5 extends Mapper {
   }
 
   override def getInternalColumns(): Array[Long] = columns.map(_.index).toArray
+
+  override def getFirstInternalColumn(): Array[Long] = Array(columns.head.index)
 
   override def getInternalColumnForName(name: String): Long = {
     index.getOrElse(name, sys.error(s"Index does not have information about column ${name}"))

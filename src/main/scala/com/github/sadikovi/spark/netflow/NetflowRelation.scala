@@ -69,7 +69,10 @@ private[netflow] class NetflowRelation(
       // convert to internal Netflow fields
       val mapper = SchemaResolver.getMapperForVersion(version)
       val fields: Array[Long] = if (requiredColumns.isEmpty) {
-        mapper.getInternalColumns()
+        logWarning("Required columns are empty, using first column instead")
+        // when required columns are empty, e.g. in case of direct `count()` we use only one column
+        // schema to quickly read records
+        mapper.getFirstInternalColumn()
       } else {
         requiredColumns.map(col => mapper.getInternalColumnForName(col))
       }
