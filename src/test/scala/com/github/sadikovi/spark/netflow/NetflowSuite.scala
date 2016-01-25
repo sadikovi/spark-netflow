@@ -141,4 +141,30 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
       relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
     }
   }
+
+  test("read NetFlow files using implicit wrapper") {
+    val sqlContext = new SQLContext(sc)
+    import com.github.sadikovi.spark.netflow._
+
+    var df = sqlContext.emptyDataFrame
+    var msg = ""
+
+    // test failure on passing different than "5" version
+    try {
+      df = sqlContext.read.netflow(s"file:${path5}")
+      df.count()
+    } catch {
+      case se: SparkException => msg = se.getMessage()
+      case other: Throwable => throw other
+    }
+
+    assert(msg.contains("java.lang.IllegalArgumentException: requirement failed: " +
+      "Expected version 5, got 8"))
+
+    // test parsing normal file
+    df = sqlContext.read.netflow(s"file:${path2}")
+    val expected = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:${path2}")
+    compare(df, expected)
+  }
 }

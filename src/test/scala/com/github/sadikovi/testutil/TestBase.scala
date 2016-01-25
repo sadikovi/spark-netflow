@@ -19,6 +19,8 @@ package com.github.sadikovi.testutil
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.sql.DataFrame
+
 import com.github.sadikovi.testutil.implicits._
 
 trait TestBase {
@@ -74,5 +76,12 @@ trait TestBase {
     val p = new Path(path)
     val fs = p.getFileSystem(new Configuration(false))
     fs.delete(p, recursive)
+  }
+
+  /** compare two DataFrame objects */
+  final protected def compare(df: DataFrame, expected: DataFrame): Boolean = {
+    val got = df.collect().map(_.toString()).sortWith(_ < _)
+    val exp = expected.collect().map(_.toString()).sortWith(_ < _)
+    got.sameElements(exp)
   }
 }

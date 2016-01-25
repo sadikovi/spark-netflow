@@ -36,5 +36,21 @@ val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").option("buffer", "50Mb").load("file:/...")
 ```
 
+Alternatively you can use shortcut for NetFlow v5 files
+```scala
+import com.github.sadikovi.spark.netflow._
+
+// this will read version 5 with default buffer size
+val df = sqlContext.read.netflow("file:/...")
+```
+
+### Python API
+```python
+df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+  load("file:/...").select("srcip", "srcport")
+
+res = df.where("srcip > 10")
+```
+
 ## Building From Source
 This library is built using `sbt`, to build a JAR file simply run `sbt package` from project root.
