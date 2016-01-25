@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow;
+package com.github.sadikovi.netflowlib;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -32,8 +32,8 @@ public class RecordBuffer implements Iterable<Object[]> {
   // length of the buffer, usually 32768
   public static final int BUFFER_LENGTH = 32768;
 
-  // length of buffer (option 1)
-  public static final int BUFFER_LENGTH_1 = 3276800;
+  // length of buffer ~3Mb (option 1)
+  public static final int BUFFER_LENGTH_1 = 3698688;
 
   /**
    * Create RecordBuffer with default buffer length.

@@ -26,6 +26,7 @@ import org.apache.spark.sql.{SQLContext, Row}
 
 import org.scalatest.ConfigMap
 
+import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
 class NetflowSuite extends UnitTestSpec with SparkLocal {
@@ -114,5 +115,30 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     val rdd = relation.buildScan(Array.empty, Array(fileStatus))
     // should be only one column (unix_secs) which is "0" for generated data
     rdd.first should be (Row(0))
+  }
+
+  test("issue #6 - test buffer size") {
+    val sqlContext = new SQLContext(sc)
+    // check that buffer size is default
+    var params = Map("version" -> "5")
+    var relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    relation.getBufferSize() should be (RecordBuffer.BUFFER_LENGTH_1)
+
+    // set buffer size to be 10Kb
+    params = Map("version" -> "5", "buffer" -> "10Kb")
+    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    relation.getBufferSize() should be (10 * 1024)
+
+    // buffer size >> Integer.MAX_VALUE
+    intercept[RuntimeException] {
+      params = Map("version" -> "5", "buffer" -> "10Gb")
+      relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    }
+
+    // just for completeness, test on wrong buffer value
+    intercept[NumberFormatException] {
+      params = Map("version" -> "5", "buffer" -> "wrong")
+      relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    }
   }
 }

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow.version;
+package com.github.sadikovi.netflowlib.version;
 
 import java.util.HashMap;
 import io.netty.buffer.ByteBuf;
-import com.github.sadikovi.netflow.SFlow;
+import com.github.sadikovi.netflowlib.SFlow;
 
 public class NetflowV5 extends SFlow {
   // list of supported columns and size in bytes

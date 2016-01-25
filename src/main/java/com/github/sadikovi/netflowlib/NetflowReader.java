@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow;
+package com.github.sadikovi.netflowlib;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
@@ -24,7 +24,7 @@ import io.netty.buffer.Unpooled;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 
-import com.github.sadikovi.netflow.version.NetflowV5;
+import com.github.sadikovi.netflowlib.version.NetflowV5;
 
 // Parsing Netflow file
 public class NetflowReader {
@@ -326,7 +326,7 @@ public class NetflowReader {
     this.in.seek(expectedPosition);
 
     // initialize record holder for a particular Netflow version
-    // in order to add new version create class in ".../flow/version" and add another if
+    // in order to add new version create class in ".../version" and add another if
     // statement for that version
     SFlow flowInterface;
     if (flowVersion == 5) {

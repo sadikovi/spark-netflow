@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow;
+package com.github.sadikovi.netflowlib;
 
 import java.nio.ByteOrder;
 
-import com.github.sadikovi.netflow.fields.InterfaceAlias;
-import com.github.sadikovi.netflow.fields.InterfaceName;
+import com.github.sadikovi.netflowlib.fields.InterfaceAlias;
+import com.github.sadikovi.netflowlib.fields.InterfaceName;
 
 /** Header for stream version of Netflow file */
 public class NetflowHeader {

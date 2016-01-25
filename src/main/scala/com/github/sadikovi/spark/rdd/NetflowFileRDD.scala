@@ -25,11 +25,16 @@ import org.apache.spark.{SparkContext, Partition, TaskContext, InterruptibleIter
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row => SQLRow}
 
-import com.github.sadikovi.netflow.{NetflowReader, NetflowHeader, RecordBuffer}
-import com.github.sadikovi.netflow.version.NetflowV5
+import com.github.sadikovi.netflowlib.{NetflowReader, NetflowHeader, RecordBuffer}
+import com.github.sadikovi.netflowlib.version.NetflowV5
 
 /** Netflow metadata includes path to the file and columns to fetch */
-private[spark] case class NetflowMetadata(version: Short, path: String, fields: Array[Long])
+private[spark] case class NetflowMetadata(
+  version: Short,
+  path: String,
+  fields: Array[Long],
+  bufferSize: Int
+)
 
 /** NetflowFilePartition to hold sequence of file paths */
 private[spark] class NetflowFilePartition[T<:NetflowMetadata: ClassTag] (
@@ -114,7 +119,7 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         > }
       """.stripMargin('>'))
 
-      val recordBuffer = nr.readData(hr, elem.fields, RecordBuffer.BUFFER_LENGTH_1)
+      val recordBuffer = nr.readData(hr, elem.fields, elem.bufferSize)
       buffer = buffer ++ recordBuffer.iterator().asScala
     }
 

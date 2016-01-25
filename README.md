@@ -20,6 +20,7 @@ Currently supported options:
 | Name | Example | Description |
 |------|:-------:|-------------|
 | `version` | **5** | version to use when parsing NetFlow files
+| `buffer` | **3Mb** | buffer size for NetFlow compressed stream
 
 ## Example
 

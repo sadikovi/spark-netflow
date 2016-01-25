@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow.fields;
+package com.github.sadikovi.netflowlib.fields;
 
 import java.nio.ByteOrder;
 

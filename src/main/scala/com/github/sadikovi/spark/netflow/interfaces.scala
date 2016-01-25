@@ -21,7 +21,7 @@ import scala.util.Try
 import org.apache.spark.Logging
 import org.apache.spark.sql.types.{StructType, StructField, DataType, LongType, IntegerType, ShortType}
 
-import com.github.sadikovi.netflow.version.NetflowV5
+import com.github.sadikovi.netflowlib.version.NetflowV5
 
 ////////////////////////////////////////////////////////////////
 // Schema resolver

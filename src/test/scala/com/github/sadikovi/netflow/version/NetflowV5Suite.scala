@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflow.version
+package com.github.sadikovi.netflowlib.version
 
 import com.github.sadikovi.testutil.UnitTestSpec
 
