@@ -19,8 +19,8 @@ Currently supported options:
 
 | Name | Example | Description |
 |------|:-------:|-------------|
-| `version` | **5** | version to use when parsing NetFlow files
-| `buffer` | **3Mb** | buffer size for NetFlow compressed stream
+| `version` | _5_ | version to use when parsing NetFlow files
+| `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size (in bytes) for NetFlow compressed stream
 
 ## Example
 
@@ -31,6 +31,9 @@ val sqlContext = new SQLContext(sc)
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").load("file:/...").
   select("srcip", "dstip", "packets")
+// You can also specify buffer size when reading compressed NetFlow files (most likely)
+val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+  option("version", "5").option("buffer", "50Mb").load("file:/...")
 ```
 
 ## Building From Source
