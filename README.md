@@ -1,6 +1,8 @@
 # spark-netflow
 A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html).
 
+[![Build Status](https://travis-ci.org/sadikovi/spark-netflow.svg?branch=master)](https://travis-ci.org/sadikovi/spark-netflow)
+
 ## Linking
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
