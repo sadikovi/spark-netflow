@@ -54,10 +54,23 @@ private[netflow] class NetflowRelation(
     case None => RecordBuffer.BUFFER_LENGTH_1
   }
 
+  // [conversion of numeric field into string, such as IP], by default is off
+  private val stringify = parameters.get("stringify") match {
+    case Some("true") => true
+    case _ => false
+  }
+
+  // mapper for Netflow version, will be used to create schema and convert columns
+  private val mapper = SchemaResolver.getMapperForVersion(version)
+
   // get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
 
-  override def dataSchema: StructType = SchemaResolver.getSchemaForVersion(version)
+  private[netflow] def inferSchema(): StructType = {
+    mapper.getFullSchema(stringify)
+  }
+
+  override def dataSchema: StructType = inferSchema()
 
   override def buildScan(
       requiredColumns: Array[String],
@@ -66,7 +79,6 @@ private[netflow] class NetflowRelation(
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
       // convert to internal Netflow fields
-      val mapper = SchemaResolver.getMapperForVersion(version)
       val fields: Array[Long] = if (requiredColumns.isEmpty) {
         logWarning("Required columns are empty, using first column instead")
         // when required columns are empty, e.g. in case of direct `count()` we use only one column
@@ -76,10 +88,20 @@ private[netflow] class NetflowRelation(
         requiredColumns.map(col => mapper.getInternalColumnForName(col))
       }
 
+      // conversion array, if stringify option is true, we return map. Each key is an index of a
+      // field and value is a conversion function "AnyVal => String". Map is empty when there is
+      // no columns with applied conversion or when stringify option is false
+      val conversions: Map[Int, AnyVal => String] = if (stringify) {
+        mapper.getConversionsForFields(fields)
+      } else {
+        Map.empty
+      }
+
       // return union of NetflowFileRDD which are designed to read only one file and store data in
       // one partition
       new UnionRDD[Row](sqlContext.sparkContext, inputFiles.map { status =>
-        val metadata = Seq(NetflowMetadata(version, status.getPath.toString, fields, bufferSize))
+        val strpath = status.getPath.toString
+        val metadata = Seq(NetflowMetadata(version, strpath, fields, bufferSize, conversions))
         new NetflowFileRDD(sqlContext.sparkContext, metadata, 1)
       })
     }

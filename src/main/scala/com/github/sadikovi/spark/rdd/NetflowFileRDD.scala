@@ -33,7 +33,8 @@ private[spark] case class NetflowMetadata(
   version: Short,
   path: String,
   fields: Array[Long],
-  bufferSize: Int
+  bufferSize: Int,
+  conversions: Map[Int, AnyVal => String]
 )
 
 /** NetflowFilePartition to hold sequence of file paths */
@@ -101,6 +102,10 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       val hr = nr.readHeader()
       // actual version of the file
       val actualVersion = hr.getFlowVersion()
+      // fields to extract
+      val fields = elem.fields
+      // conversion to apply
+      val conversions = elem.conversions
       // compression flag is second bit in header flags
       val isCompressed = (hr.getHeaderFlags() & 0x2) > 0
 
@@ -112,15 +117,31 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         > Netflow: {
         >   File: ${elem.path}
         >   File length: ${FILE_LENGTH}
-        >   Flow version: ${hr.getFlowVersion()}
+        >   Flow version: ${actualVersion}
         >   Compression: ${isCompressed}
+        >   Buffer size: ${elem.bufferSize}
         >   Hostname: ${hr.getHostname()}
         >   Comments: ${hr.getComments()}
         > }
       """.stripMargin('>'))
 
-      val recordBuffer = nr.readData(hr, elem.fields, elem.bufferSize)
-      buffer = buffer ++ recordBuffer.iterator().asScala
+      val recordBuffer = nr.readData(hr, fields, elem.bufferSize)
+      val iterator = if (conversions.isEmpty) {
+        recordBuffer.iterator().asScala
+      } else {
+        // for each array of fields we check if current field matches list of possible conversions,
+        // and convert, otherwise return unchanged field.
+        // do not forget to check field constant index to remove overlap with indices from other
+        // versions
+        recordBuffer.iterator().asScala.map(arr =>
+          arr.zipWithIndex.map { case (value, index) => conversions.get(index) match {
+            case Some(func) => func(value.asInstanceOf[AnyVal])
+            case None => value
+          } }
+        )
+      }
+
+      buffer = buffer ++ iterator
     }
 
     new Iterator[SQLRow] {

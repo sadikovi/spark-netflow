@@ -58,7 +58,7 @@ public class NetflowV5 extends SFlow {
   public static final long V5_FIELD_TOS = 0x00010000L;
   // OR of TCP header bits, size: 1
   public static final long V5_FIELD_TCP_FLAGS = 0x00020000L;
-  // Type of flow switching engine (RP,VIP,etc.), size: 1
+  // Type of flow switching engine (RP, VIP, etc.), size: 1
   public static final long V5_FIELD_ENGINE_TYPE = 0x00040000L;
   // Slot number of the flow switching engine, size: 1
   public static final long V5_FIELD_ENGINE_ID = 0x00080000L;

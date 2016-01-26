@@ -22,11 +22,12 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{Path, FileSystem}
 
 import org.apache.spark.SparkException
-import org.apache.spark.sql.{SQLContext, Row}
+import org.apache.spark.sql.{SQLContext, DataFrame, Row}
 
 import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
+import com.github.sadikovi.netflowlib.version.NetflowV5
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
 class NetflowSuite extends UnitTestSpec with SparkLocal {
@@ -166,5 +167,76 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     val expected = sqlContext.read.format("com.github.sadikovi.spark.netflow").
       option("version", "5").load(s"file:${path2}")
     compare(df, expected)
+  }
+
+  private def readNetflow(sqlContext: SQLContext, path: String, stringify: Boolean): DataFrame = {
+    sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      option("stringify", s"${stringify}").load(s"file:${path}").
+      select("srcip", "dstip", "srcport", "dstport")
+  }
+
+  test("issue #2 - mapper::getConversionsForFields") {
+    // should return empty array
+    val mapper = SchemaResolver.getMapperForVersion(5)
+    val fields1 = Array(NetflowV5.V5_FIELD_SRCADDR, NetflowV5.V5_FIELD_DSTADDR)
+    mapper.getConversionsForFields(fields1).size should be (2)
+
+    val fields2 = Array(NetflowV5.V5_FIELD_UNIX_SECS, NetflowV5.V5_FIELD_DSTADDR)
+    mapper.getConversionsForFields(fields2).size should be (1)
+
+    val fields3 = Array(NetflowV5.V5_FIELD_UNIX_SECS, NetflowV5.V5_FIELD_UNIX_NSECS)
+    mapper.getConversionsForFields(fields3).size should be (0)
+  }
+
+  test("issue #2 - fields conversion to String for uncompressed file") {
+    val sqlContext = new SQLContext(sc)
+    var df = readNetflow(sqlContext, path1, false)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
+
+    df = readNetflow(sqlContext, path1, true)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
+  }
+
+  test("issue #2 - fields conversion to String for compressed file") {
+    val sqlContext = new SQLContext(sc)
+
+    var df = readNetflow(sqlContext, path2, false)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
+
+    df = readNetflow(sqlContext, path2, true)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
+  }
+
+  test("num to ip conversion") {
+    val dataset = Seq(
+      ("127.0.0.1", 2130706433L),
+      ("172.71.4.54", 2890335286L),
+      ("147.10.8.41", 2466908201L),
+      ("10.208.97.205", 181428685L),
+      ("144.136.17.61", 2424836413L),
+      ("139.168.155.28", 2343082780L),
+      ("172.49.10.53", 2888895029L),
+      ("139.168.51.129", 2343056257L),
+      ("10.152.185.135", 177781127L),
+      ("144.131.33.125", 2424512893L),
+      ("138.217.81.41", 2329497897L),
+      ("147.10.7.77", 2466907981L),
+      ("10.164.0.185", 178520249L),
+      ("144.136.28.121", 2424839289L),
+      ("172.117.8.117", 2893351029L),
+      ("139.168.164.113", 2343085169L),
+      ("147.132.87.29", 2474923805L),
+      ("10.111.3.73", 175047497L),
+      ("255.255.255.255", (2L<<31) - 1)
+    )
+
+    for (elem <- dataset) {
+      val (ip, num) = elem
+      ConversionFunctions.numToIp(num) should equal (ip)
+    }
   }
 }

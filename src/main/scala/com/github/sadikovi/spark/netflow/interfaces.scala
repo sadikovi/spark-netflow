@@ -16,10 +16,11 @@
 
 package com.github.sadikovi.spark.netflow
 
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 import org.apache.spark.Logging
-import org.apache.spark.sql.types.{StructType, StructField, DataType, LongType, IntegerType, ShortType}
+import org.apache.spark.sql.types._
 
 import com.github.sadikovi.netflowlib.version.NetflowV5
 
@@ -38,11 +39,6 @@ private[netflow] object SchemaResolver extends Logging {
       s"Netflow version ${other} is not supported")
   }
 
-  /** Resolve schema for a specific version */
-  def getSchemaForVersion(version: Short): StructType = {
-    getMapperForVersion(version).getFullSchema()
-  }
-
   /**
    * Validate version of Netflow statically.
    * Will check actual supported version when creating mapper.
@@ -57,22 +53,39 @@ private case class SchemaField(name: String, index: Long, dtype: DataType)
 
 /** Internal mapper for a Netflow version. Maps java columns to Scala column names. */
 private trait Mapper {
-  def getFullSchema(): StructType
+  /**
+   * Get full schema for a version.
+   * Option "stringify" might change schema if field is convertable.
+   */
+  def getFullSchema(stringify: Boolean): StructType
 
   def getInternalColumns(): Array[Long]
 
-  // get first internal column for quick scanning
+  /**
+   * Get first internal column for quick scanning.
+   */
   def getFirstInternalColumn(): Array[Long]
 
   def getInternalColumnForName(name: String): Long
+
+  def getConversionsForFields(fields: Array[Long]): Map[Int, AnyVal => String] = {
+      throw new UnsupportedOperationException
+  }
 }
 
 ////////////////////////////////////////////////////////////////
 // Mappers for different Netflow versions
 ////////////////////////////////////////////////////////////////
 private object MapperV5 extends Mapper {
-  override def getFullSchema(): StructType = {
-    val sqlColumns = columns.map(field => StructField(field.name, field.dtype, false))
+  override def getFullSchema(stringify: Boolean): StructType = {
+    val sqlColumns = columns.map(field => {
+      if (stringify) {
+        val fieldType = if (conversions.contains(field.index)) StringType else field.dtype
+        StructField(field.name, fieldType, false)
+      } else {
+        StructField(field.name, field.dtype, false)
+      }
+    })
     StructType(sqlColumns)
   }
 
@@ -82,6 +95,18 @@ private object MapperV5 extends Mapper {
 
   override def getInternalColumnForName(name: String): Long = {
     index.getOrElse(name, sys.error(s"Index does not have information about column ${name}"))
+  }
+
+  override def getConversionsForFields(fields: Array[Long]): Map[Int, AnyVal => String] = {
+    val buf: ArrayBuffer[(Int, AnyVal => String)] = new ArrayBuffer()
+    for (elem <- fields.zipWithIndex) {
+      // elem is a tuple with first element being actual value and second element being index
+      conversions.get(elem._1) match {
+        case Some(func) => buf.append((elem._2, func))
+        case None => // do nothing
+      }
+    }
+    buf.toMap
   }
 
   // mapping of SQL columns and internal columns for NetflowV5
@@ -115,4 +140,35 @@ private object MapperV5 extends Mapper {
   // helper index to map sql column to internal column
   private lazy val index: Map[String, Long] = columns.map(field =>
     (field.name, field.index)).toMap
+
+  // helper index of conversion functions
+  private lazy val conversions: Map[Long, AnyVal => String] = Map(
+    NetflowV5.V5_FIELD_EXADDR -> ConversionFunctions.numToIp,
+    NetflowV5.V5_FIELD_SRCADDR -> ConversionFunctions.numToIp,
+    NetflowV5.V5_FIELD_DSTADDR -> ConversionFunctions.numToIp,
+    NetflowV5.V5_FIELD_NEXTHOP -> ConversionFunctions.numToIp
+  )
+}
+
+/** Conversion functions for fields, e.g. number to IP address */
+object ConversionFunctions extends Serializable {
+  /** Convert number to IP address */
+  def numToIp(value: AnyVal): String = value match {
+    case num: Long =>
+      require(num >= 0 && num < (2L << 31), s"Invalid number to convert: ${num}")
+      val buf = new StringBuilder()
+      var i = 24
+      var ip = num
+      while (i >= 0) {
+          val a = ip >> i
+          ip = a << i ^ ip
+          buf.append(a)
+          if (i > 0) {
+              buf.append(".")
+          }
+          i = i - 8
+      }
+      buf.toString()
+    case _ => value.toString()
+  }
 }
