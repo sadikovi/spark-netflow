@@ -21,6 +21,7 @@ Currently supported options:
 |------|:-------:|-------------|
 | `version` | _5_ | version to use when parsing NetFlow files
 | `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size (in bytes) for NetFlow compressed stream
+| `stringify` | _true, false_ | convert certain fields (e.g. IP) into human-readable format
 
 ## Example
 
