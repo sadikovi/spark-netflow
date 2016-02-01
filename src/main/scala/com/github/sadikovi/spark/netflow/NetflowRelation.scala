@@ -97,13 +97,13 @@ private[netflow] class NetflowRelation(
         Map.empty
       }
 
-      // return union of NetflowFileRDD which are designed to read only one file and store data in
-      // one partition
-      new UnionRDD[Row](sqlContext.sparkContext, inputFiles.map { status =>
-        val strpath = status.getPath.toString
-        val metadata = Seq(NetflowMetadata(version, strpath, fields, bufferSize, conversions))
-        new NetflowFileRDD(sqlContext.sparkContext, metadata, 1)
-      })
+      // we have to reconstruct `FileStatus` for each partition from file path, it is not
+      // serializable
+      val metadata = inputFiles.map { status =>
+        NetflowMetadata(version, status.getPath.toString, fields, bufferSize, conversions)
+      }
+      // return NetflowFileRDD, we store data of each file in individual partition
+      new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length)
     }
   }
 
