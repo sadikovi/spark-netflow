@@ -37,12 +37,18 @@ val sqlContext = new SQLContext(sc)
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").load("file:/...").
   select("srcip", "dstip", "packets")
-// You can also specify buffer size when reading compressed NetFlow files (most likely)
+
+// You can also specify buffer size when reading compressed NetFlow files
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").option("buffer", "50Mb").load("file:/...")
 ```
 
-Alternatively you can use shortcut for NetFlow v5 files
+Alternatively you can use shortcuts for NetFlow v5 files
+```scala
+// for Spark 1.5+
+val df = sqlContext.read.format("netflow").option("version", "5").load("file:/...")
+```
+
 ```scala
 import com.github.sadikovi.spark.netflow._
 
