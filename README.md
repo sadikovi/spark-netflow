@@ -43,12 +43,7 @@ val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").option("buffer", "50Mb").load("file:/...")
 ```
 
-Alternatively you can use shortcuts for NetFlow v5 files
-```scala
-// for Spark 1.5+
-val df = sqlContext.read.format("netflow").option("version", "5").load("file:/...")
-```
-
+Alternatively you can use shortcut for NetFlow v5 files
 ```scala
 import com.github.sadikovi.spark.netflow._
 
