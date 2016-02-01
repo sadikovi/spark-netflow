@@ -8,7 +8,7 @@ crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-sparkVersion := "1.4.1"
+sparkVersion := "1.5.0"
 
 val testSparkVersion = settingKey[String]("The version of Spark to test against.")
 
@@ -32,8 +32,6 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-client" % testHadoopVersion.value % "test" exclude("javax.servlet", "servlet-api") force(),
-  "org.apache.hadoop" % "hadoop-common" % testHadoopVersion.value % "test" exclude("javax.servlet", "servlet-api") force(),
-  "org.apache.hadoop" % "hadoop-common" % testHadoopVersion.value % "test" classifier "tests" force(),
   "org.apache.spark" %% "spark-core" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client"),
   "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
 )
@@ -42,6 +40,9 @@ libraryDependencies ++= Seq(
 testOptions in Test += Tests.Argument("-oF")
 
 parallelExecution in Test := false
+
+// Skip tests during assembly
+test in assembly := {}
 
 ScoverageSbtPlugin.ScoverageKeys.coverageHighlighting := {
   if (scalaBinaryVersion.value == "2.10") false
