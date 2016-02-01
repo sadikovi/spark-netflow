@@ -19,11 +19,12 @@ package com.github.sadikovi.spark.netflow
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.mapreduce.Job
 
-import org.apache.spark.Logging
 import org.apache.spark.rdd.{RDD, UnionRDD}
 import org.apache.spark.sql.{SQLContext, Row}
 import org.apache.spark.sql.sources.{HadoopFsRelation, OutputWriterFactory}
 import org.apache.spark.sql.types.{StructType, StructField, IntegerType}
+
+import org.slf4j.LoggerFactory
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.spark.rdd.{NetflowFileRDD, NetflowMetadata}
@@ -34,7 +35,9 @@ private[netflow] class NetflowRelation(
     private val maybeDataSchema: Option[StructType],
     override val userDefinedPartitionColumns: Option[StructType],
     private val parameters: Map[String, String])
-    (@transient val sqlContext: SQLContext) extends HadoopFsRelation with Logging {
+    (@transient val sqlContext: SQLContext) extends HadoopFsRelation {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   // [Netflow version]
   private val version = parameters.get("version") match {
@@ -80,7 +83,7 @@ private[netflow] class NetflowRelation(
     } else {
       // convert to internal Netflow fields
       val fields: Array[Long] = if (requiredColumns.isEmpty) {
-        logWarning("Required columns are empty, using first column instead")
+        logger.warn("Required columns are empty, using first column instead")
         // when required columns are empty, e.g. in case of direct `count()` we use only one column
         // schema to quickly read records
         mapper.getFirstInternalColumn()
