@@ -8,15 +8,15 @@ crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-sparkVersion := "1.4.1"
+val defaultSparkVersion = "1.4.1"
 
-val testSparkVersion = settingKey[String]("The version of Spark to test against.")
+sparkVersion := sys.props.getOrElse("spark.testVersion", defaultSparkVersion)
 
-testSparkVersion := sys.props.getOrElse("spark.testVersion", sparkVersion.value)
+val defaultHadoopVersion = "2.6.0"
 
-val testHadoopVersion = settingKey[String]("The version of Hadoop to test against.")
+val hadoopVersion = settingKey[String]("The version of Hadoop to test against.")
 
-testHadoopVersion := sys.props.getOrElse("hadoop.testVersion", "2.6.0")
+hadoopVersion := sys.props.getOrElse("hadoop.testVersion", defaultHadoopVersion)
 
 spAppendScalaVersion := true
 
@@ -31,9 +31,9 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.apache.hadoop" % "hadoop-client" % testHadoopVersion.value % "test" exclude("javax.servlet", "servlet-api") force(),
-  "org.apache.spark" %% "spark-core" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client"),
-  "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
+  "org.apache.hadoop" % "hadoop-client" % hadoopVersion.value % "test" exclude("javax.servlet", "servlet-api") force(),
+  "org.apache.spark" %% "spark-core" % sparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client"),
+  "org.apache.spark" %% "spark-sql" % sparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
 )
 
 // Display full-length stacktraces from ScalaTest:
