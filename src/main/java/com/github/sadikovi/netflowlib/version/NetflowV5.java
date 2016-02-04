@@ -18,9 +18,9 @@ package com.github.sadikovi.netflowlib.version;
 
 import java.util.HashMap;
 import io.netty.buffer.ByteBuf;
-import com.github.sadikovi.netflowlib.SFlow;
+import com.github.sadikovi.netflowlib.FlowInterface;
 
-public class NetflowV5 extends SFlow {
+public class NetflowV5 extends FlowInterface {
   // list of supported columns and size in bytes
   // Current seconds since 0000 UTC 1970, size: 4
   public static final long V5_FIELD_UNIX_SECS = 0x00000001L;

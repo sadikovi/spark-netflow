@@ -328,7 +328,7 @@ public class NetflowReader {
     // initialize record holder for a particular Netflow version
     // in order to add new version create class in ".../version" and add another if
     // statement for that version
-    SFlow flowInterface;
+    FlowInterface flowInterface;
     if (flowVersion == 5) {
       flowInterface = new NetflowV5(askedFields);
     } else {

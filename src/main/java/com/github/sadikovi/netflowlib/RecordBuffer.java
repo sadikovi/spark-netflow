@@ -44,7 +44,7 @@ public class RecordBuffer implements Iterable<Object[]> {
    * @param isCmp boolean flag, showing that raw data is compressed
    * @return iterator of records as Object[]
    */
-  public RecordBuffer(FSDataInputStream in, SFlow hl, ByteOrder ord, boolean isCmp) {
+  public RecordBuffer(FSDataInputStream in, FlowInterface hl, ByteOrder ord, boolean isCmp) {
     this(in, hl, ord, isCmp, BUFFER_LENGTH);
   }
 
@@ -60,7 +60,7 @@ public class RecordBuffer implements Iterable<Object[]> {
    */
   public RecordBuffer(
       FSDataInputStream in,
-      SFlow hl,
+      FlowInterface hl,
       ByteOrder ord,
       boolean isCmp,
       int bufLen) {
@@ -166,8 +166,8 @@ public class RecordBuffer implements Iterable<Object[]> {
   private Inflater inflater;
   // stream to read either standard DataInputStream or InflaterInputStream
   private FilterInputStream stream;
-  // record holder (subclass of SFlow with information how to parse single record)
-  private SFlow recordHolder;
+  // record holder (subclass of FlowInterface with information how to parse single record)
+  private FlowInterface recordHolder;
   // primary array of bytes for a record
   private byte[] primary;
   // secondary array of bytes for a record, used when compression buffer needs to be refilled
