@@ -117,6 +117,12 @@ public class RecordBuffer implements Iterable<Object[]> {
             } catch (IOException io) {
               stream = null;
             }
+
+            // close buffer after EOF
+            if (buffer != null) {
+              buffer.release();
+            }
+            buffer = null;
           }
           return hasNext;
         }

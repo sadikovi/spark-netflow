@@ -76,8 +76,10 @@ public class NetflowReader {
 
     // assign stream version
     this.sversion = stream;
+
     // we do not need array and buffer afterwards
     metadata = null;
+    buf.release();
     buf = null;
   }
 
@@ -301,6 +303,11 @@ public class NetflowReader {
             break;
         }
       }
+
+      if (buf != null) {
+        buf.release();
+      }
+      buf = null;
       pr = null;
     }
     return header;
