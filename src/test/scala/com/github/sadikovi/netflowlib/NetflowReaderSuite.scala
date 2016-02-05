@@ -16,10 +16,10 @@
 
 package com.github.sadikovi.netflowlib
 
-import java.nio.ByteOrder;
+import java.nio.ByteOrder
 
-import org.apache.hadoop.fs.{Path, FileSystem}
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{Path, FileSystem}
 
 import com.github.sadikovi.testutil.UnitTestSpec
 

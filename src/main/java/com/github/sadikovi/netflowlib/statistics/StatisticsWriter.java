@@ -71,6 +71,10 @@ public class StatisticsWriter extends StatisticsAction {
     checkStreamState();
     ByteBuf metabuf = null;
 
+    if (options == null) {
+      throw new IllegalArgumentException("Options array is null");
+    }
+
     try {
       metabuf = Unpooled.directBuffer(INIT_BUF_CAPACITY).order(order);
       // write metadata statistics: magic number 1, magic number 2, byte order, each element takes
@@ -129,6 +133,7 @@ public class StatisticsWriter extends StatisticsAction {
     } finally {
       if (metabuf != null) {
         metabuf.release();
+        metabuf = null;
         output.close();
       }
     }

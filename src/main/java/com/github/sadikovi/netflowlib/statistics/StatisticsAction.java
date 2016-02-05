@@ -38,13 +38,13 @@ public abstract class StatisticsAction {
    * @return order number
    * @throws IllegalArgumentException
    */
-  protected short fromByteOrder(ByteOrder byteOrder) {
+  protected static short fromByteOrder(ByteOrder byteOrder) {
     if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
       return BYTE_LITTLE_ENDIAN;
     } else if (byteOrder == ByteOrder.BIG_ENDIAN) {
       return BYTE_BIG_ENDIAN;
     } else {
-      throw new IllegalArgumentException("Invalid byte order " + order);
+      throw new IllegalArgumentException("Invalid byte order " + byteOrder);
     }
   }
 
@@ -55,7 +55,7 @@ public abstract class StatisticsAction {
    * @return byte order
    * @throws IllegalArgumentException
    */
-  protected ByteOrder toByteOrder(short orderNum) {
+  protected static ByteOrder toByteOrder(short orderNum) {
     if (orderNum == BYTE_LITTLE_ENDIAN) {
       return ByteOrder.LITTLE_ENDIAN;
     } else if (orderNum == BYTE_BIG_ENDIAN) {

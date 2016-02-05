@@ -30,6 +30,26 @@ public class StatisticsOption {
     this.max = max;
   }
 
+  /** Static method for byte field */
+  public static StatisticsOption forField(long field, byte min, byte max) {
+    return new StatisticsOption(field, (short)1, min, max);
+  }
+
+  /** Static method for short field */
+  public static StatisticsOption forField(long field, short min, short max) {
+    return new StatisticsOption(field, (short)2, min, max);
+  }
+
+  /** Static method for int field */
+  public static StatisticsOption forField(long field, int min, int max) {
+    return new StatisticsOption(field, (short)4, min, max);
+  }
+
+  /** Static method for long field */
+  public static StatisticsOption forField(long field, long min, long max) {
+    return new StatisticsOption(field, (short)8, min, max);
+  }
+
   /** Size validation, we support only 1, 2 or 4 byte fields */
   private short validateSize(short size) {
     if (size == 1 || size == 2 || size == 4 || size == 8) {
