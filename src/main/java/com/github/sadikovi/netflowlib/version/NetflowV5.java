@@ -17,7 +17,9 @@
 package com.github.sadikovi.netflowlib.version;
 
 import java.util.HashMap;
+
 import io.netty.buffer.ByteBuf;
+
 import com.github.sadikovi.netflowlib.FlowInterface;
 
 public class NetflowV5 extends FlowInterface {
