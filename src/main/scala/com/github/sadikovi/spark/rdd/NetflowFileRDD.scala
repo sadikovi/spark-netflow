@@ -34,7 +34,8 @@ private[spark] case class NetflowMetadata(
   path: String,
   fields: Array[Long],
   bufferSize: Int,
-  conversions: Map[Int, AnyVal => String]
+  conversions: Map[Int, AnyVal => String],
+  maybeMetadata: Option[String]
 )
 
 /** NetflowFilePartition to hold sequence of file paths */

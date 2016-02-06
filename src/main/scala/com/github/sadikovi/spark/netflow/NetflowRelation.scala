@@ -63,6 +63,11 @@ private[netflow] class NetflowRelation(
     case _ => false
   }
 
+  // [whether or not to use NetFlow metadata], "metadata" option can have either boolean value or
+  // directory to store and look up metadata files. Directory should be available for reads and
+  // writes, otherwise throws IOException, and can be either in local file system or HDFS.
+  private val maybeMetadata: Option[String] = parameters.get("metadata")
+
   // mapper for Netflow version, will be used to create schema and convert columns
   private val mapper = SchemaResolver.getMapperForVersion(version)
 
@@ -103,7 +108,8 @@ private[netflow] class NetflowRelation(
       // we have to reconstruct `FileStatus` for each partition from file path, it is not
       // serializable
       val metadata = inputFiles.map { status =>
-        NetflowMetadata(version, status.getPath.toString, fields, bufferSize, conversions)
+        NetflowMetadata(version, status.getPath.toString, fields, bufferSize, conversions,
+          maybeMetadata)
       }
       // return NetflowFileRDD, we store data of each file in individual partition
       new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length)
