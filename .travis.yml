@@ -22,7 +22,6 @@ matrix:
       scala: 2.11.7
       env: TEST_SPARK_VERSION="1.5.0"
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION checkstyle
   - sbt ++$TRAVIS_SCALA_VERSION scalastyle
   - sbt ++$TRAVIS_SCALA_VERSION "test:scalastyle"
   - sbt -Dspark.testVersion=$TEST_SPARK_VERSION ++$TRAVIS_SCALA_VERSION coverage test
