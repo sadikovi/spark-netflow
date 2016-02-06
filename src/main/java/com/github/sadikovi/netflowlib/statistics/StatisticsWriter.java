@@ -35,8 +35,8 @@ public class StatisticsWriter extends StatisticsAction {
   public static final int INIT_BUF_CAPACITY = 128;
 
   /** Initialize statistics writer with output stream from creating a file */
-  public StatisticsWriter(FSDataOutputStream output, ByteOrder order) throws IOException {
-    if (output == null) {
+  public StatisticsWriter(FSDataOutputStream out, ByteOrder order) throws IOException {
+    if (out == null) {
       throw new IllegalArgumentException("Output stream is null");
     }
 
@@ -44,7 +44,7 @@ public class StatisticsWriter extends StatisticsAction {
       throw new IllegalArgumentException("Byte order is null");
     }
 
-    this.output = output;
+    this.out = out;
     this.order = order;
 
     checkStreamState();
@@ -52,9 +52,20 @@ public class StatisticsWriter extends StatisticsAction {
 
   /** Check stream non-empty state */
   private void checkStreamState() throws IOException {
-    if (output.getPos() != 0L) {
+    if (out.getPos() != 0L) {
       throw new IOException("Output stream is not empty");
     }
+  }
+
+  /**
+   * Write metadata using Statistics object (recommended), as it does perform additional validation.
+   *
+   * @param stats Statistics to write
+   * @return number of bytes written
+   * @throws IOException
+   */
+  public long write(Statistics stats) throws IOException {
+    return write(stats.getVersion(), stats.getCount(), stats.getOptions());
   }
 
   /**
@@ -126,18 +137,18 @@ public class StatisticsWriter extends StatisticsAction {
       }
 
       int writtenBytes = metabuf.readableBytes();
-      metabuf.readBytes(output, writtenBytes);
-      output.hflush();
+      metabuf.readBytes(out, writtenBytes);
+      out.hflush();
 
       return (long)writtenBytes;
     } finally {
       if (metabuf != null) {
         metabuf.release();
         metabuf = null;
-        output.close();
       }
+      out.close();
     }
   }
 
-  private FSDataOutputStream output = null;
+  private FSDataOutputStream out = null;
 }

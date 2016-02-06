@@ -105,4 +105,22 @@ class StatisticsWriterSuite extends UnitTestSpec {
     numBytes should be (79)
     fileLength should be (numBytes)
   }
+
+  test("write metadata using Statistics") {
+    val version: Short = 1
+    val count: Long = 100
+    val options: Array[StatisticsOption] = Array(
+      StatisticsOption.forField(0x00000001L, 0.toByte, Byte.MaxValue),
+      StatisticsOption.forField(0x00000002L, 1.toShort, Short.MaxValue),
+      StatisticsOption.forField(0x00000004L, 2, Int.MaxValue),
+      StatisticsOption.forField(0x00000008L, 3, Long.MaxValue))
+    val writer = new StatisticsWriter(output, ByteOrder.BIG_ENDIAN)
+
+    val numBytes = writer.write(new Statistics(version, count, options))
+    val summary = fs.getContentSummary(file)
+    val fileLength = summary.getLength()
+
+    numBytes should be (79) // see explanation above
+    fileLength should be (numBytes)
+  }
 }
