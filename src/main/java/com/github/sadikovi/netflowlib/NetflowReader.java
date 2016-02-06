@@ -304,8 +304,8 @@ public class NetflowReader {
         }
       }
 
-      if (buf != null) {
-        buf.release();
+      if (buf != null && buf.refCnt() > 0) {
+        buf.release(buf.refCnt());
       }
       buf = null;
       pr = null;

@@ -18,7 +18,6 @@ package com.github.sadikovi.netflowlib.statistics;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -65,12 +64,13 @@ public class StatisticsReader extends StatisticsAction {
     try {
       // parse meta statistics: magic numbers and byte order, and update byte order
       bytearr = new byte[3];
-      in.read(bytearr, 0, bytearr.length);
       buf = Unpooled.wrappedBuffer(bytearr);
+      in.read(bytearr, 0, bytearr.length);
 
       short magic1 = buf.readUnsignedByte();
       short magic2 = buf.readUnsignedByte();
       short byteOrder = buf.readUnsignedByte();
+      buf.release();
 
       if (magic1 != MAGIC_NUMBER_1 || magic2 != MAGIC_NUMBER_2) {
         throw new IOException("Invalid input: Wrong magic number");
@@ -81,30 +81,36 @@ public class StatisticsReader extends StatisticsAction {
       // parse header: version, count, length
       bytearr = new byte[22]; // length of the header + version + count + content length
       in.read(bytearr, 0, bytearr.length);
-      buf.order(order);
+      buf = Unpooled.wrappedBuffer(bytearr).order(order);
 
       long headerLength = buf.readUnsignedInt();
       short version = buf.readShort();
       long count = buf.readLong();
       long contentLength = buf.readLong();
+      buf.release();
 
       // parse content
       StatisticsOption[] opts;
 
-      if (contentLength != 0) {
-        long left = contentLength;
-        int numBytesRead = 0;
-        ArrayList<StatisticsOption> lst = new ArrayList<StatisticsOption>();
+      if (contentLength == 0) {
+        opts = new StatisticsOption[0];
+      } else {
+        int numOptions = (int)(contentLength / STATISTICS_RECORD_SIZE);
+        if (contentLength % STATISTICS_RECORD_SIZE != 0) {
+          throw new IOException("Statistics content is corrupted, length " + contentLength);
+        }
 
-        while (left > 0 && in.available() > 0) {
-          bytearr = new byte[6]; // read name of the field and size
-          numBytesRead = in.read(bytearr, 0, bytearr.length);
+        opts = new StatisticsOption[numOptions];
+        // reuse bytearr and buf instances
+        bytearr = new byte[STATISTICS_RECORD_SIZE];
+        buf = Unpooled.wrappedBuffer(bytearr).order(order);
+
+        for (int i=0; i<numOptions; i++) {
+          buf.readerIndex(0);
+          in.read(bytearr, 0, bytearr.length);
 
           long fieldName = buf.readUnsignedInt();
           short fieldSize = buf.readShort();
-
-          // once we know the size we read next two fields of "size" length
-          bytearr = new byte[fieldSize * 2];
           long min = 0;
           long max = 0;
 
@@ -124,22 +130,16 @@ public class StatisticsReader extends StatisticsAction {
             throw new UnsupportedOperationException("Unsupported field size " + fieldSize);
           }
 
-          lst.add(new StatisticsOption(fieldName, fieldSize, min, max));
-
-          left -= numBytesRead;
+          opts[i] = new StatisticsOption(fieldName, fieldSize, min, max);
         }
-        opts = lst.toArray(new StatisticsOption[lst.size()]);
-      } else {
-        opts = new StatisticsOption[0];
       }
 
       return new Statistics(version, count, opts);
     } finally {
-      if (buf != null) {
-        buf.release();
-        buf = null;
+      if (buf != null && buf.refCnt() > 0) {
+        buf.release(buf.refCnt());
       }
-      bytearr = null;
+      buf = null;
       in.close();
     }
   }

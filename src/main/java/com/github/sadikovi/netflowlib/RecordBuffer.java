@@ -119,8 +119,8 @@ public class RecordBuffer implements Iterable<Object[]> {
             }
 
             // close buffer after EOF
-            if (buffer != null) {
-              buffer.release();
+            if (buffer != null && buffer.refCnt() > 0) {
+              buffer.release(buffer.refCnt());
             }
             buffer = null;
           }

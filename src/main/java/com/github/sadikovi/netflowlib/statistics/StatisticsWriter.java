@@ -104,37 +104,50 @@ public class StatisticsWriter extends StatisticsAction {
       long fullLength = 0;
       for (StatisticsOption option: options) {
         if (option != null) {
-          fullLength += option.fullLength();
+          fullLength += STATISTICS_RECORD_SIZE;
         }
       }
       metabuf.writeLong(fullLength);
 
       // write options as TLV chain, we do not store length of the content
+      byte[] optionArr = new byte[STATISTICS_RECORD_SIZE];
+      ByteBuf optionBuf = Unpooled.wrappedBuffer(optionArr).order(order);
+
       for (StatisticsOption option: options) {
         if (option != null) {
+          optionBuf.clear();
           // write field name
-          metabuf.writeInt((int)option.getField());
+          optionBuf.writeInt((int)option.getField());
           // write field size
           short fieldSize = option.getSize();
-          metabuf.writeShort(fieldSize);
+          optionBuf.writeShort(fieldSize);
           // write min value based on size
           if (fieldSize == 1) {
-            metabuf.writeByte((byte)option.getMin());
-            metabuf.writeByte((byte)option.getMax());
+            optionBuf.writeByte((byte)option.getMin());
+            optionBuf.writeByte((byte)option.getMax());
           } else if (fieldSize == 2) {
-            metabuf.writeShort((short)option.getMin());
-            metabuf.writeShort((short)option.getMax());
+            optionBuf.writeShort((short)option.getMin());
+            optionBuf.writeShort((short)option.getMax());
           } else if (fieldSize == 4) {
-            metabuf.writeInt((int)option.getMin());
-            metabuf.writeInt((int)option.getMax());
+            optionBuf.writeInt((int)option.getMin());
+            optionBuf.writeInt((int)option.getMax());
           } else if (fieldSize == 8) {
-            metabuf.writeLong(option.getMin());
-            metabuf.writeLong(option.getMax());
+            optionBuf.writeLong(option.getMin());
+            optionBuf.writeLong(option.getMax());
           } else {
             throw new UnsupportedOperationException("Unsupported field size " + fieldSize);
           }
+
+          metabuf.writeBytes(optionArr);
         }
       }
+
+      // clear byte array and release option buffer
+      if (optionBuf != null && optionBuf.refCnt() > 0) {
+        optionBuf.release(optionBuf.refCnt());
+      }
+      optionArr = null;
+      optionBuf = null;
 
       int writtenBytes = metabuf.readableBytes();
       metabuf.readBytes(out, writtenBytes);
@@ -142,10 +155,10 @@ public class StatisticsWriter extends StatisticsAction {
 
       return (long)writtenBytes;
     } finally {
-      if (metabuf != null) {
-        metabuf.release();
-        metabuf = null;
+      if (metabuf != null && metabuf.refCnt() > 0) {
+        metabuf.release(metabuf.refCnt());
       }
+      metabuf = null;
       out.close();
     }
   }

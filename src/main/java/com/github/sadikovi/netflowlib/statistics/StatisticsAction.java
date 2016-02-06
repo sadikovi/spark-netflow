@@ -29,6 +29,8 @@ public abstract class StatisticsAction {
   public static final short BYTE_LITTLE_ENDIAN = 1;
   // byte encoding for byte order BIG_ENDIAN
   public static final short BYTE_BIG_ENDIAN = 2;
+  // statistics record size in bytes
+  public static final int STATISTICS_RECORD_SIZE = 24;
 
   /**
    * Convert byte order to numeric representation for writing. Throws exception, if byte order

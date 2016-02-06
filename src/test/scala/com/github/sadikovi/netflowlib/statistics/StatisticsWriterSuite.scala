@@ -101,8 +101,8 @@ class StatisticsWriterSuite extends UnitTestSpec {
 
     // metadata 3 bytes, and header 10 bytes + header length 4 bytes, length of content 8 bytes
     // 25 + [Option 1](4 + 2 + 1 + 1) + [Option 2](4 + 2 + 2 + 2) + [Option 3](4 + 2 + 4 + 4) +
-    // [Option 4](4 + 2 + 8 + 8)
-    numBytes should be (79)
+    // [Option 4](4 + 2 + 8 + 8). Each option is 24 bytes: 25 + 24 + 24 + 24 + 24
+    numBytes should be (121)
     fileLength should be (numBytes)
   }
 
@@ -114,13 +114,13 @@ class StatisticsWriterSuite extends UnitTestSpec {
       StatisticsOption.forField(0x00000002L, 1.toShort, Short.MaxValue),
       StatisticsOption.forField(0x00000004L, 2, Int.MaxValue),
       StatisticsOption.forField(0x00000008L, 3, Long.MaxValue))
-    val writer = new StatisticsWriter(output, ByteOrder.BIG_ENDIAN)
+    val writer = new StatisticsWriter(output, ByteOrder.LITTLE_ENDIAN)
 
     val numBytes = writer.write(new Statistics(version, count, options))
     val summary = fs.getContentSummary(file)
     val fileLength = summary.getLength()
 
-    numBytes should be (79) // see explanation above
+    numBytes should be (121) // see explanation above
     fileLength should be (numBytes)
   }
 }
