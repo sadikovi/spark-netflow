@@ -18,6 +18,7 @@ example, run this to include it when starting the spark shell:
 
 ## Features
 - Column pruning
+- NetFlow version 5 support
 
 ### Options
 Currently supported options:
