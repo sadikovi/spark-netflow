@@ -50,6 +50,11 @@ public class StatisticsWriter extends StatisticsAction {
     checkStreamState();
   }
 
+  /** StatisticsWriter with default BIG_ENDIAN byte order */
+  public StatisticsWriter(FSDataOutputStream out) throws IOException {
+    this(out, ByteOrder.BIG_ENDIAN);
+  }
+
   /** Check stream non-empty state */
   private void checkStreamState() throws IOException {
     if (out.getPos() != 0L) {

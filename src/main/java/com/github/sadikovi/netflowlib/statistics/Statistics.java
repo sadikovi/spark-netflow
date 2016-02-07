@@ -16,11 +16,13 @@
 
 package com.github.sadikovi.netflowlib.statistics;
 
+import java.io.Serializable;
+
 /**
  * Simple interface to hold multiple results for statistics, e.g. version, count, and options.
  * Also used as unified interface between writer and reader.
  */
-public class Statistics {
+public class Statistics implements Serializable {
 
   /** Recommended constructor */
   public Statistics(short version, long count, StatisticsOption[] options) {

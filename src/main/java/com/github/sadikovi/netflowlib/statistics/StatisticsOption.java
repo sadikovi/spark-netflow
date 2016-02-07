@@ -16,12 +16,14 @@
 
 package com.github.sadikovi.netflowlib.statistics;
 
+import java.io.Serializable;
+
 /**
  * [[StatisticsOption]] interface to keep metadata for a particular field. `min` and `max` fields
  * size independent, this conversion should be done in either [[StatisticsWriter]] or
  * [[StatisticsReader]]. Currently we only support fields of size 1, 2, 4, and 8 bytes.
  */
-public class StatisticsOption {
+public class StatisticsOption implements Serializable {
 
   public StatisticsOption(long field, short size, long min, long max) {
     this.field = field;
@@ -59,24 +61,34 @@ public class StatisticsOption {
     }
   }
 
+  /** Set minimum value, no validation is applied */
+  public void setMin(long value) {
+    min = value;
+  }
+
+  /** Set maximum  value, no validation is applied */
+  public void setMax(long value) {
+    max = value;
+  }
+
+  /** Get option's field */
   public long getField() {
     return field;
   }
 
+  /** Get size of the field in bytes, which affects minimum and maximum values */
   public short getSize() {
     return size;
   }
 
+  /** Get minimum value for the field */
   public long getMin() {
     return min;
   }
 
+  /** Get maximum value for the field */
   public long getMax() {
     return max;
-  }
-
-  public long fullLength() {
-    return 0L;
   }
 
   private long field = 0;

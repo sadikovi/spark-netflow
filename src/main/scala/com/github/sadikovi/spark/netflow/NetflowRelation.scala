@@ -21,7 +21,7 @@ import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.{RDD, UnionRDD}
 import org.apache.spark.sql.{SQLContext, Row}
-import org.apache.spark.sql.sources.{HadoopFsRelation, OutputWriterFactory}
+import org.apache.spark.sql.sources.{HadoopFsRelation, OutputWriterFactory, Filter}
 import org.apache.spark.sql.types.{StructType, StructField, IntegerType}
 
 import org.slf4j.LoggerFactory
@@ -63,10 +63,16 @@ private[netflow] class NetflowRelation(
     case _ => false
   }
 
-  // [whether or not to use NetFlow metadata], "metadata" option can have either boolean value or
-  // directory to store and look up metadata files. Directory should be available for reads and
-  // writes, otherwise throws IOException, and can be either in local file system or HDFS.
-  private val maybeMetadata: Option[String] = parameters.get("metadata")
+  // [whether or not to use/collect NetFlow statistics], "statistics" option can have either
+  // boolean value or directory to store and look up metadata files. Directory can be either on
+  // local file system or HDFS, should be available for reads and writes, otherwise throws
+  // IOException
+  private val maybeStatistics: Option[String] = parameters.get("statistics") match {
+    case Some("true") => Some("")
+    case Some("false") => None
+    case Some(dir) => Option(dir)
+    case _ => None
+  }
 
   // mapper for Netflow version, will be used to create schema and convert columns
   private val mapper = SchemaResolver.getMapperForVersion(version)
@@ -83,11 +89,18 @@ private[netflow] class NetflowRelation(
   override def buildScan(
       requiredColumns: Array[String],
       inputFiles: Array[FileStatus]): RDD[Row] = {
+    buildScan(requiredColumns, Array.empty, inputFiles)
+  }
+
+  override def buildScan(
+      requiredColumns: Array[String],
+      filters: Array[Filter],
+      inputFiles: Array[FileStatus]): RDD[Row] = {
     if (inputFiles.isEmpty) {
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
       // convert to internal Netflow fields
-      val fields: Array[Long] = if (requiredColumns.isEmpty) {
+      val resolvedColumns: Array[Long] = if (requiredColumns.isEmpty) {
         logger.warn("Required columns are empty, using first column instead")
         // when required columns are empty, e.g. in case of direct `count()` we use only one column
         // schema to quickly read records
@@ -97,22 +110,31 @@ private[netflow] class NetflowRelation(
       }
 
       // conversion array, if stringify option is true, we return map. Each key is an index of a
-      // field and value is a conversion function "AnyVal => String". Map is empty when there is
+      // field and value is a conversion function "Any => String". Map is empty when there is
       // no columns with applied conversion or when stringify option is false
-      val conversions: Map[Int, AnyVal => String] = if (stringify) {
-        mapper.getConversionsForFields(fields)
+      val conversions: Map[Int, Any => String] = if (stringify) {
+        mapper.getConversionsForFields(resolvedColumns)
       } else {
         Map.empty
       }
 
       // we have to reconstruct `FileStatus` for each partition from file path, it is not
-      // serializable
-      val metadata = inputFiles.map { status =>
-        NetflowMetadata(version, status.getPath.toString, fields, bufferSize, conversions,
-          maybeMetadata)
-      }
-      // return NetflowFileRDD, we store data of each file in individual partition
-      new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length)
+      // serializable and does not behave well with `SerializableWriteable`
+      val metadata = inputFiles.map { status => {
+        // resolved statistics options if summary collection is enabled and fields requirements are
+        // met. We have to do it for every file to separate summaries
+        val statOpts = if (maybeStatistics.isDefined) {
+          mapper.getStatisticsOptionsForFields(resolvedColumns)
+        } else {
+          None
+        }
+
+        NetflowMetadata(version, status.getPath().toString(), status.getLen(), bufferSize,
+          conversions, statOpts)
+      } }
+      // return `NetflowFileRDD`, we store data of each file in individual partition
+      new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length, resolvedColumns,
+        filters, maybeStatistics)
     }
   }
 
