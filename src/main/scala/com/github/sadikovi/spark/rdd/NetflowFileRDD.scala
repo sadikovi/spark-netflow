@@ -30,7 +30,7 @@ import org.apache.spark.sql.{Row => SQLRow}
 import org.apache.spark.sql.sources.Filter
 
 import com.github.sadikovi.netflowlib.{NetflowReader, NetflowHeader, RecordBuffer}
-import com.github.sadikovi.netflowlib.statistics.StatisticsWriter
+import com.github.sadikovi.netflowlib.statistics.{StatisticsReader, StatisticsWriter}
 import com.github.sadikovi.netflowlib.version.NetflowV5
 import com.github.sadikovi.spark.netflow.sources.SummaryWritable
 
@@ -146,12 +146,25 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         (fs.exists(filePath), filePath)
       }
 
+      if (useStatistics && foundStatisticsFile) {
+        logInfo("Found statistics, preparing and reading summary file")
+
+        val inputStream = fs.open(statisticsResolvedPath)
+        val reader = new StatisticsReader(inputStream)
+        val stats = reader.read()
+
+        logInfo(s"[STATISTICS] Version: ${stats.getVersion()}")
+        logInfo(s"[STATISTICS] Count: ${stats.getCount()}")
+        logInfo(s"[STATISTICS] Options: ${stats.getOptions().mkString("; ")}")
+      }
+
       logInfo(s"""
         > NetFlow statistics summary: {
         >   File: ${elem.path}
         >   Statistics: {
         >     usage: ${useStatistics}
         >     found: ${foundStatisticsFile}
+        >     summary: ${elem.summary}
         >     path: ${statisticsResolvedPath.toString()}
         >   }
         > }

@@ -28,6 +28,7 @@ import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetflowV5
+import com.github.sadikovi.spark.rdd.NetflowFileRDD
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
 class NetflowSuite extends UnitTestSpec with SparkLocal {
@@ -238,5 +239,31 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
       val (ip, num) = elem
       ConversionFunctions.numToIp(num) should equal (ip)
     }
+  }
+
+  test("resolve statistics directory") {
+    val rdd = new NetflowFileRDD(sc, Seq.empty, 0, Array.empty, Array.empty, None)
+
+    // is not specified
+    var maybeStatistics: Option[String] = None
+    rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf()) should be ((false, None))
+
+    // wrong directory specified
+    maybeStatistics = Option("file:/wrong/directory")
+    intercept[IOException] {
+      rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf())
+    }
+
+    // collect statistics for default directory
+    maybeStatistics = Option("")
+    rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf()) should be ((true, None))
+
+    // collect statistics into different directory
+    maybeStatistics = Option(s"${baseDirectory()}")
+    val (use, dir) = rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf())
+
+    use should be (true)
+    dir.isEmpty should be (false)
+    dir.get.toString() should be (s"file:${baseDirectory()}")
   }
 }

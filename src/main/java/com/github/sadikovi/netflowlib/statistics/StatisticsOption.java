@@ -91,6 +91,12 @@ public class StatisticsOption implements Serializable {
     return max;
   }
 
+  @Override
+  public String toString() {
+    return "StatisticsOption(" + field + ", " +
+      size + " bytes, min: " + min + ", max: " + max + ")";
+  }
+
   private long field = 0;
   private short size = 0;
   private long min = 0;

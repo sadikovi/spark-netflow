@@ -81,6 +81,9 @@ private[netflow] trait Mapper {
   def getStatisticsOptionsForFields(fields: Array[Long]): Option[SummaryWritable] = {
     throw new UnsupportedOperationException
   }
+
+  /** Get list of columns that statistics can be collected for */
+  def getStatisticsColumns(): Array[Long] = getFirstInternalColumn()
 }
 
 /**

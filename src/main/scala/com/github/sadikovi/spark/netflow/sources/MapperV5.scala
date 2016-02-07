@@ -76,7 +76,7 @@ private[netflow] object MapperV5 extends Mapper {
         val (field, index) = elem
         if (!summary.exists(index) && statisticsFields.contains(field)) {
           // we cheat and keep all values as long fields, saves time on size resolution
-          summary.add(index, new StatisticsOption(field, 8, Integer.MAX_VALUE, Integer.MIN_VALUE))
+          summary.add(index, new StatisticsOption(field, 8, Long.MinValue, Long.MaxValue))
         }
       }
 
@@ -85,6 +85,9 @@ private[netflow] object MapperV5 extends Mapper {
       None
     }
   }
+
+  override def getStatisticsColumns(): Array[Long] =
+    statisticsFields.map { case (key, flag) => key }.toArray
 
   // mapping of SQL columns and internal columns for NetflowV5
   private val columns: Seq[SchemaField] = Seq(
@@ -119,7 +122,7 @@ private[netflow] object MapperV5 extends Mapper {
     (field.name, field.index)).toMap
 
   // helper index of conversion functions
-  private lazy val conversions: Map[Long, Any=> String] = Map(
+  private lazy val conversions: Map[Long, Any => String] = Map(
     NetflowV5.V5_FIELD_EXADDR -> ConversionFunctions.numToIp,
     NetflowV5.V5_FIELD_SRCADDR -> ConversionFunctions.numToIp,
     NetflowV5.V5_FIELD_DSTADDR -> ConversionFunctions.numToIp,

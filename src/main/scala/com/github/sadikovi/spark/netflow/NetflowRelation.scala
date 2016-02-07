@@ -101,10 +101,15 @@ private[netflow] class NetflowRelation(
     } else {
       // convert to internal Netflow fields
       val resolvedColumns: Array[Long] = if (requiredColumns.isEmpty) {
-        logger.warn("Required columns are empty, using first column instead")
-        // when required columns are empty, e.g. in case of direct `count()` we use only one column
-        // schema to quickly read records
-        mapper.getFirstInternalColumn()
+        if (maybeStatistics.isEmpty) {
+          logger.warn("Required columns are empty, using first column instead")
+          mapper.getFirstInternalColumn()
+        } else {
+          logger.warn("Required columns are empty, using statistics columns instead")
+          // when required columns are empty, e.g. in case of direct `count()` we use statistics
+          // fields to collect summary for a file
+          mapper.getStatisticsColumns()
+        }
       } else {
         requiredColumns.map(col => mapper.getInternalColumnForName(col))
       }

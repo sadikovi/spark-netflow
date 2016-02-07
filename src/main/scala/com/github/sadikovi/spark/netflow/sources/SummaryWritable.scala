@@ -17,6 +17,7 @@
 package com.github.sadikovi.spark.netflow.sources
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 import com.github.sadikovi.netflowlib.statistics.{Statistics, StatisticsOption}
 
@@ -25,24 +26,25 @@ import com.github.sadikovi.netflowlib.statistics.{Statistics, StatisticsOption}
  * Stores options using map where index is either field name or field index. Use
  * `finalizeStatistics()` to get statistics for writes.
  */
-case class SummaryWritable(private val version: Short, private var count: Long) {
+case class SummaryWritable(private val version: Short, cnt: Long) {
 
   private val options = new ConcurrentHashMap[Long, StatisticsOption]()
+  private val count = new AtomicLong(cnt)
 
   /** Update value for min / max of option */
   private def setMinMax(opt: StatisticsOption, value: Long): Unit = {
-    if (opt.getMin() > value) {
+    if (opt.getMin() == Long.MinValue || opt.getMin() > value) {
       opt.setMin(value)
     }
 
-    if (opt.getMax() < value) {
+    if (opt.getMax() == Long.MaxValue || opt.getMax() < value) {
       opt.setMax(value)
     }
   }
 
   /** Simple count increment */
   def incrementCount(): Unit = {
-    count += 1
+    count.incrementAndGet()
   }
 
   /** Add option for a specific index */
@@ -58,7 +60,7 @@ case class SummaryWritable(private val version: Short, private var count: Long) 
     options.containsKey(index)
   }
 
-  /** Update value for index. Value is resolved according size of the option's field */
+  /** Update value for index. Value is resolved as `Long` regardless the size of the field */
   def updateForIndex(index: Long, value: Any): Unit = {
     if (!exists(index)) {
       throw new IllegalArgumentException(s"No key ${index} exists")
@@ -67,10 +69,10 @@ case class SummaryWritable(private val version: Short, private var count: Long) 
     val opt = options.get(index)
 
     value match {
-      case a: Byte if opt.getSize() == 1 => setMinMax(opt, a.toLong)
-      case b: Short if opt.getSize() == 2 => setMinMax(opt, b.toLong)
-      case c: Int if opt.getSize() == 4 => setMinMax(opt, c.toLong)
-      case d: Long if opt.getSize() == 8 => setMinMax(opt, d)
+      case a: Byte => setMinMax(opt, a.toLong)
+      case b: Short => setMinMax(opt, b.toLong)
+      case c: Int => setMinMax(opt, c.toLong)
+      case d: Long => setMinMax(opt, d)
       case other =>
         throw new IllegalArgumentException(s"Value ${other} cannot be resolved for key ${index}")
     }
@@ -78,7 +80,7 @@ case class SummaryWritable(private val version: Short, private var count: Long) 
 
   /** Prepare Statistics for writing */
   def finalizeStatistics(): Statistics = {
-    return new Statistics(version, count, options.values().toArray(
+    return new Statistics(version, count.get(), options.values().toArray(
       new Array[StatisticsOption](options.size())))
   }
 }
