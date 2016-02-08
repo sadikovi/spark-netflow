@@ -267,29 +267,37 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     }
   }
 
-  test("resolve statistics directory") {
-    val rdd = new NetflowFileRDD(sc, Seq.empty, 0, Array.empty, Array.empty, None)
+  test("resolve statistics option/directory") {
+    val sqlContext = new SQLContext(sc)
 
-    // is not specified
-    var maybeStatistics: Option[String] = None
-    rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf()) should be ((false, None))
+    // statistics are off
+    var params = Map("version" -> "5")
+    var relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
 
-    // wrong directory specified
-    maybeStatistics = Option("file:/wrong/directory")
+    relation.getStatistics() should be (None)
+
+    // statistics in the same directory
+    params = Map("version" -> "5", "statistics" -> "true")
+    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+
+    relation.getStatistics().isEmpty should be (false)
+
+    // statistics in different directory
+    params = Map("version" -> "5", "statistics" -> s"file:${baseDirectory()}")
+    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+
+    relation.getStatistics().isEmpty should be (false)
+
+    // statistics in file path
+    params = Map("version" -> "5", "statistics" -> s"file:${path1}")
     intercept[IOException] {
-      rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf())
+      new NetflowRelation(Array(path1), None, None, params)(sqlContext)
     }
 
-    // collect statistics for default directory
-    maybeStatistics = Option("")
-    rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf()) should be ((true, None))
-
-    // collect statistics into different directory
-    maybeStatistics = Option(s"${baseDirectory()}")
-    val (use, dir) = rdd.resolveStatisticsDir(maybeStatistics, rdd.getConf())
-
-    use should be (true)
-    dir.isEmpty should be (false)
-    dir.get.toString() should be (s"file:${baseDirectory()}")
+    // statistics in non-existent directory
+    params = Map("version" -> "5", "statistics" -> s"file:/non/existent/directory")
+    intercept[IOException] {
+      new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    }
   }
 }

@@ -73,6 +73,17 @@ class NetflowReaderSuite extends UnitTestSpec {
       NetflowHeader.HEADER_FLAG_COMPRESS)
   }
 
+  test("test header compressed flag") {
+    var path = new Path(validFile2)
+    var fs = path.getFileSystem(new Configuration(false))
+    var stm = fs.open(path)
+    var reader = new NetflowReader(stm)
+    var header = reader.readHeader()
+
+    header.isCompressed() should be (
+      (header.getFields() & NetflowHeader.HEADER_FLAG_COMPRESS) > 0)
+  }
+
   test("test data parsing") {
     var path = new Path(validFile2)
     var fs = path.getFileSystem(new Configuration(false))

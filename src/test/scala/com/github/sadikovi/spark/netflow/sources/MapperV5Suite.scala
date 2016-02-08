@@ -55,16 +55,22 @@ class MapperV5Suite extends UnitTestSpec {
     conversions.isEmpty should be (false)
   }
 
-  test("get statistics for fields") {
+  test("get readable summary") {
+    val summary = MapperV5.getSummaryReadable("")
+    val stats = summary.get.finalizeStatistics()
+    stats.getOptions().length should be (MapperV5.getStatisticsColumns().length)
+  }
+
+  test("get writable summary") {
     // not enough fields to collect statistics
-    var summary = MapperV5.getStatisticsOptionsForFields(Array(NetflowV5.V5_FIELD_UNIX_SECS))
+    var summary = MapperV5.getSummaryWritable("", Array(NetflowV5.V5_FIELD_UNIX_SECS))
     summary should be (None)
 
     // empty array of fields
-    summary = MapperV5.getStatisticsOptionsForFields(Array.empty)
+    summary = MapperV5.getSummaryWritable("", Array.empty)
     summary should be (None)
 
-    summary = MapperV5.getStatisticsOptionsForFields(Array(NetflowV5.V5_FIELD_UNIX_SECS,
+    summary = MapperV5.getSummaryWritable("", Array(NetflowV5.V5_FIELD_UNIX_SECS,
       NetflowV5.V5_FIELD_SRCADDR, NetflowV5.V5_FIELD_SRCPORT, NetflowV5.V5_FIELD_DSTADDR,
       NetflowV5.V5_FIELD_DSTPORT))
 
@@ -76,11 +82,11 @@ class MapperV5Suite extends UnitTestSpec {
     })
 
     // two summaries should be different instances
-    val summary1 = MapperV5.getStatisticsOptionsForFields(Array(NetflowV5.V5_FIELD_UNIX_SECS,
+    val summary1 = MapperV5.getSummaryWritable("", Array(NetflowV5.V5_FIELD_UNIX_SECS,
       NetflowV5.V5_FIELD_SRCADDR, NetflowV5.V5_FIELD_SRCPORT, NetflowV5.V5_FIELD_DSTADDR,
       NetflowV5.V5_FIELD_DSTPORT, NetflowV5.V5_FIELD_PROT))
 
-    val summary2 = MapperV5.getStatisticsOptionsForFields(Array(NetflowV5.V5_FIELD_UNIX_SECS,
+    val summary2 = MapperV5.getSummaryWritable("", Array(NetflowV5.V5_FIELD_UNIX_SECS,
       NetflowV5.V5_FIELD_SRCADDR, NetflowV5.V5_FIELD_SRCPORT, NetflowV5.V5_FIELD_DSTADDR,
       NetflowV5.V5_FIELD_DSTPORT))
 

@@ -14,18 +14,26 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.netflow.sources
+package com.github.sadikovi.spark.netflow
 
 import com.github.sadikovi.netflowlib.statistics.StatisticsOption
+import com.github.sadikovi.spark.netflow.sources.{SummaryReadable, SummaryWritable}
 import com.github.sadikovi.testutil.UnitTestSpec
 
-class SummaryWritableSuite extends UnitTestSpec {
+class SummarySuite extends UnitTestSpec {
   // version of a NetFlow file
   val version: Short = 5
 
+  test("set count") {
+    val summary = new SummaryReadable(version, "")
+    summary.setCount(100L)
+
+    val stats = summary.finalizeStatistics()
+    stats.getCount() should be (100L)
+  }
+
   test("increment count") {
-    val initCount = 0
-    val summary = SummaryWritable(version, initCount)
+    val summary = new SummaryWritable(version, "")
 
     for (i <- 0 until 100) {
       summary.incrementCount()
@@ -33,35 +41,35 @@ class SummaryWritableSuite extends UnitTestSpec {
 
     val stats = summary.finalizeStatistics()
     stats.getVersion() should be (version)
-    stats.getCount() should be (100)
+    stats.getCount() should be (100L)
   }
 
   test("add options") {
-    val summary = SummaryWritable(version, 0)
-    summary.add(1L, new StatisticsOption(1L, 1, 0, 100))
-    summary.add(2L, new StatisticsOption(2L, 2, 100, 200))
-    summary.add(3L, new StatisticsOption(3L, 4, 200, 300))
-    summary.add(4L, new StatisticsOption(4L, 8, 300, 400))
+    val summary = new SummaryWritable(version, "")
+    summary.setOption(1L, new StatisticsOption(1L, 1, 0, 100))
+    summary.setOption(2L, new StatisticsOption(2L, 2, 100, 200))
+    summary.setOption(3L, new StatisticsOption(3L, 4, 200, 300))
+    summary.setOption(4L, new StatisticsOption(4L, 8, 300, 400))
 
     val stats = summary.finalizeStatistics()
     stats.getOptions().length should be (4)
 
     intercept[IllegalArgumentException] {
-      summary.add(1L, new StatisticsOption(5L, 2, 0, 100))
+      summary.setOption(1L, new StatisticsOption(5L, 2, 0, 100))
     }
   }
 
   test("exists option") {
-    val summary = SummaryWritable(version, 0)
-    summary.add(1L, new StatisticsOption(1L, 1, 0, 100))
+    val summary = new SummaryWritable(version, "")
+    summary.setOption(1L, new StatisticsOption(1L, 1, 0, 100))
     summary.exists(1L) should be (true)
     summary.exists(2L) should be (false)
   }
 
   test("update for index") {
-    val summary = SummaryWritable(version, 0)
-    summary.add(1L, new StatisticsOption(1L, 2, 0, 100))
-    summary.add(2L, new StatisticsOption(2L, 4, Long.MinValue, Long.MaxValue))
+    val summary = new SummaryWritable(version, "")
+    summary.setOption(1L, new StatisticsOption(1L, 2, 0, 100))
+    summary.setOption(2L, new StatisticsOption(2L, 8, Long.MinValue, Long.MaxValue))
 
     // update non-existent index
     intercept[IllegalArgumentException] {
@@ -85,5 +93,21 @@ class SummaryWritableSuite extends UnitTestSpec {
     val option2 = stats.getOptions().find(_.getField() == 2L).get
     option2.getMin() should be (200)
     option2.getMax() should be (200)
+  }
+
+  test("set options from source") {
+    val summary = new SummaryReadable(version, "")
+
+    summary.setOption(1L, new StatisticsOption(1L, 2, 1, 100))
+    summary.setOption(2L, new StatisticsOption(2L, 2, 0, 0))
+
+    summary.setOptionsFromSource(Array(new StatisticsOption(2L, 2, 2, 200),
+      new StatisticsOption(3L, 2, 3, 300)))
+
+    val stats = summary.finalizeStatistics()
+
+    stats.getOptions().length should be (3)
+    stats.getOptions().map(_.getMin()).sortWith(_ < _) should be (Array(Short.MinValue, 2, 3))
+    stats.getOptions().map(_.getMax()).sortWith(_ < _) should be (Array(200, 300, Short.MaxValue))
   }
 }

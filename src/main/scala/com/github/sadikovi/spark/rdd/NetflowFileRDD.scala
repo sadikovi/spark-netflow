@@ -32,7 +32,8 @@ import org.apache.spark.sql.sources.Filter
 import com.github.sadikovi.netflowlib.{NetflowReader, NetflowHeader, RecordBuffer}
 import com.github.sadikovi.netflowlib.statistics.{StatisticsReader, StatisticsWriter}
 import com.github.sadikovi.netflowlib.version.NetflowV5
-import com.github.sadikovi.spark.netflow.sources.SummaryWritable
+import com.github.sadikovi.spark.netflow.Summary
+import com.github.sadikovi.spark.netflow.sources.{SummaryReadable, SummaryWritable}
 
 /**
  * Netflow metadata that describes file to process. Contains expected version of a file, absolute
@@ -46,7 +47,7 @@ private[spark] case class NetflowMetadata(
   length: Long,
   bufferSize: Int,
   conversions: Map[Int, Any => String],
-  summary: Option[SummaryWritable]
+  summary: Option[Summary]
 )
 
 /** NetflowFilePartition to hold sequence of file paths */
@@ -77,8 +78,7 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
     @transient data: Seq[NetflowMetadata],
     numSlices: Int,
     resolvedColumns: Array[Long],
-    filters: Array[Filter],
-    maybeStatistics: Option[String]) extends FileRDD[SQLRow](sc, Nil) {
+    filters: Array[Filter]) extends FileRDD[SQLRow](sc, Nil) {
   /** Partition [[NetflowMetadata]], slightly modified Spark partitioning function */
   private def slice(seq: Seq[NetflowMetadata], numSlices: Int): Seq[Seq[NetflowMetadata]] = {
     require(numSlices >= 1, "Positive number of slices required")
@@ -97,29 +97,6 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
     }.toSeq
   }
 
-  /**
-   * Resolve directory for storing and looking up statistics. Directory will be resolved for Spark
-   * Hadoop configuration, and will be fully qualified path without any symlinks.
-   */
-  private[spark] def resolveStatisticsDir(
-      maybeStatistics: Option[String],
-      conf: Configuration): (Boolean, Option[Path]) = maybeStatistics match {
-    case Some(dir) =>
-      if (dir.isEmpty) {
-        (true, None)
-      } else {
-        val maybeDir = new Path(dir)
-        val dirFileSystem = maybeDir.getFileSystem(conf)
-        if (dirFileSystem.isDirectory(maybeDir)) {
-          val resolvedPath = dirFileSystem.resolvePath(maybeDir)
-          (true, Some(resolvedPath))
-        } else {
-          throw new IOException(s"Path for statistics ${maybeDir} is not a directory")
-        }
-      }
-    case None => (false, None)
-  }
-
   override def getPartitions: Array[Partition] = {
     val slices = this.slice(data, numSlices).toArray
     slices.indices.map(i => new NetflowFilePartition[NetflowMetadata](id, i, slices(i))).toArray
@@ -128,34 +105,27 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
   override def compute(s: Partition, context: TaskContext): Iterator[SQLRow] = {
     val conf = getConf()
     var buffer: Iterator[Array[Object]] = Iterator.empty
-    val (useStatistics, statisticsDir) = resolveStatisticsDir(maybeStatistics, conf)
 
     for (elem <- s.asInstanceOf[NetflowFilePartition[NetflowMetadata]].iterator) {
       // reconstruct file status: file path, length in bytes
       val path = new Path(elem.path)
       val fs = path.getFileSystem(conf)
       val fileLength = elem.length
-      val statOpts = elem.summary
+      // find out if statistics are used and unwrap summary object, we also will have to initialize
+      // statistics path related file system
+      val useStatistics = elem.summary.isDefined
 
-      // statistics data, update statistics directory, if use current file directory
-      // if statistics are not used, this should not impact performance
-      val (foundStatisticsFile, statisticsResolvedPath) = {
-        val tempDir = statisticsDir match {
-          case Some(dir) if useStatistics => dir
-          case _ => path.getParent()
-        }
-        val fileName = s"_metadata.${path.getName()}"
-        val filePath = tempDir.suffix(Path.SEPARATOR + fileName)
-        (fs.exists(filePath), filePath)
+      val statSummary: Summary = if (useStatistics) {
+        elem.summary.get
+      } else {
+        null
       }
 
-      // statistics to apply, if file is found we update summary, otherwise we will update it while
-      // writing statistics. `internalUseStatistics` is updated according to summary resolution,
-      // `resolvedStatOpts` can be null in this case.
-      val internalUseStatistics = useStatistics && statOpts.isDefined
-      val resolvedStatOpts: SummaryWritable = statOpts match {
-        case Some(obj) => obj
-        case None => null
+      val (statResolvedPath, statFS) = if (useStatistics) {
+        val tmpPath = new Path(statSummary.getFilepath())
+        (tmpPath, tmpPath.getFileSystem(conf))
+      } else {
+        (null, null)
       }
 
       // before reading actual file we can read related summary file and extract statistics, such
@@ -165,36 +135,34 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       // not found we will try creating it. Another note is that we resolve statistics for
       // "unix_secs" (capture time) regardless of having summary file or not, since we can extract
       // information from header.
-      if (internalUseStatistics) {
-        if (foundStatisticsFile) {
-          logDebug("Found statistics, preparing and reading summary file")
-          // we do not have to close the stream, StatisticsReader will close when end of the file
-          // is reached
-          val inputStream = fs.open(statisticsResolvedPath)
-          val reader = new StatisticsReader(inputStream)
-          val summaryStats = reader.read()
+      if (useStatistics && statSummary.readonly()) {
+        logDebug("Found statistics, preparing and reading summary file")
 
-          // we fail, if statistics version does not match expected version, since it can lead to
-          // problems of different fields with the same column id having applied wrong predicate.
-          require(summaryStats.getVersion() == elem.version, "Cannot apply statistics. " +
-            s"Expected version ${elem.version}, got ${summaryStats.getVersion()}")
+        val summaryReadable = statSummary.asInstanceOf[SummaryReadable]
 
-          // now we have to resolve filters and decide whether we need to scan file. In case of
-          // count we should decide whether we can create an boolean iterator of `count` length. We
-          // can do it only when no filters are specified. I do not know any other way of by-passing
-          // count computation and return just the number of records.
-          resolvedStatOpts.updateCount(summaryStats.getCount())
-          resolvedStatOpts.setOptionsFromSource(summaryStats.getOptions())
-        }
+        val inputStream = statFS.open(statResolvedPath)
+        val javaSummary = new StatisticsReader(inputStream).read()
+
+        // we fail, if statistics version does not match expected version, since it can lead to
+        // problems of different fields with the same column id having applied wrong predicate.
+        require(javaSummary.getVersion() == elem.version, "Cannot apply statistics. " +
+          s"Expected version ${elem.version}, got ${javaSummary.getVersion()}")
+
+        // now we have to resolve filters and decide whether we need to scan file. In case of count
+        // we should decide whether we can create an boolean iterator of `count` length. We can do
+        // it only when no filters are specified. I do not know any other way of by-passing count
+        // computation and return just the number of records.
+        summaryReadable.setCount(javaSummary.getCount())
+        summaryReadable.setOptionsFromSource(javaSummary.getOptions())
 
         logInfo(s"""
           > NetFlow statistics summary: {
           >   File: ${elem.path}
           >   Statistics: {
           >     usage: ${useStatistics}
-          >     internal (with schema resolved): ${internalUseStatistics}
-          >     found: ${foundStatisticsFile}
-          >     path: ${statisticsResolvedPath.toString()}
+          >     path: ${summaryReadable.getFilepath()}
+          >     count: ${javaSummary.getCount()}
+          >     summary: ${javaSummary.getOptions().mkString(", ")}
           >   }
           > }
         """.stripMargin('>'))
@@ -202,15 +170,13 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
 
       // prepare file stream
       val stm: FSDataInputStream = fs.open(path)
-
-      // build Netflow reader and check whether it can be read
       val nr = new NetflowReader(stm)
       val hr = nr.readHeader()
       // actual version of the file
       val actualVersion = hr.getFlowVersion()
-      // conversion to apply
+      // conversion rules to apply
       val conversions = elem.conversions
-      // compression flag is second bit in header flags
+      // compression flag
       val isCompressed = hr.isCompressed()
 
       // currently we cannot resolve version and proceed with parsing, we require pre-set version.
@@ -238,28 +204,31 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       val recordBuffer = nr.readData(hr, resolvedColumns, elem.bufferSize)
       val iterator = recordBuffer.iterator().asScala
 
-      // TODO: [!] review statistics iterator and `internalUseStatistics`
-      val statisticsIterator = if (internalUseStatistics && !foundStatisticsFile) {
+      // Iterator with injected statistics handling. Every record processed goes through
+      // `SummaryWritable` and count is accumulated. For the last iteration summary is saved into
+      // file specified.
+      val statisticsIterator = if (useStatistics && !statSummary.readonly()) {
+        val summaryWritable = statSummary.asInstanceOf[SummaryWritable]
+
         new Iterator[Array[Object]] {
           override def hasNext: Boolean = {
             val isNext = iterator.hasNext
             if (!isNext) {
-              logInfo("End of file reached, preparing and writing summary file")
-              val outputStream = fs.create(statisticsResolvedPath, false)
+              logDebug("End of file reached, preparing and writing summary file")
+
+              val outputStream = statFS.create(statResolvedPath, false)
               val writer = new StatisticsWriter(outputStream)
-              writer.write(resolvedStatOpts.finalizeStatistics())
+              writer.write(summaryWritable.finalizeStatistics())
             }
             isNext
           }
 
           override def next(): Array[Object] = {
-            // increment global count, it is safe to do it before resolving individual options,
-            // since we would fail before writing partial / over-evaluated count
-            resolvedStatOpts.incrementCount()
+            summaryWritable.incrementCount()
 
             iterator.next().zipWithIndex.map { case (value, index) =>
-              if (resolvedStatOpts.exists(index)) {
-                resolvedStatOpts.updateForIndex(index, value.asInstanceOf[Any])
+              if (summaryWritable.exists(index)) {
+                summaryWritable.updateForIndex(index, value.asInstanceOf[Any])
                 value
               } else {
                 value
@@ -271,9 +240,8 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         iterator
       }
 
-      val conversionsIterator = if (conversions.isEmpty) {
-        statisticsIterator
-      } else {
+      // Conversion iterator, applies defined modification for convertable fields
+      val conversionsIterator = if (conversions.nonEmpty) {
         // for each array of fields we check if current field matches list of possible conversions,
         // and convert, otherwise return unchanged field.
         // do not forget to check field constant index to remove overlap with indices from other
@@ -284,6 +252,8 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
             case None => value
           } }
         )
+      } else {
+        statisticsIterator
       }
 
       buffer = buffer ++ conversionsIterator

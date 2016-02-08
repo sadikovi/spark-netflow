@@ -20,9 +20,9 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.sql.types._
 
-import com.github.sadikovi.spark.netflow.{Mapper, SchemaField, ConversionFunctions}
 import com.github.sadikovi.netflowlib.statistics.StatisticsOption
 import com.github.sadikovi.netflowlib.version.NetflowV5
+import com.github.sadikovi.spark.netflow.{ConversionFunctions, Mapper, SchemaField, Summary}
 
 /** Mapper for NetFlow version 5 */
 private[netflow] object MapperV5 extends Mapper {
@@ -60,23 +60,29 @@ private[netflow] object MapperV5 extends Mapper {
     buf.toMap
   }
 
-  /**
-   * Every time returns new summary, it is recommended to call this method for each element to
-   * have separate summary for that field.
-   */
-  override def getStatisticsOptionsForFields(fields: Array[Long]): Option[SummaryWritable] = {
+  override def getSummaryReadable(filepath: String): Option[Summary] = {
+    val summary = new SummaryReadable(version(), filepath)
+    for (field <- getStatisticsColumns()) {
+      // we cheat and keep all values as long fields, saves time on size resolution
+      summary.setOption(field, new StatisticsOption(field, 8, Long.MinValue, Long.MaxValue))
+    }
+    Option(summary)
+  }
+
+  override def getSummaryWritable(filepath: String, fields: Array[Long]): Option[Summary] = {
     // to collect statistics we require all necessary fields to exist
     val gatherStatistics = statisticsFields.forall { case (key, flag) =>
       fields.exists(elem => elem == key)
     }
 
     if (gatherStatistics) {
-      val summary = new SummaryWritable(version(), 0)
+      val summary = new SummaryWritable(version(), filepath)
       for (elem <- fields.zipWithIndex) {
-        val (field, index) = elem
-        if (!summary.exists(index) && statisticsFields.contains(field)) {
+        val (field, fieldIndex) = elem
+        if (!summary.exists(fieldIndex) && statisticsFields.contains(field)) {
           // we cheat and keep all values as long fields, saves time on size resolution
-          summary.add(index, new StatisticsOption(field, 8, Long.MinValue, Long.MaxValue))
+          summary.setOption(fieldIndex,
+            new StatisticsOption(field, 8, Long.MinValue, Long.MaxValue))
         }
       }
 

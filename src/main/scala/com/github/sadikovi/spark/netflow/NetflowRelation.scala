@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow
 
+import java.io.IOException
+
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.mapreduce.Job
 
@@ -63,14 +65,26 @@ private[netflow] class NetflowRelation(
     case _ => false
   }
 
-  // whether or not to use/collect NetFlow statistics, "statistics" option can have either
-  // boolean value or directory to store and look up metadata files. Directory can be either on
-  // local file system or HDFS, should be available for reads and writes, otherwise throws
-  // IOException
-  private val maybeStatistics: Option[String] = parameters.get("statistics") match {
-    case Some("true") => Some("")
+  // whether or not to use/collect NetFlow statistics, "statistics" option can have either boolean
+  // value or directory to store and look up metadata files. Directory can be either on local file
+  // system or HDFS, should be available for reads and writes, otherwise throws IOException. If
+  // option is "true", then we assume that statistics files are stored in the same directory as
+  // actual files.
+  private val maybeStatistics: Option[Path] = parameters.get("statistics") match {
+    case Some("true") => Some(null)
     case Some("false") => None
-    case Some(dir) => Option(dir)
+    case Some(dir: String) =>
+      // resolve directory for storing and looking up statistics. Directory will be resolved for
+      // Spark Hadoop configuration, and will be fully qualified path without any symlinks.
+      val conf = sqlContext.sparkContext.hadoopConfiguration
+      val maybeDir = new Path(dir)
+      val dirFileSystem = maybeDir.getFileSystem(conf)
+      if (dirFileSystem.isDirectory(maybeDir)) {
+        val resolvedPath = dirFileSystem.resolvePath(maybeDir)
+        Some(resolvedPath)
+      } else {
+        throw new IOException(s"Path for statistics ${maybeDir} is not a directory")
+      }
     case _ => None
   }
 
@@ -79,6 +93,9 @@ private[netflow] class NetflowRelation(
 
   // get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
+
+  // get statistics option, mostly for testing
+  private[netflow] def getStatistics(): Option[Path] = maybeStatistics
 
   private[netflow] def inferSchema(): StructType = {
     mapper.getFullSchema(stringify)
@@ -123,23 +140,39 @@ private[netflow] class NetflowRelation(
         Map.empty
       }
 
-      // we have to reconstruct `FileStatus` for each partition from file path, it is not
-      // serializable and does not behave well with `SerializableWriteable`
+      // Netflow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
+      // file path, it is not serializable and does not behave well with `SerializableWriteable`.
+      // We also resolve statistics path to generate [[SummaryWritable]] or [[SummaryReadable]]
+      // depending on whether or not summary file exists. If path is null, then we assume that
+      // summary file is stored in the same directory as actual Netflow file. If statistics are not
+      // used, this should not impact performance.
       val metadata = inputFiles.map { status => {
-        // resolved statistics options if summary collection is enabled and fields requirements are
-        // met. We have to do it for every file to separate summaries
-        val statOpts = if (maybeStatistics.isDefined) {
-          mapper.getStatisticsOptionsForFields(resolvedColumns)
-        } else {
+        val summary: Option[Summary] = if (maybeStatistics.isEmpty) {
           None
+        } else {
+          val currentPath = status.getPath()
+          val fileName = s"_metadata.${currentPath.getName()}"
+
+          val tempDir = maybeStatistics match {
+            case Some(resolvedDir: Path) if resolvedDir != null => resolvedDir
+            case _ => currentPath.getParent()
+          }
+
+          val filePath = tempDir.suffix(Path.SEPARATOR + fileName)
+          val fs = filePath.getFileSystem(sqlContext.sparkContext.hadoopConfiguration)
+          if (fs.exists(filePath)) {
+            mapper.getSummaryReadable(filePath.toString())
+          } else {
+            mapper.getSummaryWritable(filePath.toString(), resolvedColumns)
+          }
         }
 
         NetflowMetadata(version, status.getPath().toString(), status.getLen(), bufferSize,
-          conversions, statOpts)
+          conversions, summary)
       } }
       // return `NetflowFileRDD`, we store data of each file in individual partition
       new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length, resolvedColumns,
-        filters, maybeStatistics)
+        filters)
     }
   }
 
