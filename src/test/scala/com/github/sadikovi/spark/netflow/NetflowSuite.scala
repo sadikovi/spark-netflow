@@ -300,4 +300,27 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
       new NetflowRelation(Array(path1), None, None, params)(sqlContext)
     }
   }
+
+  test("writing and reading statistics file during scan") {
+    val path = new Path(targetDirectory()).suffix(Path.SEPARATOR +
+      "_metadata.ftv5.2016-01-13.nocompress.bigend.sample")
+    val fs = path.getFileSystem(new Configuration(false))
+    fs.delete(path, false)
+
+    val sqlContext = new SQLContext(sc)
+
+    try {
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+        option("statistics", s"file:${targetDirectory()}").load(s"file:${path1}")
+
+      df.count() should be (1000)
+
+      fs.exists(path) should be (true)
+
+      // this time DataFrame should read statistics file
+      df.count() should be (1000)
+    } finally {
+      fs.delete(path, false)
+    }
+  }
 }
