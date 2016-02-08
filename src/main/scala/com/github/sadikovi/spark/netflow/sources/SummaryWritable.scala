@@ -47,6 +47,11 @@ case class SummaryWritable(private val version: Short, cnt: Long) {
     count.incrementAndGet()
   }
 
+  /** Update current count with value provided */
+  def updateCount(newValue: Long): Unit = {
+    count.set(newValue)
+  }
+
   /** Add option for a specific index */
   def add(index: Long, option: StatisticsOption): Unit = {
     if (exists(index)) {
@@ -75,6 +80,44 @@ case class SummaryWritable(private val version: Short, cnt: Long) {
       case d: Long => setMinMax(opt, d)
       case other =>
         throw new IllegalArgumentException(s"Value ${other} cannot be resolved for key ${index}")
+    }
+  }
+
+  /**
+   * Update current options from source provided. It is safe to have more options specified in
+   * [[SummaryWritable]] than in source, since we update values to be min/max boundaries. If source
+   * contains more options, those options will be discarded, as there is not key mapping exists.
+   */
+  private[spark] def setOptionsFromSource(source: Array[StatisticsOption]): Unit = {
+    // build map from source
+    val sourceMap = source.map { opt => (opt.getField(), opt)}.toMap
+    val iter = options.values().iterator()
+    while (iter.hasNext) {
+      val localOption = iter.next()
+      val fieldName = localOption.getField()
+
+      if (sourceMap.contains(fieldName)) {
+        val sourceOption = sourceMap.get(fieldName).get
+        localOption.setMin(sourceOption.getMin())
+        localOption.setMax(sourceOption.getMax())
+      } else {
+        // set lower and upper boundaries for those options
+        localOption.getSize().toInt match {
+          case 1 =>
+            localOption.setMin(Byte.MinValue)
+            localOption.setMin(Byte.MaxValue)
+          case 2 =>
+            localOption.setMin(Short.MinValue)
+            localOption.setMin(Short.MaxValue)
+          case 4 =>
+            localOption.setMin(Int.MinValue)
+            localOption.setMin(Int.MaxValue)
+          case 8 =>
+            localOption.setMin(Long.MinValue)
+            localOption.setMin(Long.MaxValue)
+          case _ => // do nothing, leave as default
+        }
+      }
     }
   }
 

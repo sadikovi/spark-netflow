@@ -19,7 +19,7 @@ package com.github.sadikovi.spark.netflow
 import java.io.IOException
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{Path, FileSystem}
+import org.apache.hadoop.fs.{Path, FileSystem, FileStatus}
 
 import org.apache.spark.SparkException
 import org.apache.spark.sql.{SQLContext, DataFrame, Row}
@@ -28,6 +28,7 @@ import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetflowV5
+import com.github.sadikovi.spark.netflow.sources.MapperV5
 import com.github.sadikovi.spark.rdd.NetflowFileRDD
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
@@ -72,6 +73,13 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
       999, 743, 17, 231, 0, 0, 0, 0, 0, 999, 743))
   }
 
+  test("return empty DataFrame when input files do not exist") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      load(s"file:${baseDirectory()}/netflow-file-r*")
+    df.collect().isEmpty should be (true)
+  }
+
   test("fail reading invalid input") {
     val sqlContext = new SQLContext(sc)
     try {
@@ -108,6 +116,12 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     }
   }
 
+  test("fail if no version specified") {
+    intercept[RuntimeException] {
+      new NetflowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
+    }
+  }
+
   test("issue #5 - prune only one column when running cound directly") {
     val sqlContext = new SQLContext(sc)
     val relation = new NetflowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
@@ -117,6 +131,18 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     val rdd = relation.buildScan(Array.empty, Array(fileStatus))
     // should be only one column (unix_secs) which is "0" for generated data
     rdd.first should be (Row(0))
+  }
+
+  test("prune statistics columns when statistics option is true") {
+    val sqlContext = new SQLContext(sc)
+    val params = Map("version" -> "5", "statistics" -> "true")
+    val relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+
+    val path = new Path(path1)
+    val fileStatus = path.getFileSystem(new Configuration(false)).getFileStatus(path)
+    val rdd = relation.buildScan(Array.empty, Array(fileStatus))
+    // should be the same number of fields as statistics columns of mapper for version 5
+    rdd.first.toSeq.length should be (MapperV5.getStatisticsColumns().length)
   }
 
   test("issue #6 - test buffer size") {

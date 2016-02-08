@@ -39,14 +39,14 @@ private[netflow] class NetflowRelation(
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  // [Netflow version]
+  // Netflow version
   private val version = parameters.get("version") match {
     case Some(str) => SchemaResolver.validateVersion(str).
       getOrElse(sys.error(s"Invalid version specified: ${str}"))
     case None => sys.error("'version' must be specified for Netflow data")
   }
 
-  // [buffer size], by default use standard record buffer size ~3Mb
+  // buffer size, by default use standard record buffer size ~3Mb
   private val bufferSize = parameters.get("buffer") match {
     case Some(str) =>
       val bytes = Utils.byteStringAsBytes(str)
@@ -57,13 +57,13 @@ private[netflow] class NetflowRelation(
     case None => RecordBuffer.BUFFER_LENGTH_1
   }
 
-  // [conversion of numeric field into string, such as IP], by default is off
+  // conversion of numeric field into string, such as IP, by default is off
   private val stringify = parameters.get("stringify") match {
     case Some("true") => true
     case _ => false
   }
 
-  // [whether or not to use/collect NetFlow statistics], "statistics" option can have either
+  // whether or not to use/collect NetFlow statistics, "statistics" option can have either
   // boolean value or directory to store and look up metadata files. Directory can be either on
   // local file system or HDFS, should be available for reads and writes, otherwise throws
   // IOException
@@ -105,9 +105,9 @@ private[netflow] class NetflowRelation(
           logger.warn("Required columns are empty, using first column instead")
           mapper.getFirstInternalColumn()
         } else {
-          logger.warn("Required columns are empty, using statistics columns instead")
           // when required columns are empty, e.g. in case of direct `count()` we use statistics
           // fields to collect summary for a file
+          logger.warn("Required columns are empty, using statistics columns instead")
           mapper.getStatisticsColumns()
         }
       } else {

@@ -131,11 +131,14 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
     val (useStatistics, statisticsDir) = resolveStatisticsDir(maybeStatistics, conf)
 
     for (elem <- s.asInstanceOf[NetflowFilePartition[NetflowMetadata]].iterator) {
-      // reconstruct file path
+      // reconstruct file status: file path, length in bytes
       val path = new Path(elem.path)
       val fs = path.getFileSystem(conf)
       val fileLength = elem.length
+      val statOpts = elem.summary
+
       // statistics data, update statistics directory, if use current file directory
+      // if statistics are not used, this should not impact performance
       val (foundStatisticsFile, statisticsResolvedPath) = {
         val tempDir = statisticsDir match {
           case Some(dir) if useStatistics => dir
@@ -146,29 +149,56 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         (fs.exists(filePath), filePath)
       }
 
-      if (useStatistics && foundStatisticsFile) {
-        logInfo("Found statistics, preparing and reading summary file")
-
-        val inputStream = fs.open(statisticsResolvedPath)
-        val reader = new StatisticsReader(inputStream)
-        val stats = reader.read()
-
-        logInfo(s"[STATISTICS] Version: ${stats.getVersion()}")
-        logInfo(s"[STATISTICS] Count: ${stats.getCount()}")
-        logInfo(s"[STATISTICS] Options: ${stats.getOptions().mkString("; ")}")
+      // statistics to apply, if file is found we update summary, otherwise we will update it while
+      // writing statistics. `internalUseStatistics` is updated according to summary resolution,
+      // `resolvedStatOpts` can be null in this case.
+      val internalUseStatistics = useStatistics && statOpts.isDefined
+      val resolvedStatOpts: SummaryWritable = statOpts match {
+        case Some(obj) => obj
+        case None => null
       }
 
-      logInfo(s"""
-        > NetFlow statistics summary: {
-        >   File: ${elem.path}
-        >   Statistics: {
-        >     usage: ${useStatistics}
-        >     found: ${foundStatisticsFile}
-        >     summary: ${elem.summary}
-        >     path: ${statisticsResolvedPath.toString()}
-        >   }
-        > }
-      """.stripMargin('>'))
+      // before reading actual file we can read related summary file and extract statistics, such
+      // number of records in the file, min/max values for certain fields. Statistics are mainly to
+      // decide whether we need to proceed scanning file or skip to the next one (similar to bloom
+      // filters). We print summary only when we use statistics. Note that if "_metadata" file is
+      // not found we will try creating it. Another note is that we resolve statistics for
+      // "unix_secs" (capture time) regardless of having summary file or not, since we can extract
+      // information from header.
+      if (internalUseStatistics) {
+        if (foundStatisticsFile) {
+          logDebug("Found statistics, preparing and reading summary file")
+          // we do not have to close the stream, StatisticsReader will close when end of the file
+          // is reached
+          val inputStream = fs.open(statisticsResolvedPath)
+          val reader = new StatisticsReader(inputStream)
+          val summaryStats = reader.read()
+
+          // we fail, if statistics version does not match expected version, since it can lead to
+          // problems of different fields with the same column id having applied wrong predicate.
+          require(summaryStats.getVersion() == elem.version, "Cannot apply statistics. " +
+            s"Expected version ${elem.version}, got ${summaryStats.getVersion()}")
+
+          // now we have to resolve filters and decide whether we need to scan file. In case of
+          // count we should decide whether we can create an boolean iterator of `count` length. We
+          // can do it only when no filters are specified. I do not know any other way of by-passing
+          // count computation and return just the number of records.
+          resolvedStatOpts.updateCount(summaryStats.getCount())
+          resolvedStatOpts.setOptionsFromSource(summaryStats.getOptions())
+        }
+
+        logInfo(s"""
+          > NetFlow statistics summary: {
+          >   File: ${elem.path}
+          >   Statistics: {
+          >     usage: ${useStatistics}
+          >     internal (with schema resolved): ${internalUseStatistics}
+          >     found: ${foundStatisticsFile}
+          >     path: ${statisticsResolvedPath.toString()}
+          >   }
+          > }
+        """.stripMargin('>'))
+      }
 
       // prepare file stream
       val stm: FSDataInputStream = fs.open(path)
@@ -181,13 +211,17 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       // conversion to apply
       val conversions = elem.conversions
       // compression flag is second bit in header flags
-      val isCompressed = (hr.getHeaderFlags() & 0x2) > 0
-      // statistics to apply
-      val statOpts = elem.summary
+      val isCompressed = hr.isCompressed()
 
       // currently we cannot resolve version and proceed with parsing, we require pre-set version.
       require(actualVersion == elem.version,
         s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}")
+
+      // TODO: update "unix_secs" field with start and end capture time, this will allow us to do
+      // predicate pushdown with or without statistics.
+
+      // TODO: compile filters and make a decision on whether to proceed scanning file or discard it
+      // also check count here
 
       logInfo(s"""
         > NetFlow: {
@@ -204,9 +238,8 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       val recordBuffer = nr.readData(hr, resolvedColumns, elem.bufferSize)
       val iterator = recordBuffer.iterator().asScala
 
-      val statisticsIterator = if (useStatistics && !foundStatisticsFile && statOpts.isDefined) {
-        val resolvedStatOpts = statOpts.get
-
+      // TODO: [!] review statistics iterator and `internalUseStatistics`
+      val statisticsIterator = if (internalUseStatistics && !foundStatisticsFile) {
         new Iterator[Array[Object]] {
           override def hasNext: Boolean = {
             val isNext = iterator.hasNext

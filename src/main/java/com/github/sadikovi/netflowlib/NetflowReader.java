@@ -342,7 +342,7 @@ public class NetflowReader {
       throw new UnsupportedOperationException("Unsupported flow version " + flowVersion);
     }
 
-    boolean isCompressed = (header.getHeaderFlags() & NetflowHeader.HEADER_FLAG_COMPRESS) > 0;
+    boolean isCompressed = header.isCompressed();
     return new RecordBuffer(in, flowInterface, order, isCompressed, bufferSize);
   }
 

@@ -224,6 +224,11 @@ public class NetflowHeader {
     return this.flags;
   }
 
+  /** Commonly used, conversion flag */
+  public boolean isCompressed() {
+    return (getHeaderFlags() & HEADER_FLAG_COMPRESS) > 0;
+  }
+
   /** Get hostname */
   public String getHostname() {
     return this.hostname;
