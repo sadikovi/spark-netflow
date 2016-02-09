@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.util
 
+import java.util.UUID
+
 import org.apache.spark.network.util.JavaUtils
 
 private[spark] object Utils {
@@ -27,5 +29,14 @@ private[spark] object Utils {
    */
   def byteStringAsBytes(str: String): Long = {
     JavaUtils.byteStringAsBytes(str)
+  }
+
+  /**
+   * Create UUID for a string as 128-bit value string.
+   * @param str string to create uuid for
+   * @return generated UUID as string
+   */
+  def uuidForString(str: String): String = {
+    UUID.nameUUIDFromBytes(str.getBytes()).toString()
   }
 }

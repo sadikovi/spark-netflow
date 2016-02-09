@@ -151,14 +151,15 @@ private[netflow] class NetflowRelation(
           None
         } else {
           val currentPath = status.getPath()
-          val fileName = s"_metadata.${currentPath.getName()}"
+          val fileName = s"_metadata-r-${Utils.uuidForString(currentPath.getParent().toString())}" +
+            s".${currentPath.getName()}"
 
           val tempDir = maybeStatistics match {
             case Some(resolvedDir: Path) if resolvedDir != null => resolvedDir
             case _ => currentPath.getParent()
           }
 
-          val filePath = tempDir.suffix(Path.SEPARATOR + fileName)
+          val filePath = new Path(tempDir, fileName)
           val fs = filePath.getFileSystem(sqlContext.sparkContext.hadoopConfiguration)
           if (fs.exists(filePath)) {
             mapper.getSummaryReadable(filePath.toString())
@@ -178,5 +179,9 @@ private[netflow] class NetflowRelation(
 
   override def prepareJobForWrite(job: Job): OutputWriterFactory = {
     throw new UnsupportedOperationException("Write is not supported in this version of package")
+  }
+
+  override def toString: String = {
+    s"${getClass.getSimpleName}: ${version}"
   }
 }

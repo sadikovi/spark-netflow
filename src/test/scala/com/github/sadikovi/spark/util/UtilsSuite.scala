@@ -17,6 +17,7 @@
 package com.github.sadikovi.spark.util
 
 import com.github.sadikovi.testutil.UnitTestSpec
+import com.github.sadikovi.testutil.implicits._
 
 class UtilsSuite extends UnitTestSpec {
 
@@ -38,5 +39,13 @@ class UtilsSuite extends UnitTestSpec {
     intercept[NullPointerException] {
       Utils.byteStringAsBytes(null)
     }
+  }
+
+  test("create UUID for string") {
+    val str = baseDirectory() / "_metadata"
+    val uuids = for (i <- 0 until 10) yield Utils.uuidForString(str)
+    // check that uuids are the same
+    uuids.distinct.length should be (1)
+    uuids.distinct.head should be (uuids.head)
   }
 }
