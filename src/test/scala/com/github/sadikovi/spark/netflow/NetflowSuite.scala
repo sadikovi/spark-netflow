@@ -28,8 +28,9 @@ import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetflowV5
-import com.github.sadikovi.spark.netflow.sources.MapperV5
+import com.github.sadikovi.spark.netflow.sources.{ConversionFunctions, MapperV5, SchemaResolver}
 import com.github.sadikovi.spark.rdd.NetflowFileRDD
+import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
 class NetflowSuite extends UnitTestSpec with SparkLocal {
@@ -302,10 +303,16 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
   }
 
   test("writing and reading statistics file during scan") {
-    val path = new Path(targetDirectory()).suffix(Path.SEPARATOR +
-      "_metadata.ftv5.2016-01-13.nocompress.bigend.sample")
+    var path = new Path(targetDirectory(), "_metadata*ftv5.2016-01-13.nocompress.bigend.sample")
     val fs = path.getFileSystem(new Configuration(false))
-    fs.delete(path, false)
+    val maybeFileStatus = Option(fs.globStatus(path))
+
+    if (maybeFileStatus.isEmpty) {
+      sys.error(s"Directory ${path.getParent().toString()} does not exist")
+    } else if (maybeFileStatus.get.nonEmpty) {
+      path = maybeFileStatus.get.apply(0).getPath()
+      fs.delete(path, false)
+    }
 
     val sqlContext = new SQLContext(sc)
 
@@ -315,7 +322,7 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
 
       df.count() should be (1000)
 
-      fs.exists(path) should be (true)
+      fs.globStatus(path).length should be (1)
 
       // this time DataFrame should read statistics file
       df.count() should be (1000)

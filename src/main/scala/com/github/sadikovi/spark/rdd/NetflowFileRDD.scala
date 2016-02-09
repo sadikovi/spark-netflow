@@ -32,8 +32,7 @@ import org.apache.spark.sql.sources.Filter
 import com.github.sadikovi.netflowlib.{NetflowReader, NetflowHeader, RecordBuffer}
 import com.github.sadikovi.netflowlib.statistics.{StatisticsReader, StatisticsWriter}
 import com.github.sadikovi.netflowlib.version.NetflowV5
-import com.github.sadikovi.spark.netflow.Summary
-import com.github.sadikovi.spark.netflow.sources.{SummaryReadable, SummaryWritable}
+import com.github.sadikovi.spark.netflow.sources.{Summary, SummaryReadable, SummaryWritable}
 
 /**
  * Netflow metadata that describes file to process. Contains expected version of a file, absolute
@@ -107,11 +106,12 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
     for (elem <- s.asInstanceOf[NetflowFilePartition[NetflowMetadata]].iterator) {
-      // reconstruct file status: file path, length in bytes
+      // Reconstruct file status: file path, length in bytes
       val path = new Path(elem.path)
       val fs = path.getFileSystem(conf)
       val fileLength = elem.length
-      // find out if statistics are used and unwrap summary object, we also will have to initialize
+
+      // Find out if statistics are used and unwrap summary object, we also will have to initialize
       // statistics path related file system
       val useStatistics = elem.summary.isDefined
 
@@ -128,7 +128,7 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         (null, null)
       }
 
-      // before reading actual file we can read related summary file and extract statistics, such
+      // Before reading actual file we can read related summary file and extract statistics, such
       // number of records in the file, min/max values for certain fields. Statistics are mainly to
       // decide whether we need to proceed scanning file or skip to the next one (similar to bloom
       // filters). We print summary only when we use statistics. Note that if "_metadata" file is
@@ -143,12 +143,12 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         val inputStream = statFS.open(statResolvedPath)
         val javaSummary = new StatisticsReader(inputStream).read()
 
-        // we fail, if statistics version does not match expected version, since it can lead to
+        // We fail, if statistics version does not match expected version, since it can lead to
         // problems of different fields with the same column id having applied wrong predicate.
         require(javaSummary.getVersion() == elem.version, "Cannot apply statistics. " +
           s"Expected version ${elem.version}, got ${javaSummary.getVersion()}")
 
-        // now we have to resolve filters and decide whether we need to scan file. In case of count
+        // Now we have to resolve filters and decide whether we need to scan file. In case of count
         // we should decide whether we can create an boolean iterator of `count` length. We can do
         // it only when no filters are specified. I do not know any other way of by-passing count
         // computation and return just the number of records.
@@ -168,6 +168,14 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
         """.stripMargin('>'))
       }
 
+      // Here we make an assumption that "unix_secs" field is in metadata file, in other words,
+      // summary is complete and we can make decision based solely on it.
+
+      // 1. Check "useStatistics"
+      // 2. If "useStatistics" is true, compile filter and decide whether or not to proceed
+      // 3. Regardless of previous filter, we apply filter on "unix_secs", if possible, to verify
+      // filtering by time range.
+
       // prepare file stream
       val stm: FSDataInputStream = fs.open(path)
       val nr = new NetflowReader(stm)
@@ -179,7 +187,7 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
       // compression flag
       val isCompressed = hr.isCompressed()
 
-      // currently we cannot resolve version and proceed with parsing, we require pre-set version.
+      // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
       require(actualVersion == elem.version,
         s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}")
 
@@ -242,10 +250,9 @@ private[spark] class NetflowFileRDD[T<:SQLRow: ClassTag] (
 
       // Conversion iterator, applies defined modification for convertable fields
       val conversionsIterator = if (conversions.nonEmpty) {
-        // for each array of fields we check if current field matches list of possible conversions,
-        // and convert, otherwise return unchanged field.
-        // do not forget to check field constant index to remove overlap with indices from other
-        // versions
+        // For each array of fields we check if current field matches list of possible conversions,
+        // and convert, otherwise return unchanged field. Do not forget to check field constant
+        // index to remove overlap with indices from other versions
         statisticsIterator.map(arr =>
           arr.zipWithIndex.map { case (value, index) => conversions.get(index) match {
             case Some(func) => func(value.asInstanceOf[Any])

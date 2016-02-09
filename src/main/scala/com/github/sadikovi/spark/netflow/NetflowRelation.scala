@@ -23,12 +23,13 @@ import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.{RDD, UnionRDD}
 import org.apache.spark.sql.{SQLContext, Row}
-import org.apache.spark.sql.sources.{HadoopFsRelation, OutputWriterFactory, Filter}
+import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.{StructType, StructField, IntegerType}
 
 import org.slf4j.LoggerFactory
 
 import com.github.sadikovi.netflowlib.RecordBuffer
+import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.{NetflowFileRDD, NetflowMetadata}
 import com.github.sadikovi.spark.util.Utils
 
@@ -48,7 +49,7 @@ private[netflow] class NetflowRelation(
     case None => sys.error("'version' must be specified for Netflow data")
   }
 
-  // buffer size, by default use standard record buffer size ~3Mb
+  // Buffer size, by default use standard record buffer size ~3Mb
   private val bufferSize = parameters.get("buffer") match {
     case Some(str) =>
       val bytes = Utils.byteStringAsBytes(str)
@@ -59,13 +60,13 @@ private[netflow] class NetflowRelation(
     case None => RecordBuffer.BUFFER_LENGTH_1
   }
 
-  // conversion of numeric field into string, such as IP, by default is off
+  // Conversion of numeric field into string, such as IP, by default is off
   private val stringify = parameters.get("stringify") match {
     case Some("true") => true
     case _ => false
   }
 
-  // whether or not to use/collect NetFlow statistics, "statistics" option can have either boolean
+  // Whether or not to use/collect NetFlow statistics, "statistics" option can have either boolean
   // value or directory to store and look up metadata files. Directory can be either on local file
   // system or HDFS, should be available for reads and writes, otherwise throws IOException. If
   // option is "true", then we assume that statistics files are stored in the same directory as
@@ -74,7 +75,7 @@ private[netflow] class NetflowRelation(
     case Some("true") => Some(null)
     case Some("false") => None
     case Some(dir: String) =>
-      // resolve directory for storing and looking up statistics. Directory will be resolved for
+      // Resolve directory for storing and looking up statistics. Directory will be resolved for
       // Spark Hadoop configuration, and will be fully qualified path without any symlinks.
       val conf = sqlContext.sparkContext.hadoopConfiguration
       val maybeDir = new Path(dir)
@@ -88,13 +89,13 @@ private[netflow] class NetflowRelation(
     case _ => None
   }
 
-  // mapper for Netflow version, will be used to create schema and convert columns
+  // Mapper for Netflow version, will be used to create schema and convert columns
   private val mapper = SchemaResolver.getMapperForVersion(version)
 
-  // get buffer size in bytes, mostly for testing
+  // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
 
-  // get statistics option, mostly for testing
+  // Get statistics option, mostly for testing
   private[netflow] def getStatistics(): Option[Path] = maybeStatistics
 
   private[netflow] def inferSchema(): StructType = {
@@ -116,13 +117,13 @@ private[netflow] class NetflowRelation(
     if (inputFiles.isEmpty) {
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
-      // convert to internal Netflow fields
+      // Convert to internal Netflow fields
       val resolvedColumns: Array[Long] = if (requiredColumns.isEmpty) {
         if (maybeStatistics.isEmpty) {
           logger.warn("Required columns are empty, using first column instead")
           mapper.getFirstInternalColumn()
         } else {
-          // when required columns are empty, e.g. in case of direct `count()` we use statistics
+          // When required columns are empty, e.g. in case of direct `count()` we use statistics
           // fields to collect summary for a file
           logger.warn("Required columns are empty, using statistics columns instead")
           mapper.getStatisticsColumns()
@@ -131,7 +132,7 @@ private[netflow] class NetflowRelation(
         requiredColumns.map(col => mapper.getInternalColumnForName(col))
       }
 
-      // conversion array, if stringify option is true, we return map. Each key is an index of a
+      // Conversion array, if stringify option is true, we return map. Each key is an index of a
       // field and value is a conversion function "Any => String". Map is empty when there is
       // no columns with applied conversion or when stringify option is false
       val conversions: Map[Int, Any => String] = if (stringify) {
@@ -139,6 +140,12 @@ private[netflow] class NetflowRelation(
       } else {
         Map.empty
       }
+
+      // Convert filters into internal Netflow filters, if array of filters has more than one filter
+      // we evaluate them as sequence of "AND" filters. We keep only filters that can be transformed
+      // into `NetflowFilter`. Apply reversed conversion, some of the fields define conversion, and
+      // filter is specified for String value
+      val resolvedFilters: Array[NetflowFilter] = Array.empty
 
       // Netflow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
@@ -171,7 +178,8 @@ private[netflow] class NetflowRelation(
         NetflowMetadata(version, status.getPath().toString(), status.getLen(), bufferSize,
           conversions, summary)
       } }
-      // return `NetflowFileRDD`, we store data of each file in individual partition
+
+      // Return `NetflowFileRDD`, we store data of each file in individual partition
       new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length, resolvedColumns,
         filters)
     }

@@ -22,7 +22,6 @@ import org.apache.spark.sql.types._
 
 import com.github.sadikovi.netflowlib.statistics.StatisticsOption
 import com.github.sadikovi.netflowlib.version.NetflowV5
-import com.github.sadikovi.spark.netflow.{ConversionFunctions, Mapper, SchemaField, Summary}
 
 /** Mapper for NetFlow version 5 */
 private[netflow] object MapperV5 extends Mapper {

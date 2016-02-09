@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.netflow
+package com.github.sadikovi.spark.netflow.sources
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -25,7 +25,6 @@ import scala.util.Try
 import org.apache.spark.sql.types.{DataType, StructType}
 
 import com.github.sadikovi.netflowlib.statistics.{Statistics, StatisticsOption}
-import com.github.sadikovi.spark.netflow.sources.{MapperV5, SummaryWritable}
 
 /**
  * Schema resolver for Netflow versions. Also provides mapping for a particular column name.
@@ -158,6 +157,15 @@ private[spark] abstract class Summary(
   /** Key exists in the map */
   def exists(index: Long): Boolean = {
     options.containsKey(index)
+  }
+
+  /** Get option of value for a key */
+  def get(index: Long): Option[StatisticsOption] = {
+    if (exists(index)) {
+      Option(options.get(index))
+    } else {
+      None
+    }
   }
 
   /** Prepare Statistics for writing */

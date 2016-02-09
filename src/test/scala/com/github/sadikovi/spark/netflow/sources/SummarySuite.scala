@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.netflow
+package com.github.sadikovi.spark.netflow.sources
 
 import com.github.sadikovi.netflowlib.statistics.StatisticsOption
-import com.github.sadikovi.spark.netflow.sources.{SummaryReadable, SummaryWritable}
 import com.github.sadikovi.testutil.UnitTestSpec
 
 class SummarySuite extends UnitTestSpec {
@@ -64,6 +63,14 @@ class SummarySuite extends UnitTestSpec {
     summary.setOption(1L, new StatisticsOption(1L, 1, 0, 100))
     summary.exists(1L) should be (true)
     summary.exists(2L) should be (false)
+  }
+
+  test("get option") {
+    val option = new StatisticsOption(1L, 1, 0, 100)
+    val summary = new SummaryWritable(version, "")
+    summary.setOption(1L, option)
+    summary.get(1L) should be (Some(option))
+    summary.get(2L) should be (None)
   }
 
   test("update for index") {

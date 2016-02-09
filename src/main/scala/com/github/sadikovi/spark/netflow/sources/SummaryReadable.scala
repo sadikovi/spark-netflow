@@ -17,7 +17,6 @@
 package com.github.sadikovi.spark.netflow.sources
 
 import com.github.sadikovi.netflowlib.statistics.{Statistics, StatisticsOption}
-import com.github.sadikovi.spark.netflow.Summary
 
 final class SummaryReadable(version: Short, filepath: String) extends Summary(version, filepath) {
 
