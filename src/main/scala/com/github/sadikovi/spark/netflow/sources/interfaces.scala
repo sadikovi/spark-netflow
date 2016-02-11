@@ -76,6 +76,10 @@ private[spark] trait Mapper {
       throw new UnsupportedOperationException
   }
 
+  def getReverseConversionForField(field: Long): Option[String => Any] = {
+    throw new UnsupportedOperationException
+  }
+
   def getSummaryReadable(filepath: String): Option[Summary] = None
 
   def getSummaryWritable(filepath: String, fields: Array[Long]): Option[Summary] = None
@@ -106,6 +110,13 @@ object ConversionFunctions extends Serializable {
       }
       buf.toString()
     case _ => value.toString()
+  }
+
+  /** Convert IPv4 address to a numeric representation */
+  def ipToNum(value: String): Long = {
+    val arr = value.split('.').map(_.toLong)
+    require(arr.length == 4, s"Invalid IPv4: ${value}")
+    arr(0) << 24 | arr(1) << 16 | arr(2) << 8 | arr(3)
   }
 }
 

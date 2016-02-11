@@ -20,52 +20,58 @@ package com.github.sadikovi.spark.netflow.sources
  * Internal Netflow Filter class that is converted from Spark `Filter` using mapper.
  *
  */
-abstract class NetflowFilter
+abstract class InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value is equal to value provided.
  *
  */
-case class InternalEqualTo(field: Long, value: Long) extends NetflowFilter
+case class InternalEqualTo(field: Long, value: Long) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value is greater than value provided.
  *
  */
-case class InternalGreaterThan(field: Long, value: Long) extends NetflowFilter
+case class InternalGreaterThan(field: Long, value: Long) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value is greater than or equal to value provided.
  *
  */
-case class InternalGreaterThanOrEqual(field: Long, value: Long) extends NetflowFilter
+case class InternalGreaterThanOrEqual(field: Long, value: Long) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value is less than value provided.
  *
  */
-case class InternalLessThan(field: Long, value: Long) extends NetflowFilter
+case class InternalLessThan(field: Long, value: Long) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value is less than or equal to value provided.
  *
  */
-case class InternalLessThanOrEqual(field: Long, value: Long) extends NetflowFilter
+case class InternalLessThanOrEqual(field: Long, value: Long) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff field value takes one of the values in sequence.
  *
  */
-case class InternalIn(field: Long, values: Array[Long]) extends NetflowFilter
+case class InternalIn(field: Long, values: Array[Long]) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff left filter and right filter are both evaluated to `true`.
  *
  */
-case class InternalAnd(left: NetflowFilter, right: NetflowFilter) extends NetflowFilter
+case class InternalAnd(left: InternalFilter, right: InternalFilter) extends InternalFilter
 
 /**
  * Filter that evaluates to `true` iff either left filter or right filter is evaluated to `true`.
  *
  */
-case class InternalOr(left: NetflowFilter, right: NetflowFilter) extends NetflowFilter
+case class InternalOr(left: InternalFilter, right: InternalFilter) extends InternalFilter
+
+/**
+ * Unhandled filter is used when we cannot find internal alternative to the Spark filter. Should
+ * always be evaluated as `result`.
+ */
+case class InternalUnhandledFilter(result: Boolean) extends InternalFilter

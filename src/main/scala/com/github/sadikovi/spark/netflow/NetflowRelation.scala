@@ -145,7 +145,7 @@ private[netflow] class NetflowRelation(
       // we evaluate them as sequence of "AND" filters. We keep only filters that can be transformed
       // into `NetflowFilter`. Apply reversed conversion, some of the fields define conversion, and
       // filter is specified for String value
-      val resolvedFilters: Array[NetflowFilter] = Array.empty
+      val resolvedFilters: Array[InternalFilter] = filters.map { filter => resolveFilter(filter) }
 
       // Netflow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
@@ -181,7 +181,7 @@ private[netflow] class NetflowRelation(
 
       // Return `NetflowFileRDD`, we store data of each file in individual partition
       new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length, resolvedColumns,
-        filters)
+        resolvedFilters)
     }
   }
 
@@ -191,5 +191,61 @@ private[netflow] class NetflowRelation(
 
   override def toString: String = {
     s"${getClass.getSimpleName}: ${version}"
+  }
+
+  /**
+   * Resolve Spark filters to list of [[InternalFilter]]. We only keep filters that can be converted
+   * and replace any unknown filters with [[InternalUnhandledFilter]]. Also we convert value to
+   * supported type if possible.
+   */
+  private[spark] def resolveFilter(filter: Filter): InternalFilter = filter match {
+    case EqualTo(column: String, value: Long) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalEqualTo(field, value)
+
+    case EqualTo(column: String, value: String) =>
+      val field = mapper.getInternalColumnForName(column)
+      val func = mapper.getReverseConversionForField(field).getOrElse(
+        sys.error(s"Conversion is not supported for the field ${column}"))
+      InternalEqualTo(field, func(value).asInstanceOf[Long])
+
+    case GreaterThan(column: String, value: Long) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalGreaterThan(field, value)
+
+    case GreaterThanOrEqual(column: String, value: Long) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalGreaterThanOrEqual(field, value)
+
+    case LessThan(column: String, value: Long) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalLessThan(field, value)
+
+    case LessThanOrEqual(column: String, value: Long) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalLessThanOrEqual(field, value)
+
+    case In(column: String, values: Array[Any]) if values.forall(_.isInstanceOf[Long]) =>
+      val field = mapper.getInternalColumnForName(column)
+      InternalIn(field, values.map(_.asInstanceOf[Long]))
+
+    case In(column: String, values: Array[Any]) if values.forall(_.isInstanceOf[String]) =>
+      val field = mapper.getInternalColumnForName(column)
+      val func = mapper.getReverseConversionForField(field).getOrElse(
+        sys.error(s"Conversion is not supported for the field ${column}"))
+      val supportedValues = values.map(_.asInstanceOf[String]).map(func(_).asInstanceOf[Long])
+      InternalIn(field, supportedValues)
+
+    case And(left: Filter, right: Filter) =>
+      InternalAnd(resolveFilter(left), resolveFilter(right))
+
+    case Or(left: Filter, right: Filter) =>
+      InternalOr(resolveFilter(left), resolveFilter(right))
+
+    // If filter is not supported we return `InternalUnhandledFilter` that should be always
+    // evaluated as `true`
+    case otherFilter =>
+      logger.warn(s"Filter ${otherFilter} is not supported and will be skipped")
+      InternalUnhandledFilter(true)
   }
 }

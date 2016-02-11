@@ -23,12 +23,13 @@ import org.apache.hadoop.fs.{Path, FileSystem, FileStatus}
 
 import org.apache.spark.SparkException
 import org.apache.spark.sql.{SQLContext, DataFrame, Row}
+import org.apache.spark.sql.sources._
 
 import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetflowV5
-import com.github.sadikovi.spark.netflow.sources.{ConversionFunctions, MapperV5, SchemaResolver}
+import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.NetflowFileRDD
 import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
@@ -329,5 +330,41 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     } finally {
       fs.delete(path, false)
     }
+  }
+
+  test("resolve filter") {
+    val sqlContext = new SQLContext(sc)
+    val relation = new NetflowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
+
+    // simple filter
+    var filters = Array(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L))
+    var internalFilters = filters.map(filter => relation.resolveFilter(filter))
+    internalFilters should be (Array(
+      InternalEqualTo(NetflowV5.V5_FIELD_UNIX_SECS, 1L),
+      InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+    ))
+
+    // complex filter with `OR` and `AND`
+    filters = Array(
+      Or(And(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L)), LessThanOrEqual("dstip", 0L))
+    )
+    internalFilters = filters.map(filter => relation.resolveFilter(filter))
+    internalFilters should be (Array(
+      InternalOr(
+        InternalAnd(
+          InternalEqualTo(NetflowV5.V5_FIELD_UNIX_SECS, 1L),
+          InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+        ),
+        InternalLessThanOrEqual(NetflowV5.V5_FIELD_DSTADDR, 0L)
+      )
+    ))
+
+    // filter with unresolved step
+    filters = Array(IsNull("unix_secs"), GreaterThan("srcip", 1L))
+    internalFilters = filters.map(filter => relation.resolveFilter(filter))
+    internalFilters should be (Array(
+      InternalUnhandledFilter(true),
+      InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+    ))
   }
 }

@@ -59,6 +59,10 @@ private[netflow] object MapperV5 extends Mapper {
     buf.toMap
   }
 
+  override def getReverseConversionForField(field: Long): Option[String => Any] = {
+    reverseConversions.get(field)
+  }
+
   override def getSummaryReadable(filepath: String): Option[Summary] = {
     val summary = new SummaryReadable(version(), filepath)
     for (field <- getStatisticsColumns()) {
@@ -132,6 +136,15 @@ private[netflow] object MapperV5 extends Mapper {
     NetflowV5.V5_FIELD_SRCADDR -> ConversionFunctions.numToIp,
     NetflowV5.V5_FIELD_DSTADDR -> ConversionFunctions.numToIp,
     NetflowV5.V5_FIELD_NEXTHOP -> ConversionFunctions.numToIp
+  )
+
+  // reverse conversions, it is recommended to update both maps when new field is required
+  // conversion
+  private lazy val reverseConversions: Map[Long, String => Any] = Map(
+    NetflowV5.V5_FIELD_EXADDR -> ConversionFunctions.ipToNum,
+    NetflowV5.V5_FIELD_SRCADDR -> ConversionFunctions.ipToNum,
+    NetflowV5.V5_FIELD_DSTADDR -> ConversionFunctions.ipToNum,
+    NetflowV5.V5_FIELD_NEXTHOP -> ConversionFunctions.ipToNum
   )
 
   // helper index of fields that we keep statistics for
