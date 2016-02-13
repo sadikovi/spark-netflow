@@ -73,7 +73,10 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     numSlices: Int,
     applyConversion: Boolean,
     resolvedColumns: Array[MappedColumn],
-    resolvedFilters: Option[Filter]) extends FileRDD[SQLRow](sc, Nil) {
+    resolvedFilter: Option[Filter]) extends FileRDD[SQLRow](sc, Nil) {
+  /** Helper type for column catalog. */
+  type Catalog = Map[String, (Long, Long)]
+
   /** Partition [[NetFlowMetadata]], slightly modified Spark partitioning function */
   private def slice(seq: Seq[NetFlowMetadata], numSlices: Int): Seq[Seq[NetFlowMetadata]] = {
     require(numSlices >= 1, "Positive number of slices required")
@@ -99,7 +102,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
    */
   private def compileFilter(
       filter: Filter,
-      catalog: Map[String, (Long, Long)]): Boolean = filter match {
+      catalog: Catalog): Boolean = filter match {
     case EqualTo(column, value: Long) if catalog.contains(column) =>
       val (min, max) = catalog(column)
       value >= min && value <= max
@@ -133,7 +136,6 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
       compileFilter(left, catalog) || compileFilter(right, catalog)
 
     case unsupported =>
-      logWarning(s"Filter ${unsupported} is not supported and cannot be compiled")
       true
   }
 
@@ -149,6 +151,14 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     val numColumns = resolvedColumns.length
     // Array of internal columns for library
     val internalColumns = resolvedColumns.map(_.internalColumnName)
+    // Catalog that includes only "unix_secs" column, this is temporary solution, and eventually
+    // will be moved to the NetFlow library as part of predicate pushdown. But currently we search
+    // for the "unix_secs" among resolved columns, if it exists, we build catalog and update values
+    // for each file, otherwise return empty map
+    val unixSecsColumn = resolvedColumns.find(_.columnName == "unix_secs")
+    val catalog: (Long, Long) => Catalog = (min, max) => {
+      if (unixSecsColumn.isDefined) Map(unixSecsColumn.get.columnName -> (min, max)) else Map.empty
+    }
     // Total buffer of records
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
@@ -158,54 +168,65 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
       val fs = path.getFileSystem(conf)
       val fileLength = elem.length
 
-      // prepare file stream
+      // Prepare file stream
       val stm: FSDataInputStream = fs.open(path)
       val nr = new NetFlowReader(stm)
       val hr = nr.readHeader()
-      // actual version of the file
+      // Actual version of the file
       val actualVersion = hr.getFlowVersion()
-      // compression flag
+      // Compression flag
       val isCompressed = hr.isCompressed()
 
       // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
       require(actualVersion == elem.version,
         s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}")
 
-      logInfo(s"""
-        > NetFlow: {
-        >   File: ${elem.path}
-        >   File length: ${fileLength} bytes
-        >   Flow version: ${actualVersion}
-        >   Compression: ${isCompressed}
-        >   Buffer size: ${elem.bufferSize} bytes
-        >   Hostname: ${hr.getHostname()}
-        >   Comments: ${hr.getComments()}
-        > }
-      """.stripMargin('>'))
-
-      // check filter on "unix_secs"
-
-      val recordBuffer = nr.readData(hr, internalColumns, elem.bufferSize)
-      val rawIterator = recordBuffer.iterator().asScala
-
-      // Conversion iterator, applies defined modification for convertable fields
-      val conversionsIterator = if (applyConversion) {
-        // For each field we check if possible conversion is available. If it is we apply direct
-        // conversion, otherwise return unchanged value
-        rawIterator.map(arr => {
-          for (i <- 0 until numColumns) {
-            resolvedColumns(i).convertFunction match {
-              case Some(func) => arr(i) = func.direct(arr(i))
-              case None => // do nothing
-            }
-          }
-          arr
-        })
-      } else {
-        rawIterator
+      // If `scanStatus` is true, we proceed scanning file, otherwise ignore reading, this will
+      // eventually become as part of the library
+      val scanStatus = resolvedFilter match {
+        case Some(filter) => compileFilter(resolvedFilter.get,
+          catalog(hr.getStartCapture(), hr.getEndCapture()))
+        case None => true
       }
 
-      buffer = buffer ++ conversionsIterator
+      if (scanStatus) {
+        logInfo(s"""
+          > NetFlow: {
+          >   File: ${elem.path}
+          >   File length: ${fileLength} bytes
+          >   Flow version: ${actualVersion}
+          >   Compression: ${isCompressed}
+          >   Buffer size: ${elem.bufferSize} bytes
+          >   Hostname: ${hr.getHostname()}
+          >   Comments: ${hr.getComments()}
+          > }
+        """.stripMargin('>'))
+
+        val recordBuffer = nr.readData(hr, internalColumns, elem.bufferSize)
+        val rawIterator = recordBuffer.iterator().asScala
+
+        // Conversion iterator, applies defined modification for convertable fields
+        val conversionsIterator = if (applyConversion) {
+          // For each field we check if possible conversion is available. If it is we apply direct
+          // conversion, otherwise return unchanged value
+          rawIterator.map(arr => {
+            for (i <- 0 until numColumns) {
+              resolvedColumns(i).convertFunction match {
+                case Some(func) => arr(i) = func.direct(arr(i))
+                case None => // do nothing
+              }
+            }
+            arr
+          })
+        } else {
+          rawIterator
+        }
+
+        buffer = buffer ++ conversionsIterator
+      } else {
+        logInfo(s"NetFlow file ${elem.path} is ignored to scan, predicate ${resolvedFilter} " +
+          s"failed for the file")
+      }
     }
 
     new Iterator[SQLRow] {

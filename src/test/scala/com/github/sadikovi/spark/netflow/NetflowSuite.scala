@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.{Path, FileSystem, FileStatus}
 
 import org.apache.spark.SparkException
 import org.apache.spark.sql.{SQLContext, DataFrame, Row}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.sources._
 
 import org.scalatest.ConfigMap
@@ -262,5 +263,11 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       IsNull("unix_secs"),
       GreaterThan("srcip", 1L)
     ))
+  }
+
+  test("ignore scanning file for unix_secs out of range") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.netflow(s"file:${path1}").filter(col("unix_secs") === -1)
+    df.count() should be (0)
   }
 }
