@@ -21,8 +21,8 @@ import java.nio.ByteOrder;
 import com.github.sadikovi.netflowlib.fields.InterfaceAlias;
 import com.github.sadikovi.netflowlib.fields.InterfaceName;
 
-/** Header for stream version of Netflow file */
-public class NetflowHeader {
+/** Header for stream version of NetFlow file */
+public class NetFlowHeader {
   // number of bytes for stream version 1 header
   public static final short S1_HEADER_SIZE = 358;
   // length of hostname field for stream version 1
@@ -65,12 +65,12 @@ public class NetflowHeader {
   // streaming & preloaded header
   public static final long HEADER_FLAG_PRELOADED = 0x20;
 
-  public NetflowHeader(short streamVersion, ByteOrder byteOrder) {
+  public NetFlowHeader(short streamVersion, ByteOrder byteOrder) {
     this.sversion = streamVersion;
     this.order = byteOrder;
   }
 
-  public NetflowHeader(short streamVersion, ByteOrder byteOrder, int headerSize) {
+  public NetFlowHeader(short streamVersion, ByteOrder byteOrder, int headerSize) {
     this(streamVersion, byteOrder);
     this.headerSize = headerSize;
   }
@@ -78,7 +78,7 @@ public class NetflowHeader {
   ////////////////////////////////////////////////////////////
   // Setters API
   ////////////////////////////////////////////////////////////
-  /** Set Netflow flow version, either V1, V3, V5, V7, etc */
+  /** Set NetFlow flow version, either V1, V3, V5, V7, etc */
   public void setFlowVersion(short version) {
     this.FIELDS |= this.FIELD_FLOW_VER;
     this.dversion = version;
@@ -261,7 +261,7 @@ public class NetflowHeader {
   private ByteOrder order = null;
   // actual header size (will be different in case of stream version 3)
   private int headerSize = 0;
-  // version of Netflow
+  // version of NetFlow
   private short dversion = 0;
   // start time of flow capture
   private long start = 0;

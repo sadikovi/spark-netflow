@@ -28,19 +28,25 @@ import org.apache.spark.sql.sources._
 import org.scalatest.ConfigMap
 
 import com.github.sadikovi.netflowlib.RecordBuffer
-import com.github.sadikovi.netflowlib.version.NetflowV5
+import com.github.sadikovi.netflowlib.version.NetFlowV5
 import com.github.sadikovi.spark.netflow.sources._
-import com.github.sadikovi.spark.rdd.NetflowFileRDD
+import com.github.sadikovi.spark.rdd.NetFlowFileRDD
 import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 
-class NetflowSuite extends UnitTestSpec with SparkLocal {
+class NetFlowSuite extends UnitTestSpec with SparkLocal {
   override def beforeAll(configMap: ConfigMap) {
     startSparkContext()
   }
 
   override def afterAll(configMap: ConfigMap) {
     stopSparkContext()
+  }
+
+  private def readNetFlow(sqlContext: SQLContext, path: String, stringify: Boolean): DataFrame = {
+    sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      option("stringify", s"${stringify}").load(s"file:${path}").
+      select("srcip", "dstip", "srcport", "dstport")
   }
 
   val path1 = getClass().getResource("/correct/ftv5.2016-01-13.nocompress.bigend.sample").getPath
@@ -91,7 +97,7 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
       case se: SparkException =>
         val msg = se.getMessage()
         assert(msg.contains("java.lang.UnsupportedOperationException: " +
-          "Corrupt Netflow file. Wrong magic number"))
+          "Corrupt NetFlow file. Wrong magic number"))
       case other: Throwable => throw other
     }
   }
@@ -112,7 +118,7 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
 
   test("fail to read unsupported version 8") {
     val sqlContext = new SQLContext(sc)
-    intercept[UnsupportedOperationException] {
+    intercept[ClassNotFoundException] {
       sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "8").
         load(s"file:${path4}")
     }
@@ -120,13 +126,13 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
 
   test("fail if no version specified") {
     intercept[RuntimeException] {
-      new NetflowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
+      new NetFlowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
     }
   }
 
   test("issue #5 - prune only one column when running cound directly") {
     val sqlContext = new SQLContext(sc)
-    val relation = new NetflowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
+    val relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
 
     val path = new Path(path1)
     val fileStatus = path.getFileSystem(new Configuration(false)).getFileStatus(path)
@@ -135,40 +141,28 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     rdd.first should be (Row(0))
   }
 
-  test("prune statistics columns when statistics option is true") {
-    val sqlContext = new SQLContext(sc)
-    val params = Map("version" -> "5", "statistics" -> "true")
-    val relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-
-    val path = new Path(path1)
-    val fileStatus = path.getFileSystem(new Configuration(false)).getFileStatus(path)
-    val rdd = relation.buildScan(Array.empty, Array(fileStatus))
-    // should be the same number of fields as statistics columns of mapper for version 5
-    rdd.first.toSeq.length should be (MapperV5.getStatisticsColumns().length)
-  }
-
   test("issue #6 - test buffer size") {
     val sqlContext = new SQLContext(sc)
     // check that buffer size is default
     var params = Map("version" -> "5")
-    var relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    var relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     relation.getBufferSize() should be (RecordBuffer.BUFFER_LENGTH_1)
 
     // set buffer size to be 10Kb
     params = Map("version" -> "5", "buffer" -> "10Kb")
-    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+    relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     relation.getBufferSize() should be (10 * 1024)
 
     // buffer size >> Integer.MAX_VALUE
     intercept[RuntimeException] {
       params = Map("version" -> "5", "buffer" -> "10Gb")
-      relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+      relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     }
 
     // just for completeness, test on wrong buffer value
     intercept[NumberFormatException] {
       params = Map("version" -> "5", "buffer" -> "wrong")
-      relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
+      relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     }
   }
 
@@ -198,32 +192,27 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
     compare(df, expected)
   }
 
-  private def readNetflow(sqlContext: SQLContext, path: String, stringify: Boolean): DataFrame = {
-    sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-      option("stringify", s"${stringify}").load(s"file:${path}").
-      select("srcip", "dstip", "srcport", "dstport")
-  }
-
-  test("issue #2 - mapper::getConversionsForFields") {
+  test("issue #2 - conversion of various fields combinations") {
     // should return empty array
-    val mapper = SchemaResolver.getMapperForVersion(5)
-    val fields1 = Array(NetflowV5.V5_FIELD_SRCADDR, NetflowV5.V5_FIELD_DSTADDR)
-    mapper.getConversionsForFields(fields1).size should be (2)
+    val interface = NetFlowRegistry.createInterface("com.github.sadikovi.spark.netflow.version5")
 
-    val fields2 = Array(NetflowV5.V5_FIELD_UNIX_SECS, NetflowV5.V5_FIELD_DSTADDR)
-    mapper.getConversionsForFields(fields2).size should be (1)
+    val fields1 = Array(interface.getColumn("srcip"), interface.getColumn("dstip"))
+    fields1.map(_.convertFunction.isDefined) should be (Array(true, true))
 
-    val fields3 = Array(NetflowV5.V5_FIELD_UNIX_SECS, NetflowV5.V5_FIELD_UNIX_NSECS)
-    mapper.getConversionsForFields(fields3).size should be (0)
+    val fields2 = Array(interface.getColumn("unix_secs"), interface.getColumn("srcip"))
+    fields2.map(_.convertFunction.isDefined) should be (Array(false, true))
+
+    val fields3 = Array(interface.getColumn("unix_secs"), interface.getColumn("unix_nsecs"))
+    fields3.map(_.convertFunction.isDefined) should be (Array(false, false))
   }
 
   test("issue #2 - fields conversion to String for uncompressed file") {
     val sqlContext = new SQLContext(sc)
-    var df = readNetflow(sqlContext, path1, false)
+    var df = readNetFlow(sqlContext, path1, false)
     df.count() should be (1000)
     df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
 
-    df = readNetflow(sqlContext, path1, true)
+    df = readNetFlow(sqlContext, path1, true)
     df.count() should be (1000)
     df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
   }
@@ -231,140 +220,47 @@ class NetflowSuite extends UnitTestSpec with SparkLocal {
   test("issue #2 - fields conversion to String for compressed file") {
     val sqlContext = new SQLContext(sc)
 
-    var df = readNetflow(sqlContext, path2, false)
+    var df = readNetFlow(sqlContext, path2, false)
     df.count() should be (1000)
     df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
 
-    df = readNetflow(sqlContext, path2, true)
+    df = readNetFlow(sqlContext, path2, true)
     df.count() should be (1000)
     df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
   }
 
-  test("num to ip conversion") {
-    val dataset = Seq(
-      ("127.0.0.1", 2130706433L),
-      ("172.71.4.54", 2890335286L),
-      ("147.10.8.41", 2466908201L),
-      ("10.208.97.205", 181428685L),
-      ("144.136.17.61", 2424836413L),
-      ("139.168.155.28", 2343082780L),
-      ("172.49.10.53", 2888895029L),
-      ("139.168.51.129", 2343056257L),
-      ("10.152.185.135", 177781127L),
-      ("144.131.33.125", 2424512893L),
-      ("138.217.81.41", 2329497897L),
-      ("147.10.7.77", 2466907981L),
-      ("10.164.0.185", 178520249L),
-      ("144.136.28.121", 2424839289L),
-      ("172.117.8.117", 2893351029L),
-      ("139.168.164.113", 2343085169L),
-      ("147.132.87.29", 2474923805L),
-      ("10.111.3.73", 175047497L),
-      ("255.255.255.255", (2L<<31) - 1)
-    )
-
-    for (elem <- dataset) {
-      val (ip, num) = elem
-      ConversionFunctions.numToIp(num) should equal (ip)
-    }
-  }
-
-  test("resolve statistics option/directory") {
-    val sqlContext = new SQLContext(sc)
-
-    // statistics are off
-    var params = Map("version" -> "5")
-    var relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-
-    relation.getStatistics() should be (None)
-
-    // statistics in the same directory
-    params = Map("version" -> "5", "statistics" -> "true")
-    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-
-    relation.getStatistics().isEmpty should be (false)
-
-    // statistics in different directory
-    params = Map("version" -> "5", "statistics" -> s"file:${baseDirectory()}")
-    relation = new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-
-    relation.getStatistics().isEmpty should be (false)
-
-    // statistics in file path
-    params = Map("version" -> "5", "statistics" -> s"file:${path1}")
-    intercept[IOException] {
-      new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-    }
-
-    // statistics in non-existent directory
-    params = Map("version" -> "5", "statistics" -> s"file:/non/existent/directory")
-    intercept[IOException] {
-      new NetflowRelation(Array(path1), None, None, params)(sqlContext)
-    }
-  }
-
-  test("writing and reading statistics file during scan") {
-    var path = new Path(targetDirectory(), "_metadata*ftv5.2016-01-13.nocompress.bigend.sample")
-    val fs = path.getFileSystem(new Configuration(false))
-    val maybeFileStatus = Option(fs.globStatus(path))
-
-    if (maybeFileStatus.isEmpty) {
-      sys.error(s"Directory ${path.getParent().toString()} does not exist")
-    } else if (maybeFileStatus.get.nonEmpty) {
-      path = maybeFileStatus.get.apply(0).getPath()
-      fs.delete(path, false)
-    }
-
-    val sqlContext = new SQLContext(sc)
-
-    try {
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-        option("statistics", s"file:${targetDirectory()}").load(s"file:${path1}")
-
-      df.count() should be (1000)
-
-      fs.globStatus(path).length should be (1)
-
-      // this time DataFrame should read statistics file
-      df.count() should be (1000)
-    } finally {
-      fs.delete(path, false)
-    }
-  }
-
   test("resolve filter") {
     val sqlContext = new SQLContext(sc)
-    val relation = new NetflowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
+    val relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
 
     // simple filter
-    var filters = Array(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L))
-    var internalFilters = filters.map(filter => relation.resolveFilter(filter))
-    internalFilters should be (Array(
-      InternalEqualTo(NetflowV5.V5_FIELD_UNIX_SECS, 1L),
-      InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+    var filters: Array[Filter] = Array(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L))
+    var resultFilter = relation.resolveFilter(filters).get
+    resultFilter should be (And(
+      EqualTo("unix_secs", 1L),
+      GreaterThan("srcip", 1L)
     ))
 
     // complex filter with `OR` and `AND`
     filters = Array(
       Or(And(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L)), LessThanOrEqual("dstip", 0L))
     )
-    internalFilters = filters.map(filter => relation.resolveFilter(filter))
-    internalFilters should be (Array(
-      InternalOr(
-        InternalAnd(
-          InternalEqualTo(NetflowV5.V5_FIELD_UNIX_SECS, 1L),
-          InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+    resultFilter = relation.resolveFilter(filters).get
+    resultFilter should be (Or(
+        And(
+          EqualTo("unix_secs", 1L),
+          GreaterThan("srcip", 1L)
         ),
-        InternalLessThanOrEqual(NetflowV5.V5_FIELD_DSTADDR, 0L)
+        LessThanOrEqual("dstip", 0L)
       )
-    ))
+    )
 
     // filter with unresolved step
     filters = Array(IsNull("unix_secs"), GreaterThan("srcip", 1L))
-    internalFilters = filters.map(filter => relation.resolveFilter(filter))
-    internalFilters should be (Array(
-      InternalUnhandledFilter(true),
-      InternalGreaterThan(NetflowV5.V5_FIELD_SRCADDR, 1L)
+    resultFilter = relation.resolveFilter(filters).get
+    resultFilter should be (And(
+      IsNull("unix_secs"),
+      GreaterThan("srcip", 1L)
     ))
   }
 }

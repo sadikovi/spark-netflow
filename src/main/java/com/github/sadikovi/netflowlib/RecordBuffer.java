@@ -182,6 +182,6 @@ public class RecordBuffer implements Iterable<Object[]> {
   private ByteBuf buffer;
   // number of bytes currently have been read
   private int numBytes;
-  // size of record, depends on Netflow format
+  // size of record, depends on NetFlow format
   private int RECORD_SIZE;
 }

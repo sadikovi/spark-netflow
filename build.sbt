@@ -36,6 +36,9 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
 )
 
+// check deprecation without manual restart
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+
 // Display full-length stacktraces from ScalaTest:
 testOptions in Test += Tests.Argument("-oF")
 

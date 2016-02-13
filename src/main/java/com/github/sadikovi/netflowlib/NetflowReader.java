@@ -24,10 +24,10 @@ import io.netty.buffer.Unpooled;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 
-import com.github.sadikovi.netflowlib.version.NetflowV5;
+import com.github.sadikovi.netflowlib.version.NetFlowV5;
 
-// Parsing Netflow file
-public class NetflowReader {
+// Parsing NetFlow file
+public class NetFlowReader {
   public static final short METADATA_LENGTH = 4;
   public static final short HEADER_OFFSET_LENGTH = 4;
   // header check flags
@@ -36,7 +36,7 @@ public class NetflowReader {
   private static final short HEADER_LITTLE_ENDIAN = 1;
   private static final short HEADER_BIG_ENDIAN = 2;
 
-  public NetflowReader(FSDataInputStream in) throws IOException {
+  public NetFlowReader(FSDataInputStream in) throws IOException {
     this.in = in;
     readMetadata();
   }
@@ -63,7 +63,7 @@ public class NetflowReader {
     short stream = buf.getUnsignedByte(3);
 
     if (magic1 != HEADER_MAGIC1 || magic2 != HEADER_MAGIC2) {
-      throw new UnsupportedOperationException("Corrupt Netflow file. Wrong magic number");
+      throw new UnsupportedOperationException("Corrupt NetFlow file. Wrong magic number");
     }
 
     if (order == HEADER_BIG_ENDIAN) {
@@ -83,10 +83,10 @@ public class NetflowReader {
     buf = null;
   }
 
-  public NetflowHeader readHeader() throws UnsupportedOperationException, IOException {
+  public NetFlowHeader readHeader() throws UnsupportedOperationException, IOException {
     ensureStreamVersion();
 
-    NetflowHeader header;
+    NetFlowHeader header;
     int numBytesRead = 0;
     int lenRead = 0;
     ByteBuf buf;
@@ -100,8 +100,8 @@ public class NetflowReader {
     if (this.sversion == 1) {
       // version 1 has static header
       // TODO: verify header size for stream version 1
-      lenRead = NetflowHeader.S1_HEADER_SIZE - METADATA_LENGTH;
-      header = new NetflowHeader(this.sversion, this.order);
+      lenRead = NetFlowHeader.S1_HEADER_SIZE - METADATA_LENGTH;
+      header = new NetFlowHeader(this.sversion, this.order);
     } else {
       // v3 dynamic header size
       headerArray = new byte[HEADER_OFFSET_LENGTH];
@@ -116,7 +116,7 @@ public class NetflowReader {
       }
       // actual header length, determine how many bytes to read
       lenRead = headerSize - METADATA_LENGTH - HEADER_OFFSET_LENGTH;
-      header = new NetflowHeader(this.sversion, this.order, headerSize);
+      header = new NetFlowHeader(this.sversion, this.order, headerSize);
     }
 
     // allocate buffer for length to read
@@ -140,11 +140,11 @@ public class NetflowReader {
       header.setNumDropped(buf.getUnsignedInt(22));
       header.setNumMisordered(buf.getUnsignedInt(26));
       // read hostname
-      byte[] hostnameBytes = new byte[NetflowHeader.S1_HEADER_HN_LEN];
+      byte[] hostnameBytes = new byte[NetFlowHeader.S1_HEADER_HN_LEN];
       buf.getBytes(30, hostnameBytes, 0, hostnameBytes.length);
       header.setHostname(new String(hostnameBytes));
       // read comments
-      byte[] commentsBytes = new byte[NetflowHeader.S1_HEADER_CMNT_LEN];
+      byte[] commentsBytes = new byte[NetFlowHeader.S1_HEADER_CMNT_LEN];
       buf.getBytes(30 + hostnameBytes.length, commentsBytes, 0, commentsBytes.length);
       header.setComments(new String(commentsBytes));
 
@@ -316,14 +316,14 @@ public class NetflowReader {
   /**
    * Return buffer of Object records for specified fields. Note that values will have the same
    * order as fields in array.
-   * @param NetflowHeader header
+   * @param NetFlowHeader header
    * @param askedFields fields wanted
    * @param bufferSize buffer size for the iterator
    * @return record buffer
    * @throws IOException, UnsupportedOperationException
    */
   public RecordBuffer readData(
-      NetflowHeader header,
+      NetFlowHeader header,
       long[] askedFields,
       int bufferSize) throws IOException, UnsupportedOperationException {
     ensureStreamVersion();
@@ -332,12 +332,12 @@ public class NetflowReader {
     short flowVersion = header.getFlowVersion();
     this.in.seek(expectedPosition);
 
-    // initialize record holder for a particular Netflow version
+    // initialize record holder for a particular NetFlow version
     // in order to add new version create class in ".../version" and add another if
     // statement for that version
     FlowInterface flowInterface;
     if (flowVersion == 5) {
-      flowInterface = new NetflowV5(askedFields);
+      flowInterface = new NetFlowV5(askedFields);
     } else {
       throw new UnsupportedOperationException("Unsupported flow version " + flowVersion);
     }
@@ -357,7 +357,7 @@ public class NetflowReader {
     return this.order;
   }
 
-  // Stream of the Netflow file
+  // Stream of the NetFlow file
   private FSDataInputStream in = null;
   // byte order of the file
   private ByteOrder order = null;

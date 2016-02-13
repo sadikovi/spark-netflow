@@ -23,8 +23,8 @@ import org.apache.spark.sql.sources.{HadoopFsRelation, HadoopFsRelationProvider}
 class DefaultSource extends HadoopFsRelationProvider {
 
   /**
-   * Create relation for Netflow data. Options include path to the Netflow files, flow version
-   * of the files, e.g. V5, V7, etc. All files must be of the same version.
+   * Create relation for NetFlow data. Options include path to the NetFlow files, flow version
+   * of the files, e.g. "5", "7", etc. All files must be of the same version.
    */
   def createRelation(
       sqlContext: SQLContext,
@@ -32,6 +32,6 @@ class DefaultSource extends HadoopFsRelationProvider {
       dataSchema: Option[StructType],
       partitionColumns: Option[StructType],
       parameters: Map[String, String]): HadoopFsRelation = {
-    new NetflowRelation(paths, dataSchema, partitionColumns, parameters)(sqlContext)
+    new NetFlowRelation(paths, dataSchema, partitionColumns, parameters)(sqlContext)
   }
 }

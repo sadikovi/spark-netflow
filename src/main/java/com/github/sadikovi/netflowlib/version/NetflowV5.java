@@ -22,7 +22,7 @@ import io.netty.buffer.ByteBuf;
 
 import com.github.sadikovi.netflowlib.FlowInterface;
 
-public class NetflowV5 extends FlowInterface {
+public class NetFlowV5 extends FlowInterface {
   // list of supported columns and size in bytes
   // Current seconds since 0000 UTC 1970, size: 4
   public static final long V5_FIELD_UNIX_SECS = 0x00000001L;
@@ -73,7 +73,7 @@ public class NetflowV5 extends FlowInterface {
   // AS of destination address, size: 2
   public static final long V5_FIELD_DST_AS = 0x00800000L;
 
-  public NetflowV5(long[] askedFields) {
+  public NetFlowV5(long[] askedFields) {
     int len = askedFields.length;
     if (len == 0) {
       throw new UnsupportedOperationException("Fields required, found empty array");
@@ -168,7 +168,7 @@ public class NetflowV5 extends FlowInterface {
     }
   }
 
-  /** Size in bytes of the Netflow V5 record */
+  /** Size in bytes of the NetFlow V5 record */
   public short size() {
     return 64;
   }

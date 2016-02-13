@@ -39,4 +39,12 @@ private[spark] object Utils {
   def uuidForString(str: String): String = {
     UUID.nameUUIDFromBytes(str.getBytes()).toString()
   }
+
+  /**
+   * Get context class laoder on this thread or, if not present, default class loader for this
+   * class.
+   */
+  def getContextClassLoader(): ClassLoader = {
+    Option(Thread.currentThread().getContextClassLoader).getOrElse(getClass.getClassLoader)
+  }
 }

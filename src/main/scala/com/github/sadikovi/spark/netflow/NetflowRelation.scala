@@ -18,22 +18,24 @@ package com.github.sadikovi.spark.netflow
 
 import java.io.IOException
 
+import scala.util.{Failure, Success, Try}
+
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.{RDD, UnionRDD}
 import org.apache.spark.sql.{SQLContext, Row}
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.types.{StructType, StructField, IntegerType}
+import org.apache.spark.sql.types.StructType
 
 import org.slf4j.LoggerFactory
 
 import com.github.sadikovi.netflowlib.RecordBuffer
 import com.github.sadikovi.spark.netflow.sources._
-import com.github.sadikovi.spark.rdd.{NetflowFileRDD, NetflowMetadata}
+import com.github.sadikovi.spark.rdd.{NetFlowFileRDD, NetFlowMetadata}
 import com.github.sadikovi.spark.util.Utils
 
-private[netflow] class NetflowRelation(
+private[netflow] class NetFlowRelation(
     override val paths: Array[String],
     private val maybeDataSchema: Option[StructType],
     override val userDefinedPartitionColumns: Option[StructType],
@@ -42,11 +44,16 @@ private[netflow] class NetflowRelation(
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  // Netflow version
-  private val version = parameters.get("version") match {
-    case Some(str) => SchemaResolver.validateVersion(str).
-      getOrElse(sys.error(s"Invalid version specified: ${str}"))
-    case None => sys.error("'version' must be specified for Netflow data")
+  // Interface for NetFlow version
+  private val interface = parameters.get("version") match {
+    case Some(str: String) => Try(str.toLong) match {
+      case Success(value) =>
+        NetFlowRegistry.createInterface(s"com.github.sadikovi.spark.netflow.version${value}")
+      case Failure(error) =>
+        NetFlowRegistry.createInterface(str)
+    }
+    case None => sys.error("'version' must be specified for NetFlow data. " +
+      "Can be a number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
   }
 
   // Buffer size, by default use standard record buffer size ~3Mb
@@ -61,45 +68,16 @@ private[netflow] class NetflowRelation(
   }
 
   // Conversion of numeric field into string, such as IP, by default is off
-  private val stringify = parameters.get("stringify") match {
+  private val applyConversion = parameters.get("stringify") match {
     case Some("true") => true
     case _ => false
   }
 
-  // Whether or not to use/collect NetFlow statistics, "statistics" option can have either boolean
-  // value or directory to store and look up metadata files. Directory can be either on local file
-  // system or HDFS, should be available for reads and writes, otherwise throws IOException. If
-  // option is "true", then we assume that statistics files are stored in the same directory as
-  // actual files.
-  private val maybeStatistics: Option[Path] = parameters.get("statistics") match {
-    case Some("true") => Some(null)
-    case Some("false") => None
-    case Some(dir: String) =>
-      // Resolve directory for storing and looking up statistics. Directory will be resolved for
-      // Spark Hadoop configuration, and will be fully qualified path without any symlinks.
-      val conf = sqlContext.sparkContext.hadoopConfiguration
-      val maybeDir = new Path(dir)
-      val dirFileSystem = maybeDir.getFileSystem(conf)
-      if (dirFileSystem.isDirectory(maybeDir)) {
-        val resolvedPath = dirFileSystem.resolvePath(maybeDir)
-        Some(resolvedPath)
-      } else {
-        throw new IOException(s"Path for statistics ${maybeDir} is not a directory")
-      }
-    case _ => None
-  }
-
-  // Mapper for Netflow version, will be used to create schema and convert columns
-  private val mapper = SchemaResolver.getMapperForVersion(version)
-
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
 
-  // Get statistics option, mostly for testing
-  private[netflow] def getStatistics(): Option[Path] = maybeStatistics
-
   private[netflow] def inferSchema(): StructType = {
-    mapper.getFullSchema(stringify)
+    interface.getSQLSchema(applyConversion)
   }
 
   override def dataSchema: StructType = inferSchema()
@@ -117,71 +95,27 @@ private[netflow] class NetflowRelation(
     if (inputFiles.isEmpty) {
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
-      // Convert to internal Netflow fields
-      val resolvedColumns: Array[Long] = if (requiredColumns.isEmpty) {
-        if (maybeStatistics.isEmpty) {
-          logger.warn("Required columns are empty, using first column instead")
-          mapper.getFirstInternalColumn()
-        } else {
-          // When required columns are empty, e.g. in case of direct `count()` we use statistics
-          // fields to collect summary for a file
-          logger.warn("Required columns are empty, using statistics columns instead")
-          mapper.getStatisticsColumns()
-        }
+      // Convert to internal mapped columns
+      val resolvedColumns: Array[MappedColumn] = if (requiredColumns.isEmpty) {
+        logger.warn("Required columns are empty, using first column instead")
+        Array(interface.getFirstColumn())
       } else {
-        requiredColumns.map(col => mapper.getInternalColumnForName(col))
+        requiredColumns.map(col => interface.getColumn(col))
       }
 
-      // Conversion array, if stringify option is true, we return map. Each key is an index of a
-      // field and value is a conversion function "Any => String". Map is empty when there is
-      // no columns with applied conversion or when stringify option is false
-      val conversions: Map[Int, Any => String] = if (stringify) {
-        mapper.getConversionsForFields(resolvedColumns)
-      } else {
-        Map.empty
-      }
+      // Resolve filters into filters we support, also reduce to return only one Filter value
+      val resolvedFilter: Option[Filter] = resolveFilter(filters)
 
-      // Convert filters into internal Netflow filters, if array of filters has more than one filter
-      // we evaluate them as sequence of "AND" filters. We keep only filters that can be transformed
-      // into `NetflowFilter`. Apply reversed conversion, some of the fields define conversion, and
-      // filter is specified for String value
-      val resolvedFilters: Array[InternalFilter] = filters.map { filter => resolveFilter(filter) }
-
-      // Netflow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
+      // NetFlow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
-      // We also resolve statistics path to generate [[SummaryWritable]] or [[SummaryReadable]]
-      // depending on whether or not summary file exists. If path is null, then we assume that
-      // summary file is stored in the same directory as actual Netflow file. If statistics are not
-      // used, this should not impact performance.
       val metadata = inputFiles.map { status => {
-        val summary: Option[Summary] = if (maybeStatistics.isEmpty) {
-          None
-        } else {
-          val currentPath = status.getPath()
-          val fileName = s"_metadata-r-${Utils.uuidForString(currentPath.getParent().toString())}" +
-            s".${currentPath.getName()}"
-
-          val tempDir = maybeStatistics match {
-            case Some(resolvedDir: Path) if resolvedDir != null => resolvedDir
-            case _ => currentPath.getParent()
-          }
-
-          val filePath = new Path(tempDir, fileName)
-          val fs = filePath.getFileSystem(sqlContext.sparkContext.hadoopConfiguration)
-          if (fs.exists(filePath)) {
-            mapper.getSummaryReadable(filePath.toString())
-          } else {
-            mapper.getSummaryWritable(filePath.toString(), resolvedColumns)
-          }
-        }
-
-        NetflowMetadata(version, status.getPath().toString(), status.getLen(), bufferSize,
-          conversions, summary)
+        NetFlowMetadata(interface.version(), status.getPath().toString(), status.getLen(),
+          bufferSize)
       } }
 
-      // Return `NetflowFileRDD`, we store data of each file in individual partition
-      new NetflowFileRDD(sqlContext.sparkContext, metadata, metadata.length, resolvedColumns,
-        resolvedFilters)
+      // Return `NetFlowFileRDD`, we store data of each file in individual partition
+      new NetFlowFileRDD(sqlContext.sparkContext, metadata, metadata.length, applyConversion,
+        resolvedColumns, resolvedFilter)
     }
   }
 
@@ -190,62 +124,18 @@ private[netflow] class NetflowRelation(
   }
 
   override def toString: String = {
-    s"${getClass.getSimpleName}: ${version}"
+    s"${getClass.getSimpleName}: ${interface.version()}"
   }
 
-  /**
-   * Resolve Spark filters to list of [[InternalFilter]]. We only keep filters that can be converted
-   * and replace any unknown filters with [[InternalUnhandledFilter]]. Also we convert value to
-   * supported type if possible.
-   */
-  private[spark] def resolveFilter(filter: Filter): InternalFilter = filter match {
-    case EqualTo(column: String, value: Long) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalEqualTo(field, value)
-
-    case EqualTo(column: String, value: String) =>
-      val field = mapper.getInternalColumnForName(column)
-      val func = mapper.getReverseConversionForField(field).getOrElse(
-        sys.error(s"Conversion is not supported for the field ${column}"))
-      InternalEqualTo(field, func(value).asInstanceOf[Long])
-
-    case GreaterThan(column: String, value: Long) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalGreaterThan(field, value)
-
-    case GreaterThanOrEqual(column: String, value: Long) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalGreaterThanOrEqual(field, value)
-
-    case LessThan(column: String, value: Long) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalLessThan(field, value)
-
-    case LessThanOrEqual(column: String, value: Long) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalLessThanOrEqual(field, value)
-
-    case In(column: String, values: Array[Any]) if values.forall(_.isInstanceOf[Long]) =>
-      val field = mapper.getInternalColumnForName(column)
-      InternalIn(field, values.map(_.asInstanceOf[Long]))
-
-    case In(column: String, values: Array[Any]) if values.forall(_.isInstanceOf[String]) =>
-      val field = mapper.getInternalColumnForName(column)
-      val func = mapper.getReverseConversionForField(field).getOrElse(
-        sys.error(s"Conversion is not supported for the field ${column}"))
-      val supportedValues = values.map(_.asInstanceOf[String]).map(func(_).asInstanceOf[Long])
-      InternalIn(field, supportedValues)
-
-    case And(left: Filter, right: Filter) =>
-      InternalAnd(resolveFilter(left), resolveFilter(right))
-
-    case Or(left: Filter, right: Filter) =>
-      InternalOr(resolveFilter(left), resolveFilter(right))
-
-    // If filter is not supported we return `InternalUnhandledFilter` that should be always
-    // evaluated as `true`
-    case otherFilter =>
-      logger.warn(s"Filter ${otherFilter} is not supported and will be skipped")
-      InternalUnhandledFilter(true)
+  /** Resolve array of Spark filters to single `Filter` instance as option. */
+  private[spark] def resolveFilter(filters: Array[Filter]): Option[Filter] = {
+    if (filters.isEmpty) {
+      None
+    } else if (filters.length == 1) {
+      Option(filters.head)
+    } else {
+      // recursivly collapse filters
+      Option(filters.reduce { (left, right) => And(left, right) })
+    }
   }
 }

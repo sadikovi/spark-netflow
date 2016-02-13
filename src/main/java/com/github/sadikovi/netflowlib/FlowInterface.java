@@ -18,7 +18,7 @@ package com.github.sadikovi.netflowlib;
 
 import io.netty.buffer.ByteBuf;
 
-/** Generic Netflow PDU reading interface */
+/** Generic NetFlow PDU reading interface */
 public abstract class FlowInterface {
   /**
    * Process buffer of the record and return sequence of fields in order requested. Do not handle
@@ -27,7 +27,7 @@ public abstract class FlowInterface {
    */
   public abstract Object[] processRecord(ByteBuf buffer);
 
-  /** Size in bytes of the Netflow record (header + payload) */
+  /** Size in bytes of the NetFlow record (header + payload) */
   public abstract short size();
 
   /** Actual size of the record with only requested fields */

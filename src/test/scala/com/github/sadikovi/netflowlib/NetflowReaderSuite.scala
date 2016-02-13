@@ -23,7 +23,7 @@ import org.apache.hadoop.fs.{Path, FileSystem}
 
 import com.github.sadikovi.testutil.UnitTestSpec
 
-class NetflowReaderSuite extends UnitTestSpec {
+class NetFlowReaderSuite extends UnitTestSpec {
   private val validFile1 = getClass().
     getResource("/correct/ftv5.2016-01-13.nocompress.bigend.sample").getPath()
   private val validFile2 = getClass().
@@ -36,7 +36,7 @@ class NetflowReaderSuite extends UnitTestSpec {
     var path = new Path(validFile1)
     var fs = path.getFileSystem(new Configuration(false))
     var stm = fs.open(path)
-    var reader = new NetflowReader(stm)
+    var reader = new NetFlowReader(stm)
     reader.getStreamVersion() should be (3)
     reader.getByteOrder() should be (ByteOrder.BIG_ENDIAN)
 
@@ -44,7 +44,7 @@ class NetflowReaderSuite extends UnitTestSpec {
     path = new Path(validFile2)
     fs = path.getFileSystem(new Configuration(false))
     stm = fs.open(path)
-    reader = new NetflowReader(stm)
+    reader = new NetFlowReader(stm)
     reader.getStreamVersion() should be (3)
     reader.getByteOrder() should be (ByteOrder.LITTLE_ENDIAN)
 
@@ -52,7 +52,7 @@ class NetflowReaderSuite extends UnitTestSpec {
     fs = path.getFileSystem(new Configuration(false))
     stm = fs.open(path)
     intercept[UnsupportedOperationException] {
-      new NetflowReader(stm)
+      new NetFlowReader(stm)
     }
   }
 
@@ -60,7 +60,7 @@ class NetflowReaderSuite extends UnitTestSpec {
     var path = new Path(validFile2)
     var fs = path.getFileSystem(new Configuration(false))
     var stm = fs.open(path)
-    var reader = new NetflowReader(stm)
+    var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
 
     header.getStreamVersion() should be (3)
@@ -69,19 +69,19 @@ class NetflowReaderSuite extends UnitTestSpec {
     header.getHeaderFlags() should be (10)
     header.getHostname() should be ("flow-gen")
     header.getComments() should be ("flow-gen")
-    (header.getFields() & NetflowHeader.HEADER_FLAG_COMPRESS) should be (
-      NetflowHeader.HEADER_FLAG_COMPRESS)
+    (header.getFields() & NetFlowHeader.HEADER_FLAG_COMPRESS) should be (
+      NetFlowHeader.HEADER_FLAG_COMPRESS)
   }
 
   test("test header compressed flag") {
     var path = new Path(validFile2)
     var fs = path.getFileSystem(new Configuration(false))
     var stm = fs.open(path)
-    var reader = new NetflowReader(stm)
+    var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
 
     header.isCompressed() should be (
-      (header.getFields() & NetflowHeader.HEADER_FLAG_COMPRESS) > 0)
+      (header.getFields() & NetFlowHeader.HEADER_FLAG_COMPRESS) > 0)
   }
 
   test("test data parsing") {
@@ -89,7 +89,7 @@ class NetflowReaderSuite extends UnitTestSpec {
     var fs = path.getFileSystem(new Configuration(false))
     var stm = fs.open(path)
 
-    var reader = new NetflowReader(stm)
+    var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
     var fields = Array(1L)
     val recordBuffer = reader.readData(header, fields, 64)
