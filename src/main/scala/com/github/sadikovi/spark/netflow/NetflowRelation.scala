@@ -124,7 +124,7 @@ private[netflow] class NetFlowRelation(
   }
 
   override def toString: String = {
-    s"${getClass.getSimpleName}: ${interface.version()}"
+    s"${getClass.getSimpleName}: version ${interface.version()}"
   }
 
   /** Resolve array of Spark filters to single `Filter` instance as option. */

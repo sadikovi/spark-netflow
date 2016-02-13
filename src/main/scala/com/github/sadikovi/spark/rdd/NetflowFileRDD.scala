@@ -75,7 +75,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     resolvedColumns: Array[MappedColumn],
     resolvedFilter: Option[Filter]) extends FileRDD[SQLRow](sc, Nil) {
   /** Helper type for column catalog. */
-  type Catalog = Map[String, (Long, Long)]
+  private type Catalog = Map[String, (Long, Long)]
 
   /** Partition [[NetFlowMetadata]], slightly modified Spark partitioning function */
   private def slice(seq: Seq[NetFlowMetadata], numSlices: Int): Seq[Seq[NetFlowMetadata]] = {
@@ -155,10 +155,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     // will be moved to the NetFlow library as part of predicate pushdown. But currently we search
     // for the "unix_secs" among resolved columns, if it exists, we build catalog and update values
     // for each file, otherwise return empty map
-    val unixSecsColumn = resolvedColumns.find(_.columnName == "unix_secs")
-    val catalog: (Long, Long) => Catalog = (min, max) => {
-      if (unixSecsColumn.isDefined) Map(unixSecsColumn.get.columnName -> (min, max)) else Map.empty
-    }
+    val catalog: (Long, Long) => Catalog = (min, max) => Map("unix_secs" -> (min, max))
     // Total buffer of records
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
@@ -192,12 +189,12 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
       if (scanStatus) {
         logInfo(s"""
           > NetFlow: {
-          >   File: ${elem.path}
-          >   File length: ${fileLength} bytes
-          >   Flow version: ${actualVersion}
-          >   Compression: ${isCompressed}
-          >   Buffer size: ${elem.bufferSize} bytes
-          >   Hostname: ${hr.getHostname()}
+          >   File: ${elem.path},
+          >   File length: ${fileLength} bytes,
+          >   Flow version: ${actualVersion},
+          >   Compression: ${isCompressed},
+          >   Buffer size: ${elem.bufferSize} bytes,
+          >   Hostname: ${hr.getHostname()},
           >   Comments: ${hr.getComments()}
           > }
         """.stripMargin('>'))
