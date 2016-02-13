@@ -79,7 +79,7 @@ abstract class ResolvedInterface {
   }
 
   /** Get size in bytes for a particular SQL data type. */
-  private def sizeInBytes(dtype: DataType): Short = dtype match {
+  private[sources] def sizeInBytes(dtype: DataType): Short = dtype match {
       case byte: ByteType => 1
       case short: ShortType => 2
       case int: IntegerType => 4
@@ -87,7 +87,7 @@ abstract class ResolvedInterface {
       case other => throw new UnsupportedOperationException(s"Cannot get size for ${other} type")
   }
 
-  private def ensureColumnConsistency(): Unit = {
+  private[sources] def ensureColumnConsistency(): Unit = {
     if (columns.isEmpty) {
       throw new IllegalArgumentException(s"Columns are empty for ${toString()}")
     }

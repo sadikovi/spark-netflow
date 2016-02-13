@@ -265,6 +265,49 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     ))
   }
 
+  test("compile filter") {
+    val sqlContext = new SQLContext(sc)
+    val hadoopPath = new Path(s"file:${path1}")
+    val fs = hadoopPath.getFileSystem(sc.hadoopConfiguration)
+    val relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
+    val rdd = relation.buildScan(Array.empty, Array(fs.getFileStatus(hadoopPath))).
+      asInstanceOf[NetFlowFileRDD[Row]]
+
+    // simple filter
+    var status = rdd.compileFilter(EqualTo("a", 1L), Map("a" -> (0L, 10L)))
+    status should be (true)
+
+    // "Between" and "And" filters
+    status = rdd.compileFilter(And(EqualTo("a", 11L),
+      And(GreaterThanOrEqual("a", 7L), LessThanOrEqual("a", 10L))), Map("a" -> (0L, 10L)))
+    status should be (false)
+
+    // "Greater" and "Less" filters
+    status = rdd.compileFilter(And(GreaterThan("a", 1L), LessThan("a", 12L)),
+      Map("a" -> (0L, 10L)))
+    status should be (true)
+
+    // "Or" test
+    status = rdd.compileFilter(Or(GreaterThan("a", 15L), LessThan("a", 12L)),
+      Map("a" -> (0L, 10L)))
+    status should be (true)
+
+    // "In" filter
+    status = rdd.compileFilter(In("a", Array(1L, 5L, 11L)), Map("a" -> (0L, 10L)))
+    status should be (true)
+
+    status = rdd.compileFilter(In("a", Array(-1L, 12L, 15L)), Map("a" -> (0L, 10L)))
+    status should be (false)
+
+    // unsupported filter test
+    status = rdd.compileFilter(IsNull("a"), Map("a" -> (0L, 10L)))
+    status should be (true)
+
+    // filter with empty catalog test
+    status = rdd.compileFilter(In("a", Array(-1L, 12L, 15L)), Map.empty)
+    status should be (true)
+  }
+
   test("ignore scanning file for unix_secs out of range") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.netflow(s"file:${path1}").filter(col("unix_secs") === -1)

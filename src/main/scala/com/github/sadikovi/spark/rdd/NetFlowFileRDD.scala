@@ -100,7 +100,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
    * proceed with scanning. If filter cannot be resolved, we read entire file, since there is a
    * possibility of value to be amongst records
    */
-  private def compileFilter(
+  private[spark] def compileFilter(
       filter: Filter,
       catalog: Catalog): Boolean = filter match {
     case EqualTo(column, value: Long) if catalog.contains(column) =>

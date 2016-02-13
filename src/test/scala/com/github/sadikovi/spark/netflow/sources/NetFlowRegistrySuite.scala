@@ -16,14 +16,38 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import org.apache.spark.sql.types.{ByteType, IntegerType, LongType, ShortType, StringType}
+
 import com.github.sadikovi.testutil.UnitTestSpec
 
 /** Test providers */
-class DefaultProvider extends NetFlowProvider {
+private class DefaultProvider extends NetFlowProvider {
   def createInterface(): ResolvedInterface = null
 }
 
-class WrongProvider
+private class WrongProvider
+
+private class TestEmptyDefaultProvider extends NetFlowProvider {
+  def createInterface(): ResolvedInterface = new TestEmptyInterface()
+}
+
+private class TestFullDefaultProvider extends NetFlowProvider {
+  def createInterface(): ResolvedInterface = new TestFullInterface()
+}
+
+/** Test interfaces */
+private class TestEmptyInterface extends ResolvedInterface {
+  override protected val columns: Seq[MappedColumn] = Seq.empty
+
+  override def version(): Short = -1
+}
+
+private class TestFullInterface extends ResolvedInterface {
+  override protected val columns: Seq[MappedColumn] = Seq(
+    MappedColumn("a", 1L, LongType, false, None))
+
+  override def version(): Short = -2
+}
 
 class NetFlowRegistrySuite extends UnitTestSpec {
   test("resolve test provider") {
@@ -44,13 +68,44 @@ class NetFlowRegistrySuite extends UnitTestSpec {
 
   test("resolve test interface") {
     // resolve full class name for provider
-    val interface = NetFlowRegistry.createInterface(
+    var interface = NetFlowRegistry.createInterface(
+      "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
+    Option(interface).isEmpty should be (false)
+
+    interface = NetFlowRegistry.createInterface(
       "com.github.sadikovi.spark.netflow.sources.DefaultProvider")
-    Option(interface) should be (None)
+    Option(interface).isEmpty should be (true)
 
     intercept[UnsupportedOperationException] {
       NetFlowRegistry.createInterface(
         "com.github.sadikovi.spark.netflow.sources.WrongProvider")
+    }
+  }
+
+  test("check column consistency") {
+    var interface = NetFlowRegistry.createInterface(
+      "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
+    intercept[IllegalArgumentException] {
+      interface.ensureColumnConsistency()
+    }
+
+    interface = NetFlowRegistry.createInterface(
+      "com.github.sadikovi.spark.netflow.sources.TestFullDefaultProvider")
+    // should not raise any errors
+    interface.ensureColumnConsistency()
+  }
+
+  test("size in bytes for different types") {
+    val interface = NetFlowRegistry.createInterface(
+      "com.github.sadikovi.spark.netflow.sources.TestFullDefaultProvider")
+
+    interface.sizeInBytes(ByteType) should be (1)
+    interface.sizeInBytes(ShortType) should be (2)
+    interface.sizeInBytes(IntegerType) should be (4)
+    interface.sizeInBytes(LongType) should be (8)
+
+    intercept[UnsupportedOperationException] {
+      interface.sizeInBytes(StringType)
     }
   }
 }
