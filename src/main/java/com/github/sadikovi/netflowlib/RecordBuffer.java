@@ -29,10 +29,10 @@ import io.netty.buffer.Unpooled;
 import org.apache.hadoop.fs.FSDataInputStream;
 
 public class RecordBuffer implements Iterable<Object[]> {
-  // length of the buffer, usually 32768
+  // length of the buffer in bytes, usually 32768
   public static final int BUFFER_LENGTH = 32768;
 
-  // length of buffer ~3Mb (option 1)
+  // length of buffer in bytes ~3Mb (option 1)
   public static final int BUFFER_LENGTH_1 = 3698688;
 
   /**
@@ -133,7 +133,7 @@ public class RecordBuffer implements Iterable<Object[]> {
         try {
           numBytes = stream.read(primary, 0, RECORD_SIZE);
           if (numBytes < 0) {
-            throw new IOException("EOF");
+            throw new IOException("EOF, " + numBytes + " bytes read");
           } else if (numBytes < RECORD_SIZE) {
             // We have to read entire record when there is no compression, anything else is
             // considered failure. When stream is compressed we can read less, but then we need
@@ -153,7 +153,7 @@ public class RecordBuffer implements Iterable<Object[]> {
             }
           }
         } catch (IOException io) {
-          throw new IllegalArgumentException("Unexpected EOF");
+          throw new IllegalArgumentException("Unexpected EOF", io);
         }
 
         return recordHolder.processRecord(buffer);

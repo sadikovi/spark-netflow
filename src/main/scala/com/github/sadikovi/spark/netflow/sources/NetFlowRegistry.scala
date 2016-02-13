@@ -49,7 +49,12 @@ object NetFlowRegistry {
       case _ => throw new UnsupportedOperationException(
         s"Provider ${providerName} does not support NetFlowProvider interface")
     }
-    provider.createInterface()
+
+    // create and check consistency of the interface
+    val createdInterface = provider.createInterface()
+    createdInterface.ensureColumnConsistency()
+
+    createdInterface
   }
 }
 

@@ -91,6 +91,14 @@ abstract class ResolvedInterface {
     if (columns.isEmpty) {
       throw new IllegalArgumentException(s"Columns are empty for ${toString()}")
     }
+    // check that columns (SQL and internal) are not duplicated
+    val columnNames = columns.map(_.columnName)
+    assert(columnNames.length == columnNames.distinct.length,
+      s"Found duplicate column names in ${toString()}")
+
+    val internalColumnNames = columns.map(_.internalColumnName)
+    assert(internalColumnNames.length == internalColumnNames.distinct.length,
+      s"Found duplicate internal column names in ${toString()}")
   }
 
   override def toString(): String = {

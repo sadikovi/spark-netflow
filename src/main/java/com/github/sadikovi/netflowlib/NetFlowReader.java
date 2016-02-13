@@ -25,6 +25,7 @@ import io.netty.buffer.Unpooled;
 import org.apache.hadoop.fs.FSDataInputStream;
 
 import com.github.sadikovi.netflowlib.version.NetFlowV5;
+import com.github.sadikovi.netflowlib.version.NetFlowV7;
 
 // Parsing NetFlow file
 public class NetFlowReader {
@@ -338,6 +339,8 @@ public class NetFlowReader {
     FlowInterface flowInterface;
     if (flowVersion == 5) {
       flowInterface = new NetFlowV5(askedFields);
+    } else if (flowVersion == 7) {
+      flowInterface = new NetFlowV7(askedFields);
     } else {
       throw new UnsupportedOperationException("Unsupported flow version " + flowVersion);
     }
