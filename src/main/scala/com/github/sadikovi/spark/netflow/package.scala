@@ -22,11 +22,15 @@ package object netflow {
 
   /**
    * Adds a shortcut method `netflow()` to DataFrameReader that allows to omit specifying format
-   * and specifies version "5" by default.
+   * and specifies version by default.
    */
   implicit class NetFlowDataFrameReader(reader: DataFrameReader) {
-    def netflow: String => DataFrame = {
+    def netflow5: String => DataFrame = {
       reader.format("com.github.sadikovi.spark.netflow").option("version", "5").load
+    }
+
+    def netflow7: String => DataFrame = {
+      reader.format("com.github.sadikovi.spark.netflow").option("version", "7").load
     }
   }
 }

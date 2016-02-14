@@ -50,11 +50,18 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       select("srcip", "dstip", "srcport", "dstport")
   }
 
+  // version 5 correct files
   val path1 = getClass().getResource("/correct/ftv5.2016-01-13.nocompress.bigend.sample").getPath
   val path2 = getClass().getResource("/correct/ftv5.2016-01-13.compress.9.sample").getPath
+  // version 5 corrupt files
   val path3 = getClass().getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-01").getPath
   val path4 = getClass().getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-00").getPath
+  // version 8 files - unsupported currently
   val path5 = getClass().getResource("/unsupport/ftv8.2016-01-17.compress.7.bigend.sample").getPath
+  // version 7 correct files
+  val path6 = getClass().getResource("/correct/ftv7.2016-02-14.nocompress.bigend.sample").getPath
+  val path7 = getClass().getResource("/correct/ftv7.2016-02-14.compress.9.litend.sample").getPath
+  val path8 = getClass().getResource("/correct/ftv7.2016-02-14.compress.9.bigend.sample").getPath
 
   test("read uncompressed v5 format") {
     val sqlContext = new SQLContext(sc)
@@ -80,6 +87,45 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
     res.last should be (Row(0, 0, 0, 0, 999, 4294902759L, 0, 999, 743, 1000, 1000, 999, 4294902759L,
       999, 743, 17, 231, 0, 0, 0, 0, 0, 999, 743))
+  }
+
+  test("read uncompressed v7 format") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
+      load(s"file:${path6}")
+
+    val res = df.collect()
+    res.length should be (1000)
+    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
+      17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
+    res.last should be (Row(0, 0, 0, 0, 999, 4294902759L, 0, 999, 743, 1000, 1000, 999, 4294902759L,
+      999, 743, 17, 0, 0, 0, 0, 0, 0, 0, 999, 743, 999))
+  }
+
+  test("read compressed v7 LITTLE_ENDIAN format") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
+      load(s"file:${path7}")
+
+    val res = df.collect()
+    res.length should be (1000)
+    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
+      17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
+    res.last should be (Row(0, 0, 0, 0, 999, 4294902759L, 0, 999, 743, 1000, 1000, 999, 4294902759L,
+      999, 743, 17, 0, 0, 0, 0, 0, 0, 0, 999, 743, 999))
+  }
+
+  test("read compressed v7 BIG_ENDIAN format") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
+      load(s"file:${path8}")
+
+    val res = df.collect()
+    res.length should be (1000)
+    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
+      17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
+    res.last should be (Row(0, 0, 0, 0, 999, 4294902759L, 0, 999, 743, 1000, 1000, 999, 4294902759L,
+      999, 743, 17, 0, 0, 0, 0, 0, 0, 0, 999, 743, 999))
   }
 
   test("return empty DataFrame when input files do not exist") {
@@ -171,12 +217,16 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     val sqlContext = new SQLContext(sc)
     import com.github.sadikovi.spark.netflow._
 
-    var df = sqlContext.emptyDataFrame
+    var df: DataFrame = sqlContext.emptyDataFrame
+    var expected: DataFrame = null
     var msg = ""
 
+    ////////////////////////////////////////////////////////////
+    // VERSION 5
+    ////////////////////////////////////////////////////////////
     // test failure on passing different than "5" version
     try {
-      df = sqlContext.read.netflow(s"file:${path5}")
+      df = sqlContext.read.netflow5(s"file:${path5}")
       df.count()
     } catch {
       case se: SparkException => msg = se.getMessage()
@@ -186,10 +236,31 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     assert(msg.contains("java.lang.IllegalArgumentException: requirement failed: " +
       "Expected version 5, got 8"))
 
-    // test parsing normal file
-    df = sqlContext.read.netflow(s"file:${path2}")
-    val expected = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+    // test parsing normal file for version 5
+    df = sqlContext.read.netflow5(s"file:${path2}")
+    expected = sqlContext.read.format("com.github.sadikovi.spark.netflow").
       option("version", "5").load(s"file:${path2}")
+    compare(df, expected)
+
+    ////////////////////////////////////////////////////////////
+    // VERSION 7
+    ////////////////////////////////////////////////////////////
+    // test failure on passing different than "7" version
+    try {
+      df = sqlContext.read.netflow7(s"file:${path5}")
+      df.count()
+    } catch {
+      case se: SparkException => msg = se.getMessage()
+      case other: Throwable => throw other
+    }
+
+    assert(msg.contains("java.lang.IllegalArgumentException: requirement failed: " +
+      "Expected version 7, got 8"))
+
+    // test parsing normal file for version 7
+    df = sqlContext.read.netflow7(s"file:${path7}")
+    expected = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "7").load(s"file:${path7}")
     compare(df, expected)
   }
 
@@ -310,7 +381,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
   test("ignore scanning file for unix_secs out of range") {
     val sqlContext = new SQLContext(sc)
-    val df = sqlContext.read.netflow(s"file:${path1}").filter(col("unix_secs") === -1)
+    val df = sqlContext.read.netflow5(s"file:${path1}").filter(col("unix_secs") === -1)
     df.count() should be (0)
   }
 }

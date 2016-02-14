@@ -20,35 +20,6 @@ import org.apache.spark.sql.types.{ByteType, IntegerType, LongType, ShortType, S
 
 import com.github.sadikovi.testutil.UnitTestSpec
 
-/** Test providers */
-private class DefaultProvider extends NetFlowProvider {
-  def createInterface(): ResolvedInterface = null
-}
-
-private class WrongProvider
-
-private class TestEmptyDefaultProvider extends NetFlowProvider {
-  def createInterface(): ResolvedInterface = new TestEmptyInterface()
-}
-
-private class TestFullDefaultProvider extends NetFlowProvider {
-  def createInterface(): ResolvedInterface = new TestFullInterface()
-}
-
-/** Test interfaces */
-private class TestEmptyInterface extends ResolvedInterface {
-  override protected val columns: Seq[MappedColumn] = Seq.empty
-
-  override def version(): Short = -1
-}
-
-private class TestFullInterface extends ResolvedInterface {
-  override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("a", 1L, LongType, false, None))
-
-  override def version(): Short = -2
-}
-
 class NetFlowRegistrySuite extends UnitTestSpec {
   test("resolve test provider") {
     // resolve full class name for provider
@@ -68,31 +39,57 @@ class NetFlowRegistrySuite extends UnitTestSpec {
 
   test("resolve test interface") {
     // resolve full class name for provider
-    var interface = NetFlowRegistry.createInterface(
-      "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
-    Option(interface).isEmpty should be (false)
+    var interface: ResolvedInterface = null
 
-    interface = NetFlowRegistry.createInterface(
-      "com.github.sadikovi.spark.netflow.sources.DefaultProvider")
-    Option(interface).isEmpty should be (true)
+    try {
+      interface = NetFlowRegistry.createInterface(
+        "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
+    } catch {
+      case iae: IllegalArgumentException =>
+        assert(iae.getMessage() == "Columns are empty for Interface: " +
+          "com.github.sadikovi.spark.netflow.sources.TestEmptyInterface for version -1")
+      case other: Throwable => throw other
+    }
+
+    intercept[NullPointerException] {
+      interface = NetFlowRegistry.createInterface(
+        "com.github.sadikovi.spark.netflow.sources.DefaultProvider")
+    }
 
     intercept[UnsupportedOperationException] {
       NetFlowRegistry.createInterface(
         "com.github.sadikovi.spark.netflow.sources.WrongProvider")
     }
+
+    interface = NetFlowRegistry.createInterface(
+      "com.github.sadikovi.spark.netflow.sources.TestFullDefaultProvider")
+    Option(interface).isEmpty should be (false)
   }
 
   test("check column consistency") {
-    var interface = NetFlowRegistry.createInterface(
-      "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
+    var interface: ResolvedInterface = null
+
     intercept[IllegalArgumentException] {
-      interface.ensureColumnConsistency()
+      NetFlowRegistry.createInterface(
+        "com.github.sadikovi.spark.netflow.sources.TestEmptyDefaultProvider")
     }
 
     interface = NetFlowRegistry.createInterface(
       "com.github.sadikovi.spark.netflow.sources.TestFullDefaultProvider")
     // should not raise any errors
     interface.ensureColumnConsistency()
+
+    // should fail with assertion error on duplicate columns
+    intercept[AssertionError] {
+      interface = NetFlowRegistry.createInterface(
+        "com.github.sadikovi.spark.netflow.sources.Test1FullDefaultProvider")
+    }
+
+    // should fail with assertion error on duplicate internal column names
+    intercept[AssertionError] {
+      interface = NetFlowRegistry.createInterface(
+        "com.github.sadikovi.spark.netflow.sources.Test2FullDefaultProvider")
+    }
   }
 
   test("size in bytes for different types") {
