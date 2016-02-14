@@ -195,16 +195,27 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     var relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     relation.getBufferSize() should be (RecordBuffer.BUFFER_LENGTH_1)
 
-    // set buffer size to be 10Kb
-    params = Map("version" -> "5", "buffer" -> "10Kb")
+    // set buffer size to be 64Kb
+    params = Map("version" -> "5", "buffer" -> "64Kb")
     relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
-    relation.getBufferSize() should be (10 * 1024)
+    relation.getBufferSize() should be (64 * 1024)
 
     // buffer size >> Integer.MAX_VALUE
     intercept[RuntimeException] {
       params = Map("version" -> "5", "buffer" -> "10Gb")
       relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
     }
+
+    // negative buffer size
+    intercept[NumberFormatException] {
+      params = Map("version" -> "5", "buffer" -> "-1")
+      relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
+    }
+
+    // buffer size < min buffer size should be updated to min buffer size
+    params = Map("version" -> "5", "buffer" -> "10")
+    relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
+    relation.getBufferSize() should be (RecordBuffer.MIN_BUFFER_LENGTH)
 
     // just for completeness, test on wrong buffer value
     intercept[NumberFormatException] {

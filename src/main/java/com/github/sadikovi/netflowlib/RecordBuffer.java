@@ -29,8 +29,8 @@ import io.netty.buffer.Unpooled;
 import org.apache.hadoop.fs.FSDataInputStream;
 
 public class RecordBuffer implements Iterable<Object[]> {
-  // length of the buffer in bytes, usually 32768
-  public static final int BUFFER_LENGTH = 32768;
+  // min length of the buffer in bytes, usually 32768
+  public static final int MIN_BUFFER_LENGTH = 32768;
 
   // length of buffer in bytes ~3Mb (option 1)
   public static final int BUFFER_LENGTH_1 = 3698688;
@@ -45,7 +45,7 @@ public class RecordBuffer implements Iterable<Object[]> {
    * @return iterator of records as Object[]
    */
   public RecordBuffer(FSDataInputStream in, FlowInterface hl, ByteOrder ord, boolean isCmp) {
-    this(in, hl, ord, isCmp, BUFFER_LENGTH);
+    this(in, hl, ord, isCmp, MIN_BUFFER_LENGTH);
   }
 
   /**

@@ -29,7 +29,7 @@ class UtilsSuite extends UnitTestSpec {
   }
 
   test("fail to parse correctly") {
-    val sizes = Seq("Kb", "corrupt", ".0")
+    val sizes = Seq("Kb", "corrupt", ".0", "-1Kb", "-1")
     sizes.foreach(str => {
       intercept[NumberFormatException] {
         Utils.byteStringAsBytes(str)

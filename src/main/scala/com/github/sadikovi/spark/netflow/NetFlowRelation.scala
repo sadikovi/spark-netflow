@@ -62,8 +62,13 @@ private[netflow] class NetFlowRelation(
       val bytes = Utils.byteStringAsBytes(str)
       if (bytes > Integer.MAX_VALUE) {
         sys.error(s"Cannot set buffer larger than ${Integer.MAX_VALUE}")
+      } else if (bytes < RecordBuffer.MIN_BUFFER_LENGTH) {
+        logger.warn(s"Buffer size ${bytes} < minimum buffer size, it will be updated to " +
+          "minimum buffer size")
+        RecordBuffer.MIN_BUFFER_LENGTH
+      } else {
+        bytes.toInt
       }
-      bytes.toInt
     case None => RecordBuffer.BUFFER_LENGTH_1
   }
 
