@@ -44,10 +44,14 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     stopSparkContext()
   }
 
-  private def readNetFlow(sqlContext: SQLContext, path: String, stringify: Boolean): DataFrame = {
-    sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+  private def readNetFlow(
+      sqlContext: SQLContext,
+      version: Short,
+      path: String,
+      stringify: Boolean): DataFrame = {
+    sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", s"${version}").
       option("stringify", s"${stringify}").load(s"file:${path}").
-      select("srcip", "dstip", "srcport", "dstport")
+      select("srcip", "dstip", "srcport", "dstport", "protocol")
   }
 
   // version 5 correct files
@@ -291,25 +295,35 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
   test("issue #2 - fields conversion to String for uncompressed file") {
     val sqlContext = new SQLContext(sc)
-    var df = readNetFlow(sqlContext, path1, false)
+    var df = readNetFlow(sqlContext, 5, path1, false)
     df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
+    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743, 17)))
 
-    df = readNetFlow(sqlContext, path1, true)
+    df = readNetFlow(sqlContext, 5, path1, true)
     df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
+
+    // test for version 7 - uncompressed
+    df = readNetFlow(sqlContext, 7, path6, true)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
   }
 
   test("issue #2 - fields conversion to String for compressed file") {
     val sqlContext = new SQLContext(sc)
 
-    var df = readNetFlow(sqlContext, path2, false)
+    var df = readNetFlow(sqlContext, 5, path2, false)
     df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743)))
+    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743, 17)))
 
-    df = readNetFlow(sqlContext, path2, true)
+    df = readNetFlow(sqlContext, 5, path2, true)
     df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743)))
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
+
+    // test for version 7 - compressed
+    df = readNetFlow(sqlContext, 7, path8, true)
+    df.count() should be (1000)
+    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
   }
 
   test("resolve filter") {

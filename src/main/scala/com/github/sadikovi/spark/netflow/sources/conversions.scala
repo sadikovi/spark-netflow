@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import scala.util.Try
+
 /**
  * [[ConvertFunction]] interface to provide direct `Any -> String` and reversed `String -> Any`
  * conversions.
@@ -54,5 +56,39 @@ case class IPConvertFunction() extends ConvertFunction {
     val arr = value.split('.').map(_.toLong)
     require(arr.length == 4, s"Invalid IPv4: ${value}")
     arr(0) << 24 | arr(1) << 16 | arr(2) << 8 | arr(3)
+  }
+}
+
+/** Conversion function for protocol (most common services) */
+case class ProtocolConvertFunction() extends ConvertFunction {
+  private[sources] val protocolMap: Map[Short, String] = Map(
+    1.toShort -> "ICMP", // Internet Control Message Protocol
+    3.toShort -> "GGP", // Gateway-Gateway Protocol
+    6.toShort -> "TCP", // Transmission Control Protocol
+    8.toShort -> "EGP", // Exterior Gateway Protocol
+    12.toShort -> "PUP", // PARC Universal Packet Protocol
+    17.toShort -> "UDP", // User Datagram Protocol
+    20.toShort -> "HMP", // Host Monitoring Protocol
+    27.toShort -> "RDP", // Reliable Datagram Protocol
+    46.toShort -> "RSVP", // Reservation Protocol QoS
+    47.toShort -> "GRE", // General Routing Encapsulation
+    50.toShort -> "ESP", // Encapsulation Security Payload IPSec
+    51.toShort -> "AH", // Authentication Header IPSec
+    66.toShort -> "RVD", // MIT Remote Virtual Disk
+    88.toShort -> "IGMP", // Internet Group Management Protocol
+    89.toShort -> "OSPF" // Open Shortest Path First
+  )
+
+  private[sources] lazy val reversedProtocolMap = protocolMap.map{ case (key, value) =>
+    (value, key) }.toMap
+
+  override def direct(value: Any): String = value match {
+    case num: Short => protocolMap.getOrElse(num, value.toString())
+    case _ => value.toString()
+  }
+
+  override def reversed(value: String): Any = {
+    reversedProtocolMap.getOrElse(value, Try(value.toShort).getOrElse(
+      sys.error(s"Failed to convert ${value} for ${getClass().getSimpleName()}")))
   }
 }

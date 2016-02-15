@@ -19,7 +19,7 @@ package com.github.sadikovi.spark.netflow.version5
 import org.apache.spark.sql.types.{IntegerType, LongType, ShortType}
 
 import com.github.sadikovi.netflowlib.version.NetFlowV5
-import com.github.sadikovi.spark.netflow.sources.{MappedColumn, NetFlowProvider, ResolvedInterface, IPConvertFunction}
+import com.github.sadikovi.spark.netflow.sources._
 
 class DefaultProvider extends NetFlowProvider {
   def createInterface(): ResolvedInterface = {
@@ -45,7 +45,8 @@ private class InterfaceV5 extends ResolvedInterface {
     MappedColumn("last_flow", NetFlowV5.V5_FIELD_LAST, LongType, false, None),
     MappedColumn("srcport", NetFlowV5.V5_FIELD_SRCPORT, IntegerType, false, None),
     MappedColumn("dstport", NetFlowV5.V5_FIELD_DSTPORT, IntegerType, false, None),
-    MappedColumn("protocol", NetFlowV5.V5_FIELD_PROT, ShortType, false, None),
+    MappedColumn("protocol", NetFlowV5.V5_FIELD_PROT, ShortType, false,
+      Some(ProtocolConvertFunction())),
     MappedColumn("tos", NetFlowV5.V5_FIELD_TOS, ShortType, false, None),
     MappedColumn("tcp_flags", NetFlowV5.V5_FIELD_TCP_FLAGS, ShortType, false, None),
     MappedColumn("engine_type", NetFlowV5.V5_FIELD_ENGINE_TYPE, ShortType, false, None),

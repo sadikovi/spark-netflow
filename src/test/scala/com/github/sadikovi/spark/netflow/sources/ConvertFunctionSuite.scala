@@ -56,4 +56,27 @@ class ConvertFunctionSuite extends UnitTestSpec {
       convertFunction.reversed(ip) should equal (num)
     }
   }
+
+  test("protocol conversion") {
+    val protocols = 0 until 256
+
+    val convertFunction = ProtocolConvertFunction()
+
+    // test direct conversion
+    for (num <- protocols) {
+      val protocol = convertFunction.direct(num)
+      if (!convertFunction.reversedProtocolMap.contains(protocol)) {
+        protocol should be (num.toString())
+      }
+    }
+
+    // test reversed conversion
+    convertFunction.reversed("ICMP") should be (1)
+    convertFunction.reversed("TCP") should be (6)
+    convertFunction.reversed("UDP") should be (17)
+    convertFunction.reversed("255") should be (255)
+    intercept[RuntimeException] {
+      convertFunction.reversed("udp")
+    }
+  }
 }
