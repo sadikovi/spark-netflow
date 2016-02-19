@@ -24,6 +24,9 @@ import org.apache.hadoop.fs.{Path, FileSystem}
 import com.github.sadikovi.testutil.UnitTestSpec
 
 class NetFlowReaderSuite extends UnitTestSpec {
+  private val baseDirectoryPath = new Path(baseDirectory())
+  private val fs = baseDirectoryPath.getFileSystem(new Configuration(false))
+
   private val validFile1 = getClass().
     getResource("/correct/ftv5.2016-01-13.nocompress.bigend.sample").getPath()
   private val validFile2 = getClass().
@@ -31,35 +34,31 @@ class NetFlowReaderSuite extends UnitTestSpec {
   private val corruptFile = getClass().
     getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-01").getPath()
 
+  private val validPath1 = new Path(validFile1)
+  private val validPath2 = new Path(validFile2)
+  private val corruptPath = new Path(corruptFile)
+
   test("test metadata parsing") {
     // read uncompressed file with Big Endian byte order
-    var path = new Path(validFile1)
-    var fs = path.getFileSystem(new Configuration(false))
-    var stm = fs.open(path)
+    var stm = fs.open(validPath1)
     var reader = new NetFlowReader(stm)
     reader.getStreamVersion() should be (3)
     reader.getByteOrder() should be (ByteOrder.BIG_ENDIAN)
 
     // read uncompressed file with Little Endian byte order
-    path = new Path(validFile2)
-    fs = path.getFileSystem(new Configuration(false))
-    stm = fs.open(path)
+    stm = fs.open(validPath2)
     reader = new NetFlowReader(stm)
     reader.getStreamVersion() should be (3)
     reader.getByteOrder() should be (ByteOrder.LITTLE_ENDIAN)
 
-    path = new Path(corruptFile)
-    fs = path.getFileSystem(new Configuration(false))
-    stm = fs.open(path)
+    stm = fs.open(corruptPath)
     intercept[UnsupportedOperationException] {
       new NetFlowReader(stm)
     }
   }
 
   test("test header parsing") {
-    var path = new Path(validFile2)
-    var fs = path.getFileSystem(new Configuration(false))
-    var stm = fs.open(path)
+    var stm = fs.open(validPath2)
     var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
 
@@ -74,9 +73,7 @@ class NetFlowReaderSuite extends UnitTestSpec {
   }
 
   test("test header compressed flag") {
-    var path = new Path(validFile2)
-    var fs = path.getFileSystem(new Configuration(false))
-    var stm = fs.open(path)
+    var stm = fs.open(validPath2)
     var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
 
@@ -85,14 +82,36 @@ class NetFlowReaderSuite extends UnitTestSpec {
   }
 
   test("test data parsing") {
-    var path = new Path(validFile2)
-    var fs = path.getFileSystem(new Configuration(false))
-    var stm = fs.open(path)
+    var stm = fs.open(validPath2)
 
     var reader = new NetFlowReader(stm)
     var header = reader.readHeader()
     var fields = Array(1L)
     val recordBuffer = reader.readData(header, fields, 64)
     recordBuffer.iterator().hasNext should be (true)
+  }
+
+  test("reading of a column specified twice in fields") {
+    var stm = fs.open(validPath1)
+
+    var reader = new NetFlowReader(stm)
+    var header = reader.readHeader()
+    // reading src ip address twice
+    var fields = Array(0x00000010L, 0x00000010L)
+    val recordBuffer = reader.readData(header, fields, 64)
+
+    // read all records, ensure that there are two fields and they have the same columns
+    val iter = recordBuffer.iterator()
+    var numRecords = 0
+
+    while (iter.hasNext) {
+      val cols = iter.next()
+      cols.length should be (2)
+      assert(cols(0) == cols(1))
+
+      numRecords += 1
+    }
+
+    numRecords should be (1000)
   }
 }

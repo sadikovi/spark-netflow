@@ -42,6 +42,7 @@ object NetFlowRegistry {
   /**
    * Create interface from specified provider.
    * @param providerName name of the [[NetFlowProvider]] to load
+   * @return resolved interface for specified provider
    */
   def createInterface(providerName: String): ResolvedInterface = {
     val provider = lookupInterface(providerName).newInstance() match {
