@@ -19,23 +19,25 @@ package com.github.sadikovi.netflowlib.predicate;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 
 /**
- * [[PrunedColumn]] interface provides a wrapper for a column with an ability to set special flags
+ * [[BoxedColumn]] interface provides a wrapper for a column with an ability to set special flags
  * to it, such as whether or not column is a leaf of predicate tree, or both. Every column passed
- * should be converted to a PrunedColumn. Note that it does not require list of columns to be
+ * should be converted to a BoxedColumn. Note that it does not require list of columns to be
  * unique, caller should ensure the validitiy of flags set.
  * @param column Column object to wrap
  * @param flags special bit vector of flags
  */
-public final class PrunedColumn {
-  // flag for filtered column
-  public static final byte FILTERED_COLUMN = 1;
+public final class BoxedColumn {
+  // bit flag for pruned column
+  public static final byte FLAG_PRUNED = 1;
+  // bit flag for filtered column
+  public static final byte FLAG_FILTERED = 2;
 
-  public PrunedColumn(Column<?> column, byte flags) {
+  public BoxedColumn(Column<?> column, byte flags) {
     this.column = column;
     this.flags = flags;
   }
 
-  public PrunedColumn(Column<?> column) {
+  public BoxedColumn(Column<?> column) {
     this(column, (byte)0);
   }
 
@@ -59,7 +61,7 @@ public final class PrunedColumn {
 
   @Override
   public String toString() {
-    return "Pruned[" + column.toString() + "]{" + flags + "}";
+    return "Boxed[" + column.toString() + "]{" + flags + "}";
   }
 
   @Override
@@ -67,7 +69,7 @@ public final class PrunedColumn {
     if (this == obj) return true;
     if (obj == null || getClass() != obj.getClass()) return false;
 
-    PrunedColumn that = (PrunedColumn) obj;
+    BoxedColumn that = (BoxedColumn) obj;
 
     if (!column.equals(that.column)) return false;
 
