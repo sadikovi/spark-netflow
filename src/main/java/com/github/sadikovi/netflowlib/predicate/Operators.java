@@ -24,7 +24,10 @@ import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 public final class Operators {
   private Operators() { }
 
-  static abstract interface FilterPredicate { }
+  static abstract interface FilterPredicate {
+    /** Visit current operator */
+    public boolean visit(Visitor visitor);
+  }
 
   /**
    * [[ColumnPredicate]] is a base class for column predicates, links to a column and filtering
@@ -82,12 +85,22 @@ public final class Operators {
     Eq(Column<T> column, T value) {
       super(column, value);
     }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
+    }
   }
 
   /** "Greater Than" filter */
   public static final class Gt<T> extends ColumnPredicate<T> {
     Gt(Column<T> column, T value) {
       super(column, value);
+    }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
     }
   }
 
@@ -96,6 +109,11 @@ public final class Operators {
     Ge(Column<T> column, T value) {
       super(column, value);
     }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
+    }
   }
 
   /** "Less Than" filter */
@@ -103,12 +121,22 @@ public final class Operators {
     Lt(Column<T> column, T value) {
       super(column, value);
     }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
+    }
   }
 
   /** "Less Than Or Equal" filter */
   public static final class Le<T> extends ColumnPredicate<T> {
     Le(Column<T> column, T value) {
       super(column, value);
+    }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
     }
   }
 
@@ -162,6 +190,11 @@ public final class Operators {
   public static final class In<T> extends MultiValueColumnPredicate<T> {
     In(Column<T> column, HashSet<T> values) {
       super(column, values);
+    }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return visitor.accept(this);
     }
   }
 
@@ -218,12 +251,22 @@ public final class Operators {
     And(FilterPredicate left, FilterPredicate right) {
       super(left, right);
     }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return getLeft().visit(visitor) && getRight().visit(visitor);
+    }
   }
 
   /** "And" logical operator */
   public static final class Or extends BinaryLogicalPredicate {
     Or(FilterPredicate left, FilterPredicate right) {
       super(left, right);
+    }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return getLeft().visit(visitor) || getRight().visit(visitor);
     }
   }
 
@@ -272,6 +315,11 @@ public final class Operators {
     Not(FilterPredicate child) {
       super(child);
     }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return !getChild().visit(visitor);
+    }
   }
 
   /**
@@ -302,6 +350,11 @@ public final class Operators {
       TrivialPredicate that = (TrivialPredicate) obj;
 
       return result == that.result;
+    }
+
+    @Override
+    public boolean visit(Visitor visitor) {
+      return result;
     }
 
     private final boolean result;
