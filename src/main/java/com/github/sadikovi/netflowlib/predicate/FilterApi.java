@@ -48,32 +48,34 @@ public final class FilterApi {
   private FilterApi() { }
 
   /** Test equality of column and value */
-  public static <T, C extends Column<T>> Eq<T> eq(C column, T value) {
+  public static <T extends Comparable<T>, C extends Column<T>> Eq<T> eq(C column, T value) {
     return new Eq<T>(column, value);
   }
 
   /** Test if column is greater than value */
-  public static <T, C extends Column<T>> Gt<T> gt(C column, T value) {
+  public static <T extends Comparable<T>, C extends Column<T>> Gt<T> gt(C column, T value) {
     return new Gt<T>(column, value);
   }
 
   /** Test if column is greater than or equal to value */
-  public static <T, C extends Column<T>> Ge<T> ge(C column, T value) {
+  public static <T extends Comparable<T>, C extends Column<T>> Ge<T> ge(C column, T value) {
     return new Ge<T>(column, value);
   }
 
   /** Test if column is less than value  */
-  public static <T, C extends Column<T>> Lt<T> lt(C column, T value) {
+  public static <T extends Comparable<T>, C extends Column<T>> Lt<T> lt(C column, T value) {
     return new Lt<T>(column, value);
   }
 
   /** Test if column is less than or equal to value */
-  public static <T, C extends Column<T>> Le<T> le(C column, T value) {
+  public static <T extends Comparable<T>, C extends Column<T>> Le<T> le(C column, T value) {
     return new Le<T>(column, value);
   }
 
   /** Test if column is in the set of requested values */
-  public static <T, C extends Column<T>> In<T> in(C column, HashSet<T> values) {
+  public static <T extends Comparable<T>, C extends Column<T>> In<T> in(
+      C column,
+      HashSet<T> values) {
     return new In<T>(column, values);
   }
 

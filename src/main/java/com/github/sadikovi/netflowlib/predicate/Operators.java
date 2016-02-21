@@ -24,9 +24,11 @@ import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 public final class Operators {
   private Operators() { }
 
-  static abstract interface FilterPredicate {
+  public static abstract interface FilterPredicate {
     /** Visit current operator */
     public boolean visit(Visitor visitor);
+
+    public FilterPredicate update(PredicateTransform transformer);
   }
 
   /**
@@ -36,7 +38,8 @@ public final class Operators {
    * @param value filtering value
    * @param values list of values for predicates that support multiple values
    */
-  static abstract class ColumnPredicate<T> implements FilterPredicate, Serializable {
+  static abstract class ColumnPredicate<T extends Comparable<T>>
+      implements FilterPredicate, Serializable {
     ColumnPredicate(Column<T> column, T value) {
       this.column = column;
       this.value = value;
@@ -81,7 +84,7 @@ public final class Operators {
   }
 
   /** Equality filter including null-safe filtering */
-  public static final class Eq<T> extends ColumnPredicate<T> {
+  public static final class Eq<T extends Comparable<T>> extends ColumnPredicate<T> {
     Eq(Column<T> column, T value) {
       super(column, value);
     }
@@ -90,10 +93,15 @@ public final class Operators {
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
     }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
+    }
   }
 
   /** "Greater Than" filter */
-  public static final class Gt<T> extends ColumnPredicate<T> {
+  public static final class Gt<T extends Comparable<T>> extends ColumnPredicate<T> {
     Gt(Column<T> column, T value) {
       super(column, value);
     }
@@ -102,10 +110,15 @@ public final class Operators {
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
     }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
+    }
   }
 
   /** "Greater Than Or Equal" filter */
-  public static final class Ge<T> extends ColumnPredicate<T> {
+  public static final class Ge<T extends Comparable<T>> extends ColumnPredicate<T> {
     Ge(Column<T> column, T value) {
       super(column, value);
     }
@@ -114,10 +127,15 @@ public final class Operators {
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
     }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
+    }
   }
 
   /** "Less Than" filter */
-  public static final class Lt<T> extends ColumnPredicate<T> {
+  public static final class Lt<T extends Comparable<T>> extends ColumnPredicate<T> {
     Lt(Column<T> column, T value) {
       super(column, value);
     }
@@ -126,10 +144,15 @@ public final class Operators {
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
     }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
+    }
   }
 
   /** "Less Than Or Equal" filter */
-  public static final class Le<T> extends ColumnPredicate<T> {
+  public static final class Le<T extends Comparable<T>> extends ColumnPredicate<T> {
     Le(Column<T> column, T value) {
       super(column, value);
     }
@@ -137,6 +160,11 @@ public final class Operators {
     @Override
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
+    }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
     }
   }
 
@@ -146,7 +174,8 @@ public final class Operators {
    * case of multi value predicate returns null, use `getValues()` instead.
    * @param values set of values to compare
    */
-  static abstract class MultiValueColumnPredicate<T> extends ColumnPredicate<T> {
+  static abstract class MultiValueColumnPredicate<T extends Comparable<T>> extends
+      ColumnPredicate<T> {
     MultiValueColumnPredicate(Column<T> column, HashSet<T> values) {
       super(column, null);
       this.values = values;
@@ -187,7 +216,7 @@ public final class Operators {
   }
 
   /** "In" filter, should be evaluated to true, if value contains in the set */
-  public static final class In<T> extends MultiValueColumnPredicate<T> {
+  public static final class In<T extends Comparable<T>> extends MultiValueColumnPredicate<T> {
     In(Column<T> column, HashSet<T> values) {
       super(column, values);
     }
@@ -195,6 +224,11 @@ public final class Operators {
     @Override
     public boolean visit(Visitor visitor) {
       return visitor.accept(this);
+    }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
     }
   }
 
@@ -242,8 +276,8 @@ public final class Operators {
       return result;
     }
 
-    private final FilterPredicate left;
-    private final FilterPredicate right;
+    protected FilterPredicate left;
+    protected FilterPredicate right;
   }
 
   /** "And" logical operator */
@@ -256,6 +290,13 @@ public final class Operators {
     public boolean visit(Visitor visitor) {
       return getLeft().visit(visitor) && getRight().visit(visitor);
     }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      left = left.update(transformer);
+      right = right.update(transformer);
+      return transformer.transform(this);
+    }
   }
 
   /** "And" logical operator */
@@ -267,6 +308,13 @@ public final class Operators {
     @Override
     public boolean visit(Visitor visitor) {
       return getLeft().visit(visitor) || getRight().visit(visitor);
+    }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      left = left.update(transformer);
+      right = right.update(transformer);
+      return transformer.transform(this);
     }
   }
 
@@ -307,7 +355,7 @@ public final class Operators {
       return result;
     }
 
-    private final FilterPredicate child;
+    protected FilterPredicate child;
   }
 
   /** "Not" inversion operator */
@@ -319,6 +367,12 @@ public final class Operators {
     @Override
     public boolean visit(Visitor visitor) {
       return !getChild().visit(visitor);
+    }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      child = child.update(transformer);
+      return transformer.transform(this);
     }
   }
 
@@ -355,6 +409,11 @@ public final class Operators {
     @Override
     public boolean visit(Visitor visitor) {
       return result;
+    }
+
+    @Override
+    public FilterPredicate update(PredicateTransform transformer) {
+      return transformer.transform(this);
     }
 
     private final boolean result;

@@ -35,7 +35,7 @@ public final class Columns {
    * @param columnType type of the column
    * @param offset offset in the record for that column (index in the buffer)
    */
-  static abstract class Column<T> implements Serializable {
+  public static abstract class Column<T extends Comparable<T>> implements Serializable {
     Column(byte name, Class<T> type, int offset) {
       if (offset < 0) {
         throw new IllegalArgumentException("Wrong offset " + offset);
@@ -58,6 +58,12 @@ public final class Columns {
     public int getColumnOffset() {
       return columnOffset;
     }
+
+    /** Statistics method to return lower bound for the column. */
+    public abstract T getMinValue();
+
+    /** Statistics method to return upper bound for the column. */
+    public abstract T getMaxValue();
 
     @Override
     public String toString() {
@@ -92,30 +98,70 @@ public final class Columns {
   }
 
   /** Column for byte values */
-  public static final class ByteColumn extends Column<Byte> {
+  public static class ByteColumn extends Column<Byte> {
     public ByteColumn(byte name, int offset) {
       super(name, Byte.class, offset);
+    }
+
+    @Override
+    public Byte getMinValue() {
+      return (byte) 0;
+    }
+
+    @Override
+    public Byte getMaxValue() {
+      return Byte.MAX_VALUE;
     }
   }
 
   /** Column for short values */
-  public static final class ShortColumn extends Column<Short> {
+  public static class ShortColumn extends Column<Short> {
     public ShortColumn(byte name, int offset) {
       super(name, Short.class, offset);
+    }
+
+    @Override
+    public Short getMinValue() {
+      return (short) 0;
+    }
+
+    @Override
+    public Short getMaxValue() {
+      return Short.MAX_VALUE;
     }
   }
 
   /** Column for integer values */
-  public static final class IntColumn extends Column<Integer> {
+  public static class IntColumn extends Column<Integer> {
     public IntColumn(byte name, int offset) {
       super(name, Integer.class, offset);
+    }
+
+    @Override
+    public Integer getMinValue() {
+      return (int) 0;
+    }
+
+    @Override
+    public Integer getMaxValue() {
+      return Integer.MAX_VALUE;
     }
   }
 
   /** Column for long values */
-  public static final class LongColumn extends Column<Long> {
+  public static class LongColumn extends Column<Long> {
     public LongColumn(byte name, int offset) {
       super(name, Long.class, offset);
+    }
+
+    @Override
+    public Long getMinValue() {
+      return (long) 0;
+    }
+
+    @Override
+    public Long getMaxValue() {
+      return Long.MAX_VALUE;
     }
   }
 }

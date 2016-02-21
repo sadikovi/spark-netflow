@@ -20,9 +20,9 @@ import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 
 /**
  * [[BoxedColumn]] interface provides a wrapper for a column with an ability to set special flags
- * to it, such as whether or not column is a leaf of predicate tree, or both. Every column passed
- * should be converted to a BoxedColumn. Note that it does not require list of columns to be
- * unique, caller should ensure the validitiy of flags set.
+ * to it, such as whether or not column is a leaf of predicate tree. Every column passed should be
+ * converted to a BoxedColumn. Note that it does not require list of columns to be unique, caller
+ * should ensure the validitiy of flags set.
  * @param column Column object to wrap
  * @param flags special bit vector of flags
  */
@@ -49,6 +49,10 @@ public final class BoxedColumn {
   /** Whether or not flag is set */
   public boolean hasFlag(byte flag) {
     return (flags & flag) > 0;
+  }
+
+  public void resetFlags() {
+    flags = 0;
   }
 
   public Column<?> getColumn() {
