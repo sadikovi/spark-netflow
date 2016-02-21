@@ -43,4 +43,20 @@ public final class ScanStrategies {
     /** Get record materializer for the strategy */
     public abstract RecordMaterializer getRecordMaterializer();
   }
+
+  /** [[SkipScan]] allows to skip scan of the file entirely */
+  public static final class SkipScan extends ScanStrategy {
+    public SkipScan() { }
+
+    @Override
+    public boolean skip() {
+      return true;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      // we do not have record materializer in this case
+      throw new UnsupportedOperationException("SkipScan does not support materializing records");
+    }
+  }
 }

@@ -41,13 +41,11 @@ import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
  */
 public final class ScanState implements PredicateTransform {
   public ScanState(Column<?>[] selectedColumns, FilterPredicate predicateTree) {
+    // by default we scan everything
+    FilterPredicate updatedTree = FilterApi.trivial(true);
     if (predicateTree != null) {
-      tree = predicateTree.update(this);
+      updatedTree = predicateTree.update(this);
     }
-  }
-
-  public FilterPredicate getPredicateTree() {
-    return tree;
   }
 
   @Override
@@ -254,6 +252,4 @@ public final class ScanState implements PredicateTransform {
   public FilterPredicate transform(TrivialPredicate predicate) {
     return predicate;
   }
-
-  private FilterPredicate tree = null;
 }

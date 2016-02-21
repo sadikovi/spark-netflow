@@ -34,9 +34,11 @@ public final class Columns {
    * @param columnName name of the column
    * @param columnType type of the column
    * @param offset offset in the record for that column (index in the buffer)
+   * @param min lower bound for the column (statistics property)
+   * @param max upper bound for the column (statistics property)
    */
   public static abstract class Column<T extends Comparable<T>> implements Serializable {
-    Column(byte name, Class<T> type, int offset) {
+    Column(byte name, Class<T> type, int offset, T min, T max) {
       if (offset < 0) {
         throw new IllegalArgumentException("Wrong offset " + offset);
       }
@@ -44,6 +46,8 @@ public final class Columns {
       columnName = name;
       columnType = type;
       columnOffset = offset;
+      minValue = min;
+      maxValue = max;
     }
 
     /** Return column name */
@@ -60,10 +64,14 @@ public final class Columns {
     }
 
     /** Statistics method to return lower bound for the column. */
-    public abstract T getMinValue();
+    public T getMinValue() {
+      return minValue;
+    }
 
     /** Statistics method to return upper bound for the column. */
-    public abstract T getMaxValue();
+    public T getMaxValue() {
+      return maxValue;
+    }
 
     @Override
     public String toString() {
@@ -95,73 +103,52 @@ public final class Columns {
     private final byte columnName;
     private final Class<T> columnType;
     private final int columnOffset;
+    private final T minValue;
+    private final T maxValue;
   }
 
   /** Column for byte values */
   public static class ByteColumn extends Column<Byte> {
+    /** private constructor for statistics column */
+    ByteColumn(byte name, int offset, byte min, byte max) {
+      super(name, Byte.class, offset, min, max);
+    }
+
     public ByteColumn(byte name, int offset) {
-      super(name, Byte.class, offset);
-    }
-
-    @Override
-    public Byte getMinValue() {
-      return (byte) 0;
-    }
-
-    @Override
-    public Byte getMaxValue() {
-      return Byte.MAX_VALUE;
+      this(name, offset, (byte) 0, Byte.MAX_VALUE);
     }
   }
 
   /** Column for short values */
   public static class ShortColumn extends Column<Short> {
+    ShortColumn(byte name, int offset, short min, short max) {
+      super(name, Short.class, offset, min, max);
+    }
+
     public ShortColumn(byte name, int offset) {
-      super(name, Short.class, offset);
-    }
-
-    @Override
-    public Short getMinValue() {
-      return (short) 0;
-    }
-
-    @Override
-    public Short getMaxValue() {
-      return Short.MAX_VALUE;
+      this(name, offset, (short) 0, Short.MAX_VALUE);
     }
   }
 
   /** Column for integer values */
   public static class IntColumn extends Column<Integer> {
+    IntColumn(byte name, int offset, int min, int max) {
+      super(name, Integer.class, offset, min, max);
+    }
+
     public IntColumn(byte name, int offset) {
-      super(name, Integer.class, offset);
-    }
-
-    @Override
-    public Integer getMinValue() {
-      return (int) 0;
-    }
-
-    @Override
-    public Integer getMaxValue() {
-      return Integer.MAX_VALUE;
+      this(name, offset, (int) 0, Integer.MAX_VALUE);
     }
   }
 
   /** Column for long values */
   public static class LongColumn extends Column<Long> {
+    LongColumn(byte name, int offset, long min, long max) {
+      super(name, Long.class, offset, min, max);
+    }
+
     public LongColumn(byte name, int offset) {
-      super(name, Long.class, offset);
-    }
-
-    @Override
-    public Long getMinValue() {
-      return (long) 0;
-    }
-
-    @Override
-    public Long getMaxValue() {
-      return Long.MAX_VALUE;
+      this(name, offset, (long) 0, Long.MAX_VALUE);
     }
   }
 }
