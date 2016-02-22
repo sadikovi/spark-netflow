@@ -18,7 +18,9 @@ package com.github.sadikovi.netflowlib.predicate;
 
 import java.io.Serializable;
 
+import com.github.sadikovi.netflowlib.predicate.BoxedColumn;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
+import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
 
 /**
  * All possible strategies to scan, e.g. skipping entire file, full scan of records, or different
@@ -58,5 +60,24 @@ public final class ScanStrategies {
       // we do not have record materializer in this case
       throw new UnsupportedOperationException("SkipScan does not support materializing records");
     }
+  }
+
+  /** [[FullScan]] for scanning all files without any filtering */
+  public static final class FullScan extends ScanStrategy {
+    public FullScan(BoxedColumn[] selectedColumns) {
+      columns = selectedColumns;
+    }
+
+    @Override
+    public boolean skip() {
+      return false;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      return new ScanRecordMaterializer(columns);
+    }
+
+    private final BoxedColumn[] columns;
   }
 }

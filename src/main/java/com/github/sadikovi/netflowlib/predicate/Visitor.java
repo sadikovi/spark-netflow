@@ -25,7 +25,8 @@ import com.github.sadikovi.netflowlib.predicate.Operators.In;
 
 /**
  * Abstract [[Visitor]] interface describes how one of the leaf predicates is parsed. Visitor
- * should provide all the neccessary information to resolve passed predicate.
+ * should provide all the neccessary information to resolve passed predicate. Either
+ * [[PredicateTransform]] or [[Visitor]] interfaces should be used, but not both of them.
  */
 public abstract interface Visitor {
   <T extends Comparable<T>> boolean accept(Eq<T> predicate);
