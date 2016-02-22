@@ -250,14 +250,6 @@ public final class Operators {
       return right;
     }
 
-    protected void setLeft(FilterPredicate left) {
-      this.left = left;
-    }
-
-    protected void setRight(FilterPredicate right) {
-      this.right = right;
-    }
-
     @Override
     public String toString() {
       return getClass().getSimpleName() + "(" + left.toString() + ", " + right.toString() + ")";
@@ -284,8 +276,8 @@ public final class Operators {
       return result;
     }
 
-    private FilterPredicate left;
-    private FilterPredicate right;
+    private final FilterPredicate left;
+    private final FilterPredicate right;
   }
 
   /** "And" logical operator */
@@ -301,9 +293,8 @@ public final class Operators {
 
     @Override
     public FilterPredicate update(PredicateTransform transformer) {
-      setLeft(getLeft().update(transformer));
-      setRight(getRight().update(transformer));
-      return transformer.transform(this);
+      And copy = new And(getLeft().update(transformer), getRight().update(transformer));
+      return transformer.transform(copy);
     }
   }
 
@@ -320,9 +311,8 @@ public final class Operators {
 
     @Override
     public FilterPredicate update(PredicateTransform transformer) {
-      setLeft(getLeft().update(transformer));
-      setRight(getRight().update(transformer));
-      return transformer.transform(this);
+      Or copy = new Or(getLeft().update(transformer), getRight().update(transformer));
+      return transformer.transform(copy);
     }
   }
 
@@ -337,10 +327,6 @@ public final class Operators {
 
     public FilterPredicate getChild() {
       return child;
-    }
-
-    protected void setChild(FilterPredicate child) {
-      this.child = child;
     }
 
     @Override
@@ -367,7 +353,7 @@ public final class Operators {
       return result;
     }
 
-    private FilterPredicate child;
+    private final FilterPredicate child;
   }
 
   /** "Not" inversion operator */
@@ -383,8 +369,8 @@ public final class Operators {
 
     @Override
     public FilterPredicate update(PredicateTransform transformer) {
-      setChild(getChild().update(transformer));
-      return transformer.transform(this);
+      Not copy = new Not(getChild().update(transformer));
+      return transformer.transform(copy);
     }
   }
 

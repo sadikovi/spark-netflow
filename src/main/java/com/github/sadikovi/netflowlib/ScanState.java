@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflowlib.record;
+package com.github.sadikovi.netflowlib;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -22,6 +22,7 @@ import java.util.Iterator;
 import com.github.sadikovi.netflowlib.predicate.BoxedColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.FilterApi;
+
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.predicate.Operators.Eq;
 import com.github.sadikovi.netflowlib.predicate.Operators.Gt;
@@ -33,7 +34,12 @@ import com.github.sadikovi.netflowlib.predicate.Operators.And;
 import com.github.sadikovi.netflowlib.predicate.Operators.Or;
 import com.github.sadikovi.netflowlib.predicate.Operators.Not;
 import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
+
 import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
+
+import com.github.sadikovi.netflowlib.ScanStrategies.ScanStrategy;
+import com.github.sadikovi.netflowlib.ScanStrategies.SkipScan;
+import com.github.sadikovi.netflowlib.ScanStrategies.FullScan;
 
 /**
  * [[ScanState]] interface defines strategies for parsing a record and resolving predicate tree.
@@ -41,11 +47,34 @@ import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
  */
 public final class ScanState implements PredicateTransform {
   public ScanState(Column<?>[] selectedColumns, FilterPredicate predicateTree) {
+    if (selectedColumns == null || selectedColumns.length == 0) {
+      throw new IllegalArgumentException("Columns to select are not specified");
+    }
     // by default we scan everything
     FilterPredicate updatedTree = FilterApi.trivial(true);
     if (predicateTree != null) {
       updatedTree = predicateTree.update(this);
     }
+
+    // choose strategy based on columns and predicate
+    if (updatedTree instanceof TrivialPredicate) {
+      TrivialPredicate trivial = (TrivialPredicate) updatedTree;
+      if (trivial.getResult()) {
+        BoxedColumn[] boxedColumns = new BoxedColumn[selectedColumns.length];
+        for (int i=0; i<selectedColumns.length; i++) {
+          boxedColumns[i] = new BoxedColumn(selectedColumns[i], BoxedColumn.FLAG_PRUNED);
+        }
+        strategy = new FullScan(boxedColumns);
+      } else {
+        strategy = new SkipScan();
+      }
+    } else {
+      throw new IllegalStateException("Strategy could not be resolved");
+    }
+  }
+
+  public ScanStrategy getStrategy() {
+    return strategy;
   }
 
   @Override
@@ -164,8 +193,8 @@ public final class ScanState implements PredicateTransform {
 
   @Override
   public <T extends Comparable<T>> FilterPredicate transform(In<T> predicate) {
-    // we do not do any updates for "In", since there is very low chance of being out of range
-    // {min, max}.
+    // TODO: we do not do any updates for "In", since there is very low chance of being out of
+    // range {min, max}.
     return predicate;
   }
 
@@ -252,4 +281,6 @@ public final class ScanState implements PredicateTransform {
   public FilterPredicate transform(TrivialPredicate predicate) {
     return predicate;
   }
+
+  private final ScanStrategy strategy;
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.netflowlib.predicate;
+package com.github.sadikovi.netflowlib;
 
 import java.io.Serializable;
 
