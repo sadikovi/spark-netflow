@@ -19,8 +19,11 @@ package com.github.sadikovi.netflowlib;
 import java.io.Serializable;
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
+import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
+import com.github.sadikovi.netflowlib.record.PredicateRecordMaterializer;
+import com.github.sadikovi.netflowlib.record.PredicateFirstRecordMaterializer;
 
 /**
  * All possible strategies to scan, e.g. skipping entire file, full scan of records, or different
@@ -79,5 +82,60 @@ public final class ScanStrategies {
     }
 
     private final Column[] columns;
+  }
+
+  /**
+   * [[PredicateFirstScan]] for scanning filtered columns first and deciding if actual columns need
+   * to be scanned.
+   */
+  public static final class PredicateFirstScan extends ScanStrategy {
+    public PredicateFirstScan(
+        Column[] selectedColumns,
+        Column[] filteredColumns,
+        FilterPredicate predicate) {
+      columns = selectedColumns;
+      filtered = filteredColumns;
+      tree = predicate;
+    }
+
+    @Override
+    public boolean skip() {
+      return false;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      return new PredicateFirstRecordMaterializer(columns, filtered, tree);
+    }
+
+    private final Column[] columns;
+    private final Column[] filtered;
+    private final FilterPredicate tree;
+  }
+
+  /** [[PredicateScan]] for scanning all columns, and evaluating predicate afterwards. */
+  public static final class PredicateScan extends ScanStrategy {
+    public PredicateScan(
+        Column[] selectedColumns,
+        Column[] filteredColumns,
+        FilterPredicate predicate) {
+      columns = selectedColumns;
+      filtered = filteredColumns;
+      tree = predicate;
+    }
+
+    @Override
+    public boolean skip() {
+      return false;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      return new PredicateRecordMaterializer(columns, filtered, tree);
+    }
+
+    private final Column[] columns;
+    private final Column[] filtered;
+    private final FilterPredicate tree;
   }
 }

@@ -40,8 +40,10 @@ import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
 import com.github.sadikovi.netflowlib.predicate.Visitor;
 
 import com.github.sadikovi.netflowlib.ScanStrategies.ScanStrategy;
-import com.github.sadikovi.netflowlib.ScanStrategies.SkipScan;
 import com.github.sadikovi.netflowlib.ScanStrategies.FullScan;
+import com.github.sadikovi.netflowlib.ScanStrategies.PredicateFirstScan;
+import com.github.sadikovi.netflowlib.ScanStrategies.PredicateScan;
+import com.github.sadikovi.netflowlib.ScanStrategies.SkipScan;
 
 import com.github.sadikovi.netflowlib.statistics.ColumnStats;
 
@@ -105,9 +107,9 @@ public final class ScanPlanner implements PredicateTransform, Visitor {
 
       // choose appropriate plan to scan based on selected and filtered columns
       if (filteredColumns.length <= 3 && filteredColumns.length <= selectedColumns.length / 3) {
-        // filter-first scan
+        strategy = new PredicateFirstScan(selectedColumns, filteredColumns, updatedTree);
       } else {
-        // full filter scan
+        strategy = new PredicateScan(selectedColumns, filteredColumns, updatedTree);
       }
     }
 
