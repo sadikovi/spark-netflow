@@ -26,7 +26,7 @@ class PredicateSuite extends UnitTestSpec {
     val cols: Array[Column[_]] = Array(new IntColumn(1.toByte, 0), new IntColumn(2, 4),
       new IntColumn(3, 8))
     var tree: FilterPredicate = null
-    val scan = new ScanState(cols, null)
+    val scan = new ScanPlanner(cols, null, null)
 
     val value1: java.lang.Integer = 1
 

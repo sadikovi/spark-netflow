@@ -52,19 +52,21 @@ import com.github.sadikovi.netflowlib.statistics.ColumnStats;
  */
 public final class ScanPlanner implements PredicateTransform, Visitor {
   public ScanPlanner(
-      Column[] selectedColumns,
+      Column<?>[] selectedColumns,
       FilterPredicate predicateTree,
-      ColumnStats[] stats) {
+      ColumnStats<?>[] stats) {
     if (selectedColumns == null || selectedColumns.length == 0) {
       throw new IllegalArgumentException("Columns to select are not specified");
     }
 
-    statistics = new HashMap<Column, ColumnStats>();
-    filteredColumnsSet = new HashSet<Column>();
+    statistics = new HashMap<Column<?>, ColumnStats<?>>();
+    filteredColumnsSet = new HashSet<Column<?>>();
 
     // process statistics
-    for (ColumnStats aStats: stats) {
-      statistics.put(aStats.getColumn(), aStats);
+    if (stats != null) {
+      for (ColumnStats aStats: stats) {
+        statistics.put(aStats.getColumn(), aStats);
+      }
     }
 
     // update predicate with statistics collected. If predicate tree is null, we will eventually
@@ -409,6 +411,6 @@ public final class ScanPlanner implements PredicateTransform, Visitor {
   }
 
   private ScanStrategy strategy = null;
-  private final HashSet<Column> filteredColumnsSet;
-  private final HashMap<Column, ColumnStats> statistics;
+  private final HashSet<Column<?>> filteredColumnsSet;
+  private final HashMap<Column<?>, ColumnStats<?>> statistics;
 }
