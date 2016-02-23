@@ -23,32 +23,16 @@ import com.github.sadikovi.netflowlib.predicate.Columns.ByteColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.ShortColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.IntColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.LongColumn;
-import com.github.sadikovi.netflowlib.predicate.BoxedColumn;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
 public final class ScanRecordMaterializer extends RecordMaterializer {
-  public ScanRecordMaterializer(BoxedColumn[] maybeColumns) {
-    // Since we receive `BoxedColumn` array, we should assume that it might contain non-pruned
-    // columns. We need to filter by pruned flag, order of columns should be preserved.
-    numColumns = 0;
-    for (BoxedColumn col: maybeColumns) {
-      if (col.hasFlag(BoxedColumn.FLAG_PRUNED)) {
-        numColumns++;
-      }
+  public ScanRecordMaterializer(Column[] selectedColumns) {
+    if (selectedColumns.length == 0) {
+      throw new IllegalArgumentException("No columns to scan");
     }
-
-    if (numColumns == 0) {
-      throw new IllegalArgumentException("No columns to scan. Make sure you specified " +
-        "'FLAG_PRUNED' for at least one columns");
-    }
-
-    columns = new BoxedColumn[numColumns];
-
-    for (int i=0; i<numColumns; i++) {
-      if (maybeColumns[i].hasFlag(BoxedColumn.FLAG_PRUNED)) {
-        columns[i] = maybeColumns[i];
-      }
-    }
+    
+    numColumns = selectedColumns.length;
+    columns = selectedColumns;
   }
 
   /** Read buffer bytes sequence for column offset */
@@ -71,14 +55,14 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     Object[] newRecord = new Object[numColumns];
 
     for (int i=0; i<numColumns; i++) {
-      newRecord[i] = readField(columns[i].getColumn(), buffer);
+      newRecord[i] = readField(columns[i], buffer);
     }
 
     return newRecord;
   }
 
   @Override
-  public BoxedColumn[] getColumns() {
+  public Column[] getColumns() {
     return columns;
   }
 
@@ -89,5 +73,5 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
   }
 
   private int numColumns;
-  private final BoxedColumn[] columns;
+  private final Column[] columns;
 }

@@ -18,7 +18,7 @@ package com.github.sadikovi.netflowlib;
 
 import java.io.Serializable;
 
-import com.github.sadikovi.netflowlib.predicate.BoxedColumn;
+import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
 
@@ -64,7 +64,7 @@ public final class ScanStrategies {
 
   /** [[FullScan]] for scanning all files without any filtering */
   public static final class FullScan extends ScanStrategy {
-    public FullScan(BoxedColumn[] selectedColumns) {
+    public FullScan(Column[] selectedColumns) {
       columns = selectedColumns;
     }
 
@@ -78,6 +78,6 @@ public final class ScanStrategies {
       return new ScanRecordMaterializer(columns);
     }
 
-    private final BoxedColumn[] columns;
+    private final Column[] columns;
   }
 }

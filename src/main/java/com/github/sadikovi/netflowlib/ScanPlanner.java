@@ -16,6 +16,7 @@
 
 package com.github.sadikovi.netflowlib;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -36,39 +37,79 @@ import com.github.sadikovi.netflowlib.predicate.Operators.Not;
 import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
 
 import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
+import com.github.sadikovi.netflowlib.predicate.Visitor;
 
 import com.github.sadikovi.netflowlib.ScanStrategies.ScanStrategy;
 import com.github.sadikovi.netflowlib.ScanStrategies.SkipScan;
 import com.github.sadikovi.netflowlib.ScanStrategies.FullScan;
 
+import com.github.sadikovi.netflowlib.statistics.ColumnStats;
+
 /**
- * [[ScanState]] interface defines strategies for parsing a record and resolving predicate tree.
- * Potentially can apply different strategies of scanning record and pushing down filters.
+ * [[ScanPlanner]] interface defines strategies for parsing a record and resolving predicate tree.
+ * Potentially can apply different strategies of scanning record and pushing down filters. Note
+ * that original predicate tree is not modified.
  */
-public final class ScanState implements PredicateTransform {
-  public ScanState(Column<?>[] selectedColumns, FilterPredicate predicateTree) {
+public final class ScanPlanner implements PredicateTransform, Visitor {
+  public ScanPlanner(
+      Column[] selectedColumns,
+      FilterPredicate predicateTree,
+      ColumnStats[] stats) {
     if (selectedColumns == null || selectedColumns.length == 0) {
       throw new IllegalArgumentException("Columns to select are not specified");
     }
-    // by default we scan everything
+
+    statistics = new HashMap<Column, ColumnStats>();
+    filteredColumnsSet = new HashSet<Column>();
+
+    // process statistics
+    for (ColumnStats aStats: stats) {
+      statistics.put(aStats.getColumn(), aStats);
+    }
+
+    // update predicate with statistics collected. If predicate tree is null, we will eventually
+    // resolve it to full scan.
     FilterPredicate updatedTree = FilterApi.trivial(true);
     if (predicateTree != null) {
       updatedTree = predicateTree.update(this);
     }
 
+    // after we update predicate tree, we need to collect information about unresolved predicates
+    updatedTree.visit(this);
+
     // choose strategy based on columns and predicate
+    // if predicate is resolved to trivial then we apply either full scan or skip file altogether
     if (updatedTree instanceof TrivialPredicate) {
       TrivialPredicate trivial = (TrivialPredicate) updatedTree;
       if (trivial.getResult()) {
-        BoxedColumn[] boxedColumns = new BoxedColumn[selectedColumns.length];
-        for (int i=0; i<selectedColumns.length; i++) {
-          boxedColumns[i] = new BoxedColumn(selectedColumns[i], BoxedColumn.FLAG_PRUNED);
-        }
-        strategy = new FullScan(boxedColumns);
+        strategy = new FullScan(selectedColumns);
       } else {
         strategy = new SkipScan();
       }
     } else {
+      // this branch means that we have at least one unresolved predicate, therefore plan will
+      // include predicate pushdown for each file
+      if (filteredColumnsSet.isEmpty()) {
+        throw new IllegalStateException("Predicate tree is unresolved, but there is no filtered " +
+          "columns. Make sure you define leaf predicate nodes properly");
+      }
+
+      // create array of filtered columns
+      int numFilteredCols = 0;
+      Column[] filteredColumns = new Column[filteredColumnsSet.size()];
+      for (Column item: filteredColumnsSet) {
+        filteredColumns[numFilteredCols++] = item;
+      }
+
+      // choose appropriate plan to scan based on selected and filtered columns
+      if (filteredColumns.length <= 3 && filteredColumns.length <= selectedColumns.length / 3) {
+        // filter-first scan
+      } else {
+        // full filter scan
+      }
+    }
+
+    if (strategy == null) {
       throw new IllegalStateException("Strategy could not be resolved");
     }
   }
@@ -77,19 +118,47 @@ public final class ScanState implements PredicateTransform {
     return strategy;
   }
 
+  // Resolve minimum value for column looking up statistics for that column
+  @SuppressWarnings("unchecked")
+  private <T extends Comparable<T>> T resolveMin(Column<T> col) {
+    if (statistics.containsKey(col)) {
+      return (T) statistics.get(col).getMin();
+    } else {
+      return col.getMinValue();
+    }
+  }
+
+  // Resolve maximum value for column looking up statistics for that column
+  @SuppressWarnings("unchecked")
+  private <T extends Comparable<T>> T resolveMax(Column<T> col) {
+    if (statistics.containsKey(col)) {
+      return (T) statistics.get(col).getMax();
+    } else {
+      return col.getMaxValue();
+    }
+  }
+
+  //////////////////////////////////////////////////////////////
+  // Transform API
+  //////////////////////////////////////////////////////////////
+
   @Override
   public <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
+    Column<T> col = predicate.getColumn();
+    T min = resolveMin(col);
+    T max = resolveMax(col);
+
     // if predicate value is less than minimum value then predicate is trivial.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) < 0) {
+    if (predicate.getValue().compareTo(min) < 0) {
       return FilterApi.trivial(false);
     }
 
     // if predicate value is greater than maximum value then predicate is trivial.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) > 0) {
+    if (predicate.getValue().compareTo(max) > 0) {
       return FilterApi.trivial(false);
     }
 
@@ -102,15 +171,19 @@ public final class ScanState implements PredicateTransform {
       return FilterApi.trivial(false);
     }
 
+    Column<T> col = predicate.getColumn();
+    T min = resolveMin(col);
+    T max = resolveMax(col);
+
     // if predicate value is less than minimum value then predicate is trivial. Note, if predicate
     // greater than minimum value, we still have to scan, since values can be minimal.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) < 0) {
+    if (predicate.getValue().compareTo(min) < 0) {
       return FilterApi.trivial(true);
     }
 
     // if predicate value is greater or equals than maximum value then predicate "Greater than" is
     // trivial, since there are no such values greater than upper bound.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) >= 0) {
+    if (predicate.getValue().compareTo(max) >= 0) {
       return FilterApi.trivial(false);
     }
 
@@ -123,22 +196,26 @@ public final class ScanState implements PredicateTransform {
       return FilterApi.trivial(false);
     }
 
+    Column<T> col = predicate.getColumn();
+    T min = resolveMin(col);
+    T max = resolveMax(col);
+
     // if predicate value is less than or equals minimum value, then predicate is trivial, since it
     // would mean that we scan entire range anyway.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) <= 0) {
+    if (predicate.getValue().compareTo(min) <= 0) {
       return FilterApi.trivial(true);
     }
 
     // if predicate value is greater than maximum value, then predicate is trivial, since there are
     // no such values in range.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) > 0) {
+    if (predicate.getValue().compareTo(max) > 0) {
       return FilterApi.trivial(false);
     }
 
     // if "GreaterThanOrEqual" value is a maximum value, then this simply becomes equality
     // predicate, since there are no values greater than maximum value
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) == 0) {
-      return FilterApi.eq(predicate.getColumn(), predicate.getColumn().getMaxValue());
+    if (predicate.getValue().compareTo(max) == 0) {
+      return FilterApi.eq(predicate.getColumn(), max);
     }
 
     return predicate;
@@ -150,15 +227,19 @@ public final class ScanState implements PredicateTransform {
       return FilterApi.trivial(false);
     }
 
+    Column<T> col = predicate.getColumn();
+    T min = resolveMin(col);
+    T max = resolveMax(col);
+
     // if predicate value is less than or equal minimum value, then predicate is trivial, since
     // there are no values less than minimum value.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) <= 0) {
+    if (predicate.getValue().compareTo(min) <= 0) {
       return FilterApi.trivial(false);
     }
 
     // if predicate value is greater than maximum value, then predicate is trivial, since all values
     // fall into range (< value which is larger than maximum value).
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) > 0) {
+    if (predicate.getValue().compareTo(max) > 0) {
       return FilterApi.trivial(true);
     }
 
@@ -171,21 +252,25 @@ public final class ScanState implements PredicateTransform {
       return FilterApi.trivial(false);
     }
 
+    Column<T> col = predicate.getColumn();
+    T min = resolveMin(col);
+    T max = resolveMax(col);
+
     // if predicate value is less than minimum value, then predicate is trivial, see above for more
     // information.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) < 0) {
+    if (predicate.getValue().compareTo(min) < 0) {
       return FilterApi.trivial(false);
-    }
-
-    // if predicate value equals minimum value, then predicate becomes equality operator.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMinValue()) == 0) {
-      return FilterApi.eq(predicate.getColumn(), predicate.getColumn().getMinValue());
     }
 
     // if predicate value is greater than or equal to maximum value, then predicate is trivial, and
     // full scan is performed.
-    if (predicate.getValue().compareTo(predicate.getColumn().getMaxValue()) >= 0) {
+    if (predicate.getValue().compareTo(max) >= 0) {
       return FilterApi.trivial(true);
+    }
+
+    // if predicate value equals minimum value, then predicate becomes equality operator.
+    if (predicate.getValue().compareTo(min) == 0) {
+      return FilterApi.eq(predicate.getColumn(), min);
     }
 
     return predicate;
@@ -195,6 +280,7 @@ public final class ScanState implements PredicateTransform {
   public <T extends Comparable<T>> FilterPredicate transform(In<T> predicate) {
     // TODO: we do not do any updates for "In", since there is very low chance of being out of
     // range {min, max}.
+
     return predicate;
   }
 
@@ -282,5 +368,47 @@ public final class ScanState implements PredicateTransform {
     return predicate;
   }
 
-  private final ScanStrategy strategy;
+  //////////////////////////////////////////////////////////////
+  // Visitor API
+  //////////////////////////////////////////////////////////////
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(Eq<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(Gt<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(Ge<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(Lt<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(Le<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  @Override
+  public <T extends Comparable<T>> boolean accept(In<T> predicate) {
+    filteredColumnsSet.add(predicate.getColumn());
+    return true;
+  }
+
+  private ScanStrategy strategy = null;
+  private final HashSet<Column> filteredColumnsSet;
+  private final HashMap<Column, ColumnStats> statistics;
 }

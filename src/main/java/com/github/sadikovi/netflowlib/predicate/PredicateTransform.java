@@ -30,7 +30,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
 
 /**
  * Abstract [[PredicateTransform]] interface allows to modify predicate tree. By default predicate
- * tree is immutable, so in worst case it should return completely new predicate tree. Also some
+ * tree is immutable, it is recommended to always return a new node, if modified. Also some
  * optimizations might apply in concrete implementations. Either [[PredicateTransform]] or
  * [[Visitor]] interfaces should be used, but not both of them.
  */
