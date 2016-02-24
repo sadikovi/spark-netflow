@@ -43,6 +43,10 @@ public final class Columns {
         throw new IllegalArgumentException("Wrong offset " + offset);
       }
 
+      if (min.compareTo(max) > 0) {
+        throw new IllegalArgumentException("Min " + min + " is greater than max " + max);
+      }
+
       columnName = name;
       columnType = type;
       columnOffset = offset;

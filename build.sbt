@@ -42,7 +42,7 @@ scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 
 // Display full-length stacktraces from ScalaTest:
 testOptions in Test += Tests.Argument("-oF")
-testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")
+testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "+q")
 
 parallelExecution in Test := false
 
