@@ -68,3 +68,6 @@ res = df.where("srcip > 10")
 
 ## Building From Source
 This library is built using `sbt`, to build a JAR file simply run `sbt package` from project root.
+
+## Testing
+Run `sbt test` from project root.
