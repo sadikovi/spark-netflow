@@ -20,15 +20,21 @@ import java.io.Serializable;
 import java.util.HashSet;
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.AndInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.NotInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.OrInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
+import com.github.sadikovi.netflowlib.statistics.Statistics;
 
 public final class Operators {
   private Operators() { }
 
   public static abstract interface FilterPredicate {
-    /** Visit current operator */
-    public boolean visit(Visitor visitor);
 
-    public FilterPredicate update(PredicateTransform transformer);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics);
+
+    public Inspector convert();
   }
 
   /**
@@ -43,7 +49,10 @@ public final class Operators {
     ColumnPredicate(Column<T> column, T value) {
       this.column = column;
       this.value = value;
+      this.inspector = getValueInspector(column.getColumnType());
     }
+
+    protected abstract ValueInspector getValueInspector(Class<T> klass);
 
     public Column<T> getColumn() {
       return column;
@@ -51,6 +60,10 @@ public final class Operators {
 
     public T getValue() {
       return value;
+    }
+
+    public final Inspector convert() {
+      return this.inspector;
     }
 
     @Override
@@ -81,6 +94,7 @@ public final class Operators {
 
     private final Column<T> column;
     private final T value;
+    private final ValueInspector inspector;
   }
 
   /** Equality filter including null-safe filtering */
@@ -90,13 +104,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(value == (Byte) getValue());
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(value == (Short) getValue());
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(value == (Integer) getValue());
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(value == (Long) getValue());
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -107,13 +151,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(value > (Byte) getValue());
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(value > (Short) getValue());
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(value > (Integer) getValue());
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(value > (Long) getValue());
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -124,13 +198,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(value >= (Byte) getValue());
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(value >= (Short) getValue());
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(value >= (Integer) getValue());
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(value >= (Long) getValue());
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -141,13 +245,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(value < (Byte) getValue());
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(value < (Short) getValue());
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(value < (Integer) getValue());
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(value < (Long) getValue());
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -158,13 +292,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(value <= (Byte) getValue());
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(value <= (Short) getValue());
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(value <= (Integer) getValue());
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(value <= (Long) getValue());
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -222,13 +386,43 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return visitor.accept(this);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this, statistics);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    protected ValueInspector getValueInspector(Class<T> klass) {
+      if (klass == Byte.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(byte value) {
+            setResult(getValues().contains(value));
+          }
+        };
+      } else if (klass == Short.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(short value) {
+            setResult(getValues().contains(value));
+          }
+        };
+      } else if (klass == Integer.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(int value) {
+            setResult(getValues().contains(value));
+          }
+        };
+      } else if (klass == Long.class) {
+        return new ValueInspector() {
+          @Override
+          public void update(long value) {
+            setResult(getValues().contains(value));
+          }
+        };
+      } else {
+        throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
+      }
     }
   }
 
@@ -287,14 +481,15 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return getLeft().visit(visitor) && getRight().visit(visitor);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      And copy = new And(getLeft().update(transformer, statistics),
+        getRight().update(transformer, statistics));
+      return transformer.transform(copy);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      And copy = new And(getLeft().update(transformer), getRight().update(transformer));
-      return transformer.transform(copy);
+    public Inspector convert() {
+      return new AndInspector(getLeft().convert(), getRight().convert());
     }
   }
 
@@ -305,23 +500,24 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return getLeft().visit(visitor) || getRight().visit(visitor);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      Or copy = new Or(getLeft().update(transformer, statistics),
+        getRight().update(transformer, statistics));
+      return transformer.transform(copy);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      Or copy = new Or(getLeft().update(transformer), getRight().update(transformer));
-      return transformer.transform(copy);
+    public Inspector convert() {
+      return new OrInspector(getLeft().convert(), getRight().convert());
     }
   }
 
   /**
-   * [[SimpleLogicalPredicate]] is an interface for simple logical operators, such as inverse of
+   * [[UnaryLogicalPredicate]] is an interface for simple logical operators, such as inverse of
    * the current operator.
    */
-  static abstract class SimpleLogicalPredicate implements FilterPredicate, Serializable {
-    SimpleLogicalPredicate(FilterPredicate child) {
+  static abstract class UnaryLogicalPredicate implements FilterPredicate, Serializable {
+    UnaryLogicalPredicate(FilterPredicate child) {
       this.child = child;
     }
 
@@ -339,7 +535,7 @@ public final class Operators {
       if (this == obj) return true;
       if (obj == null || getClass() != obj.getClass()) return false;
 
-      SimpleLogicalPredicate that = (SimpleLogicalPredicate) obj;
+      UnaryLogicalPredicate that = (UnaryLogicalPredicate) obj;
 
       if (!child.equals(that.child)) return false;
 
@@ -357,20 +553,20 @@ public final class Operators {
   }
 
   /** "Not" inversion operator */
-  public static final class Not extends SimpleLogicalPredicate {
+  public static final class Not extends UnaryLogicalPredicate {
     Not(FilterPredicate child) {
       super(child);
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return !getChild().visit(visitor);
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      Not copy = new Not(getChild().update(transformer, statistics));
+      return transformer.transform(copy);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      Not copy = new Not(getChild().update(transformer));
-      return transformer.transform(copy);
+    public Inspector convert() {
+      return new NotInspector(getChild().convert());
     }
   }
 
@@ -405,13 +601,15 @@ public final class Operators {
     }
 
     @Override
-    public boolean visit(Visitor visitor) {
-      return result;
+    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+      return transformer.transform(this);
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer) {
-      return transformer.transform(this);
+    public Inspector convert() {
+      throw new UnsupportedOperationException("Predicate " + toString() + " does not support " +
+        "Inspector interface. You should transform FilterPredicate tree to ensure that there are " +
+        "no TrivialPredicate instances");
     }
 
     private final boolean result;

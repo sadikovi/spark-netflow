@@ -18,68 +18,8 @@ package com.github.sadikovi.netflowlib.statistics;
 
 import java.io.Serializable;
 
-/**
- * Simple interface to hold multiple results for statistics, e.g. version, count, and options.
- * Also used as unified interface between writer and reader.
- */
-public class Statistics implements Serializable {
+public abstract interface Statistics {
+  public Object getMin();
 
-  /** Recommended constructor */
-  public Statistics(short version, long count, StatisticsOption[] options) {
-    if (version < 0) {
-      throw new IllegalArgumentException("Version is invalid: " + version);
-    }
-
-    if (count < 0) {
-      throw new IllegalArgumentException("Count is invalid: " + count);
-    }
-
-    this.version = version;
-    this.count = count;
-    this.options = options;
-  }
-
-  /** For testing purposes only */
-  protected Statistics(short version, long count) {
-    this(version, count, new StatisticsOption[0]);
-  }
-
-  /** For testing purposes only */
-  protected Statistics(short version) {
-    this(version, 0);
-  }
-
-  /** Increment count by delta */
-  public void increaseCount(long delta) {
-    count += delta;
-  }
-
-  /** Set count */
-  public void setCount(long cnt) {
-    count = cnt;
-  }
-
-  /** Set options */
-  public void setOptions(StatisticsOption[] opts) {
-    options = opts;
-  }
-
-  /** Get current version */
-  public short getVersion() {
-    return version;
-  }
-
-  /** Get current count */
-  public long getCount() {
-    return count;
-  }
-
-  /** Get statistics options */
-  public StatisticsOption[] getOptions() {
-    return options;
-  }
-
-  private short version = 0;
-  private long count = 0;
-  private StatisticsOption[] options = null;
+  public Object getMax();
 }

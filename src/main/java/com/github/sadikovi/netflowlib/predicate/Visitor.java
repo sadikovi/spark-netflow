@@ -16,28 +16,17 @@
 
 package com.github.sadikovi.netflowlib.predicate;
 
-import com.github.sadikovi.netflowlib.predicate.Operators.Eq;
-import com.github.sadikovi.netflowlib.predicate.Operators.Gt;
-import com.github.sadikovi.netflowlib.predicate.Operators.Ge;
-import com.github.sadikovi.netflowlib.predicate.Operators.Lt;
-import com.github.sadikovi.netflowlib.predicate.Operators.Le;
-import com.github.sadikovi.netflowlib.predicate.Operators.In;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.AndInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.NotInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.OrInspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 
-/**
- * Abstract [[Visitor]] interface describes how one of the leaf predicates is parsed. Visitor
- * should provide all the neccessary information to resolve passed predicate. Either
- * [[PredicateTransform]] or [[Visitor]] interfaces should be used, but not both of them.
- */
 public abstract interface Visitor {
-  <T extends Comparable<T>> boolean accept(Eq<T> predicate);
+  boolean visit(ValueInspector inspector);
 
-  <T extends Comparable<T>> boolean accept(Gt<T> predicate);
+  boolean visit(AndInspector inspector);
 
-  <T extends Comparable<T>> boolean accept(Ge<T> predicate);
+  boolean visit(OrInspector inspector);
 
-  <T extends Comparable<T>> boolean accept(Lt<T> predicate);
-
-  <T extends Comparable<T>> boolean accept(Le<T> predicate);
-
-  <T extends Comparable<T>> boolean accept(In<T> predicate);
+  boolean visit(NotInspector inspector);
 }

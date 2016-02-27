@@ -27,6 +27,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.And;
 import com.github.sadikovi.netflowlib.predicate.Operators.Or;
 import com.github.sadikovi.netflowlib.predicate.Operators.Not;
 import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
+import com.github.sadikovi.netflowlib.statistics.Statistics;
 
 /**
  * Abstract [[PredicateTransform]] interface allows to modify predicate tree. By default predicate
@@ -35,17 +36,17 @@ import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
  * [[Visitor]] interfaces should be used, but not both of them.
  */
 public abstract interface PredicateTransform {
-  <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate, Statistics stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate, Statistics stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate, Statistics stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate, Statistics stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate, Statistics stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(In<T> predicate);
+  <T extends Comparable<T>> FilterPredicate transform(In<T> predicate, Statistics stats);
 
   FilterPredicate transform(And predicate);
 
