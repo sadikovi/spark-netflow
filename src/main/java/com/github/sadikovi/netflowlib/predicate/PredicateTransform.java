@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.netflowlib.predicate;
 
+import java.util.HashMap;
+
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.predicate.Operators.Eq;
 import com.github.sadikovi.netflowlib.predicate.Operators.Gt;
@@ -32,27 +34,30 @@ import com.github.sadikovi.netflowlib.statistics.Statistics;
 /**
  * Abstract [[PredicateTransform]] interface allows to modify predicate tree. By default predicate
  * tree is immutable, it is recommended to always return a new node, if modified. Also some
- * optimizations might apply in concrete implementations. Either [[PredicateTransform]] or
- * [[Visitor]] interfaces should be used, but not both of them.
+ * optimizations might apply in concrete implementations.
  */
 public abstract interface PredicateTransform {
-  <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate,
+    HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate,
+    HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate,
+    HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate,
+    HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate,
+    HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(In<T> predicate, Statistics stats);
+  <T extends Comparable<T>> FilterPredicate transform(In<T> predicate,
+    HashMap<String, Statistics> stats);
 
   FilterPredicate transform(And predicate);
 
   FilterPredicate transform(Or predicate);
 
   FilterPredicate transform(Not predicate);
-
-  FilterPredicate transform(TrivialPredicate predicate);
 }

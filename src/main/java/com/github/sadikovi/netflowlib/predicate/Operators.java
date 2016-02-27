@@ -17,7 +17,9 @@
 package com.github.sadikovi.netflowlib.predicate;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.HashSet;
+
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
@@ -32,7 +34,8 @@ public final class Operators {
 
   public static abstract interface FilterPredicate {
 
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics);
+    public FilterPredicate update(PredicateTransform transformer,
+      HashMap<String, Statistics> statistics);
 
     public Inspector convert();
   }
@@ -104,7 +107,8 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -151,7 +155,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -198,7 +204,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -245,7 +253,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -292,7 +302,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -386,7 +398,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       return transformer.transform(this, statistics);
     }
 
@@ -481,7 +495,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       And copy = new And(getLeft().update(transformer, statistics),
         getRight().update(transformer, statistics));
       return transformer.transform(copy);
@@ -500,7 +516,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       Or copy = new Or(getLeft().update(transformer, statistics),
         getRight().update(transformer, statistics));
       return transformer.transform(copy);
@@ -559,7 +577,9 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
       Not copy = new Not(getChild().update(transformer, statistics));
       return transformer.transform(copy);
     }
@@ -601,8 +621,10 @@ public final class Operators {
     }
 
     @Override
-    public FilterPredicate update(PredicateTransform transformer, Statistics statistics) {
-      return transformer.transform(this);
+    public FilterPredicate update(
+        PredicateTransform transformer,
+        HashMap<String, Statistics> statistics) {
+      return new TrivialPredicate(result);
     }
 
     @Override
