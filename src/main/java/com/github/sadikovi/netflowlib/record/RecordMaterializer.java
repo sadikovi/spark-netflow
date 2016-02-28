@@ -34,13 +34,13 @@ public abstract class RecordMaterializer {
   /** Read buffer bytes sequence for column offset */
   public <T extends Comparable<T>> T readField(Column<T> column, ByteBuf buffer) {
     Class<T> type = column.getColumnType();
-    if (column.getColumnType() == Byte.class) {
+    if (type.equals(Byte.class)) {
       return type.cast(buffer.getByte(column.getColumnOffset()));
-    } else if (column.getColumnType() == Short.class) {
+    } else if (type.equals(Short.class)) {
       return type.cast(buffer.getUnsignedByte(column.getColumnOffset()));
-    } else if (column.getColumnType() == Integer.class) {
+    } else if (type.equals(Integer.class)) {
       return type.cast(buffer.getUnsignedShort(column.getColumnOffset()));
-    } else if (column.getColumnType() == Long.class) {
+    } else if (type.equals(Long.class)) {
       return type.cast(buffer.getUnsignedInt(column.getColumnOffset()));
     } else {
       throw new UnsupportedOperationException("Unsupported read type " + type.toString());
