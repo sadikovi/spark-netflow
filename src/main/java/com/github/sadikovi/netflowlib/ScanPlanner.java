@@ -27,6 +27,7 @@ import com.github.sadikovi.netflowlib.Strategies.SkipScan;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.FilterApi;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.predicate.PredicateTransform;
 
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
@@ -114,7 +115,8 @@ public final class ScanPlanner implements PredicateTransform {
       // Skip scan
       strategy = new SkipScan();
     } else {
-      // Predicate scan, convert `internalFilter` into inspector tree
+      // Predicate scan, convert `internalFilter` into inspector tree, extract columns that are
+      // filtered
       Inspector inspectorTree = internalFilter.convert();
       strategy = new FilterScan(columns, inspectorTree, inspectors);
     }
@@ -149,12 +151,14 @@ public final class ScanPlanner implements PredicateTransform {
     return max;
   }
 
-  protected <T extends Comparable<T>> void addInspector(Column<T> column, Inspector inspector) {
-    if (!inspectors.containsKey(column.getColumnName())) {
-      inspectors.put(column.getColumnName(), new ArrayList<Inspector>());
+  protected <T extends Comparable<T>> void addInspector(
+      Column<T> column,
+      ValueInspector inspector) {
+    if (!inspectors.containsKey(column)) {
+      inspectors.put(column, new ArrayList<ValueInspector>());
     }
 
-    inspectors.get(column.getColumnName()).add(inspector);
+    inspectors.get(column).add(inspector);
   }
 
   //////////////////////////////////////////////////////////////
@@ -237,15 +241,17 @@ public final class ScanPlanner implements PredicateTransform {
     }
 
     // If "GreaterThanOrEqual" value is a maximum value, then this simply becomes equality
-    // predicate, since there are no values greater than maximum value
-    FilterPredicate resolvedPredicate = predicate;
+    // predicate, since there are no values greater than maximum value.
+    // Note since we return new equality predicate we have to add it to the list of inspectors.
     if (predicate.getValue().compareTo(max) == 0) {
-      resolvedPredicate = FilterApi.eq(predicate.getColumn(), max);
+      Eq<T> equalityPredicate = FilterApi.eq(predicate.getColumn(), max);
+
+      addInspector(col, equalityPredicate.inspector());
+      return equalityPredicate;
     }
 
-    addInspector(col, resolvedPredicate.convert());
-
-    return resolvedPredicate;
+    addInspector(col, predicate.inspector());
+    return predicate;
   }
 
   @Override
@@ -299,15 +305,17 @@ public final class ScanPlanner implements PredicateTransform {
       return FilterApi.trivial(true);
     }
 
-    FilterPredicate resolvedPredicate = predicate;
     // If predicate value equals minimum value, then predicate becomes equality operator.
+    // Note since we return new equality predicate we have to add it to the list of inspectors.
     if (predicate.getValue().compareTo(min) == 0) {
-      resolvedPredicate = FilterApi.eq(predicate.getColumn(), min);
+      Eq<T> equalityPredicate = FilterApi.eq(predicate.getColumn(), min);
+
+      addInspector(col, equalityPredicate.inspector());
+      return equalityPredicate;
     }
 
-    addInspector(col, resolvedPredicate.convert());
-
-    return resolvedPredicate;
+    addInspector(col, predicate.inspector());
+    return predicate;
   }
 
   @Override
@@ -404,6 +412,6 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   private ScanStrategy strategy = null;
-  private final HashMap<String, ArrayList<Inspector>> inspectors =
-    new HashMap<String, ArrayList<Inspector>>();
+  private final HashMap<Column<?>, ArrayList<ValueInspector>> inspectors =
+    new HashMap<Column<?>, ArrayList<ValueInspector>>();
 }

@@ -25,29 +25,15 @@ import com.github.sadikovi.netflowlib.predicate.Columns.IntColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.LongColumn;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
+/**
+ * [[ScanRecordMaterializer]] is part of [[FullScan]] strategy where we only scan pruned columns.
+ * Note that columns might not be unique, e.g. [IntColumn("a"), ShortColumn("b"), IntColumn("a"),
+ * LongColumn("c")].
+ */
 public final class ScanRecordMaterializer extends RecordMaterializer {
-  public ScanRecordMaterializer(Column[] selectedColumns) {
-    if (selectedColumns.length == 0) {
-      throw new IllegalArgumentException("No columns to scan");
-    }
-    
-    numColumns = selectedColumns.length;
-    columns = selectedColumns;
-  }
-
-  /** Read buffer bytes sequence for column offset */
-  private Object readField(Column<?> column, ByteBuf buffer) {
-    if (column.getColumnType() == Byte.class) {
-      return buffer.getByte(column.getColumnOffset());
-    } else if (column.getColumnType() == Short.class) {
-      return buffer.getUnsignedByte(column.getColumnOffset());
-    } else if (column.getColumnType() == Integer.class) {
-      return buffer.getUnsignedShort(column.getColumnOffset());
-    } else if (column.getColumnType() == Long.class) {
-      return buffer.getUnsignedInt(column.getColumnOffset());
-    } else {
-      throw new UnsupportedOperationException("Unsupported read type " + column.getColumnType());
-    }
+  public ScanRecordMaterializer(Column<?>[] columns) {
+    this.columns = columns;
+    numColumns = columns.length;
   }
 
   @Override
@@ -61,17 +47,6 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     return newRecord;
   }
 
-  @Override
-  public Column[] getColumns() {
-    return columns;
-  }
-
-  @Override
-  public FilterPredicate getPredicateTree() {
-    throw new UnsupportedOperationException("ScanRecordMaterializer does not support " +
-      "predicate tree");
-  }
-
-  private int numColumns;
-  private final Column[] columns;
+  private final Column<?>[] columns;
+  private final int numColumns;
 }

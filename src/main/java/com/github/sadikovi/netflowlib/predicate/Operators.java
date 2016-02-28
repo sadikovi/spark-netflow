@@ -65,7 +65,7 @@ public final class Operators {
       return value;
     }
 
-    public Inspector inspector() {
+    public ValueInspector inspector() {
       return this.inspector;
     }
 

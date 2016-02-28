@@ -22,8 +22,10 @@ import java.util.HashMap;
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
+import com.github.sadikovi.netflowlib.record.PredicateRecordMaterializer;
 
 /**
  * All possible strategies to scan, e.g. skipping entire file, full scan of records, or different
@@ -80,7 +82,7 @@ public final class Strategies {
     public <T extends Comparable<T>> FilterScan(
         Column<T>[] columns,
         Inspector tree,
-        HashMap<String, ArrayList<Inspector>> inspectors) {
+        HashMap<Column<?>, ArrayList<ValueInspector>> inspectors) {
       rm = new PredicateRecordMaterializer(columns, tree, inspectors);
     }
 

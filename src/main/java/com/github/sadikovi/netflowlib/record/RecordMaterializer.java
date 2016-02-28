@@ -25,18 +25,25 @@ import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
  * [[RecordMaterializer]] interface provides all necessary methods to parse single record and return
  * either array of values that match list and order of pruned columns, or null, if record does not
  * pass predicate. Predicate check is optional and should depend on implementation.
- * [[RecordMaterializer]] operates with [[Column]], so it is responsibility of subclasses to
- * implement filtering by flag (pruned, filtered, etc).
  */
 public abstract class RecordMaterializer {
   RecordMaterializer() { }
 
-  /** Process single record and return either filled array or null, if predicate returns false */
   public abstract Object[] processRecord(ByteBuf buffer);
 
-  /** Return boxed columns for this RecordMaterializer */
-  public abstract Column[] getColumns();
-
-  /** Return filter predicate for this RecordMaterializer */
-  public abstract FilterPredicate getPredicateTree();
+  /** Read buffer bytes sequence for column offset */
+  public <T extends Comparable<T>> T readField(Column<T> column, ByteBuf buffer) {
+    Class<T> type = column.getColumnType();
+    if (column.getColumnType() == Byte.class) {
+      return type.cast(buffer.getByte(column.getColumnOffset()));
+    } else if (column.getColumnType() == Short.class) {
+      return type.cast(buffer.getUnsignedByte(column.getColumnOffset()));
+    } else if (column.getColumnType() == Integer.class) {
+      return type.cast(buffer.getUnsignedShort(column.getColumnOffset()));
+    } else if (column.getColumnType() == Long.class) {
+      return type.cast(buffer.getUnsignedInt(column.getColumnOffset()));
+    } else {
+      throw new UnsupportedOperationException("Unsupported read type " + type.toString());
+    }
+  }
 }
