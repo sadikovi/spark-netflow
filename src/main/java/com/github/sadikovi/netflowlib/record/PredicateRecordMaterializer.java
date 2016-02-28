@@ -72,13 +72,13 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
   private <T extends Comparable<T>> void updateValueInspectors(Column<T> column, ByteBuf buffer) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
     for (ValueInspector vi: ins) {
-      if (column.getColumnType() == Byte.class) {
+      if (column.getColumnType().equals(Byte.class)) {
         vi.update(buffer.getByte(column.getColumnOffset()));
-      } else if (column.getColumnType() == Short.class) {
+      } else if (column.getColumnType().equals(Short.class)) {
         vi.update(buffer.getUnsignedByte(column.getColumnOffset()));
-      } else if (column.getColumnType() == Integer.class) {
+      } else if (column.getColumnType().equals(Integer.class)) {
         vi.update(buffer.getUnsignedShort(column.getColumnOffset()));
-      } else if (column.getColumnType() == Long.class) {
+      } else if (column.getColumnType().equals(Long.class)) {
         vi.update(buffer.getUnsignedInt(column.getColumnOffset()));
       } else {
         throw new UnsupportedOperationException("Unsupported read type " +
