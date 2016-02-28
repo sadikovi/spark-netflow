@@ -77,7 +77,8 @@ public class ScanPlannerSuite {
     FilterPredicate tree = or(and(lt(col1, 0), eq(col2, 10)), and(ge(col3, 10), le(col3, 19)));
 
     // statistics on column 3, even when it is a different object
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
+      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
     stats.put(col3, new IntStatistics(21, 25));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
@@ -128,7 +129,8 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
+      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
     stats.put(col1, new IntStatistics(12, 18));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
@@ -151,7 +153,8 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
+      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
     assertSame(ss.getClass(), FullScan.class);
@@ -173,7 +176,8 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
+      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
     assertSame(ss.getClass(), FilterScan.class);
@@ -193,7 +197,8 @@ public class ScanPlannerSuite {
       eq(col2, 100)
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
+      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
     stats.put(col1, new IntStatistics(12, 18));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
