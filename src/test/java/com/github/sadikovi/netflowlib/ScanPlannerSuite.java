@@ -1,15 +1,17 @@
 package com.github.sadikovi.netflowlib;
 
+import java.util.HashMap;
+
 import org.junit.Test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.github.sadikovi.netflowlib.ScanPlanner;
-import com.github.sadikovi.netflowlib.ScanStrategies.SkipScan;
-import com.github.sadikovi.netflowlib.ScanStrategies.FullScan;
-import com.github.sadikovi.netflowlib.ScanStrategies.PredicateScan;
-import com.github.sadikovi.netflowlib.ScanStrategies.PredicateFirstScan;
+import com.github.sadikovi.netflowlib.Strategies.ScanStrategy;
+import com.github.sadikovi.netflowlib.Strategies.SkipScan;
+import com.github.sadikovi.netflowlib.Strategies.FullScan;
+import com.github.sadikovi.netflowlib.Strategies.FilterScan;
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Columns.IntColumn;
@@ -25,109 +27,99 @@ import static com.github.sadikovi.netflowlib.predicate.FilterApi.or;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.trivial;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
-import com.github.sadikovi.netflowlib.statistics.ColumnStats;
+import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.IntStatistics;
+import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.GenericStatistics;
 
 public class ScanPlannerSuite {
   @Test(expected = IllegalArgumentException.class)
-  public void testColumnsNullFailure() {
-    Column[] cols = null;
+  public <T extends Comparable<T>> void testColumnsNullFailure() {
+    Column<T>[] cols = null;
     FilterPredicate tree = null;
-    ColumnStats[] stats = null;
 
-    new ScanPlanner(cols, tree, stats);
+    ScanPlanner.buildStrategy(cols, tree, null);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testColumnsEmptyFailure() {
-    Column[] cols = new Column[0];
+  public <T extends Comparable<T>> void testColumnsEmptyFailure() {
+    IntColumn[] cols = new IntColumn[0];
     FilterPredicate tree = null;
-    ColumnStats[] stats = null;
 
-    new ScanPlanner(cols, tree, stats);
+    ScanPlanner.buildStrategy(cols, tree, null);
   }
 
   @Test
   public void testSkipScan1() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
     FilterPredicate tree = trivial(false);
-    ColumnStats[] stats = null;
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), SkipScan.class);
-    assertTrue(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, null);
+    assertSame(ss.getClass(), SkipScan.class);
+    assertTrue(ss.skipScan());
   }
 
   @Test
   public void testSkipScan2() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
-    FilterPredicate tree = and(trivial(false), eq(new IntColumn((byte) 1, 0), 10));
-    ColumnStats[] stats = null;
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
+    FilterPredicate tree = and(trivial(false), eq(new IntColumn("col1", 0), 10));
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), SkipScan.class);
-    assertTrue(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, null);
+    assertSame(ss.getClass(), SkipScan.class);
+    assertTrue(ss.skipScan());
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testSkipScan3() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
-    IntColumn col2 = new IntColumn((byte) 2, 0);
-    IntColumn col3 = new IntColumn((byte) 3, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 0);
+    IntColumn col3 = new IntColumn("col3", 0);
     FilterPredicate tree = or(and(lt(col1, 0), eq(col2, 10)), and(ge(col3, 10), le(col3, 19)));
 
     // statistics on column 3, even when it is a different object
-    ColumnStats<Integer> colStats3 = new ColumnStats(new IntColumn((byte) 3, 0));
-    colStats3.setMin(21);
-    colStats3.setMax(25);
-    ColumnStats[] stats = new ColumnStats[] {colStats3};
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    stats.put(col3, new IntStatistics(21, 25));
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), SkipScan.class);
-    assertTrue(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), SkipScan.class);
+    assertTrue(ss.skipScan());
   }
 
   @Test
   public void testFullScan1() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
     FilterPredicate tree = null;
-    ColumnStats[] stats = null;
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), FullScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, null);
+    assertSame(ss.getClass(), FullScan.class);
+    assertFalse(ss.skipScan());
 
     // it is an equivalent of having trivial predicate "true"
     tree = trivial(true);
-    sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), FullScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ss = ScanPlanner.buildStrategy(cols, tree, null);
+    assertSame(ss.getClass(), FullScan.class);
+    assertFalse(ss.skipScan());
   }
 
   @Test
   public void testFullScan2() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
     FilterPredicate tree = and(trivial(true), ge(col1, 0));
 
-    ColumnStats[] stats = null;
-
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), FullScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, null);
+    assertSame(ss.getClass(), FullScan.class);
+    assertFalse(ss.skipScan());
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testFullScan3() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
-    IntColumn col2 = new IntColumn((byte) 2, 0);
-    IntColumn col3 = new IntColumn((byte) 3, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 0);
+    IntColumn col3 = new IntColumn("col3", 0);
     FilterPredicate tree = and(
       and(ge(col1, 10), le(col1, 20)),
       or(
@@ -136,24 +128,21 @@ public class ScanPlannerSuite {
       )
     );
 
-    ColumnStats colStats1 = new ColumnStats(col1);
-    colStats1.setMin(12);
-    colStats1.setMax(18);
-    ColumnStats[] stats = new ColumnStats[] {colStats1};
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    stats.put(col1, new IntStatistics(12, 18));
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), FullScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FullScan.class);
+    assertFalse(ss.skipScan());
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testFullScan4() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
-    IntColumn col2 = new IntColumn((byte) 2, 0);
-    IntColumn col3 = new IntColumn((byte) 3, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 0);
+    IntColumn col3 = new IntColumn("col3", 0);
     FilterPredicate tree = or(
       and(ge(col1, 10), le(col1, 20)),
       or(
@@ -162,20 +151,20 @@ public class ScanPlannerSuite {
       )
     );
 
-    ColumnStats[] stats = new ColumnStats[] {};
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), FullScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FullScan.class);
+    assertFalse(ss.skipScan());
   }
 
   @Test
   public void testPredicateScan1() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4)};
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
-    IntColumn col2 = new IntColumn((byte) 2, 0);
-    IntColumn col3 = new IntColumn((byte) 3, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 0);
+    IntColumn col3 = new IntColumn("col3", 0);
     FilterPredicate tree = and(
       and(ge(col1, 10), le(col1, 20)),
       or(
@@ -184,34 +173,31 @@ public class ScanPlannerSuite {
       )
     );
 
-    ColumnStats[] stats = new ColumnStats[] {};
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), PredicateScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FilterScan.class);
+    assertFalse(ss.skipScan());
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  public void testPredicateFilterScan1() {
-    Column[] cols = new Column[] {new IntColumn((byte) 1, 0), new IntColumn((byte) 2, 4),
-      new IntColumn((byte) 3, 4), new IntColumn((byte) 4, 4), new IntColumn((byte) 5, 4),
-      new IntColumn((byte) 6, 4), new IntColumn((byte) 7, 4)};
+  public void testPredicateScan2() {
+    IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4),
+      new IntColumn("col3", 8), new IntColumn("col4", 12), new IntColumn("col5", 16),
+      new IntColumn("col6", 20), new IntColumn("col7", 24)};
 
-    IntColumn col1 = new IntColumn((byte) 1, 0);
-    IntColumn col2 = new IntColumn((byte) 2, 0);
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 4);
     FilterPredicate tree = and(
       and(ge(col1, 10), le(col1, 20)),
       eq(col2, 100)
     );
 
-    ColumnStats colStats1 = new ColumnStats(col1);
-    colStats1.setMin(12);
-    colStats1.setMax(18);
-    ColumnStats[] stats = new ColumnStats[] {colStats1};
+    HashMap<Column<Integer>, GenericStatistics<Integer>> stats = new HashMap<>();
+    stats.put(col1, new IntStatistics(12, 18));
 
-    ScanPlanner sp = new ScanPlanner(cols, tree, stats);
-    assertSame(sp.getStrategy().getClass(), PredicateFirstScan.class);
-    assertFalse(sp.getStrategy().skip());
+    ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FilterScan.class);
+    assertFalse(ss.skipScan());
   }
 }

@@ -17,7 +17,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.And;
 public class OperatorSuite {
   @Test
   public void testEquality() {
-    IntColumn col = new IntColumn((byte) 1, 0);
+    IntColumn col = new IntColumn("col1", 0);
 
     Eq<Integer> pr1 = FilterApi.eq(col, 10);
     assertTrue(pr1.equals(pr1));

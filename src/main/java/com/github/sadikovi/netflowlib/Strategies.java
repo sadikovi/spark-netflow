@@ -39,6 +39,11 @@ public final class Strategies {
     public abstract boolean skipScan();
 
     public abstract RecordMaterializer getRecordMaterializer();
+
+    @Override
+    public String toString() {
+      return "Strategy [" + getClass().getSimpleName() + "]";
+    }
   }
 
   //////////////////////////////////////////////////////////////
