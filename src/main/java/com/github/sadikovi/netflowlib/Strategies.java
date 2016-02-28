@@ -17,7 +17,11 @@
 package com.github.sadikovi.netflowlib;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
 
+import com.github.sadikovi.netflowlib.predicate.Columns.Column;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
 
@@ -30,6 +34,66 @@ public final class Strategies {
   private Strategies() { }
 
   public static abstract class ScanStrategy {
+    public abstract boolean skipScan();
 
+    public abstract RecordMaterializer getRecordMaterializer();
+  }
+
+  //////////////////////////////////////////////////////////////
+  // Strategies
+  //////////////////////////////////////////////////////////////
+
+  public static final class SkipScan extends ScanStrategy {
+    public SkipScan() { }
+
+    @Override
+    public boolean skipScan() {
+      return true;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      throw new UnsupportedOperationException("RecordMaterializer is not supported for " +
+        getClass().getSimpleName());
+    }
+  }
+
+  public static final class FullScan extends ScanStrategy {
+    public <T extends Comparable<T>> FullScan(Column<T>[] columns) {
+      rm = new ScanRecordMaterializer(columns);
+    }
+
+    @Override
+    public boolean skipScan() {
+      return false;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      return rm;
+    }
+
+    private final RecordMaterializer rm;
+  }
+
+  public static final class FilterScan extends ScanStrategy {
+    public <T extends Comparable<T>> FilterScan(
+        Column<T>[] columns,
+        Inspector tree,
+        HashMap<String, ArrayList<Inspector>> inspectors) {
+      rm = new PredicateRecordMaterializer(columns, tree, inspectors);
+    }
+
+    @Override
+    public boolean skipScan() {
+      return false;
+    }
+
+    @Override
+    public RecordMaterializer getRecordMaterializer() {
+      return rm;
+    }
+
+    private final RecordMaterializer rm;
   }
 }

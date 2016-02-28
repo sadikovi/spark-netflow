@@ -65,8 +65,12 @@ public final class Operators {
       return value;
     }
 
-    public final Inspector convert() {
+    public Inspector inspector() {
       return this.inspector;
+    }
+
+    public final Inspector convert() {
+      return inspector();
     }
 
     @Override
@@ -99,6 +103,10 @@ public final class Operators {
     private final T value;
     private final ValueInspector inspector;
   }
+
+  //////////////////////////////////////////////////////////////
+  // Concrete implementation of column predicates (Eq, Gt, Le)
+  //////////////////////////////////////////////////////////////
 
   /** Equality filter including null-safe filtering */
   public static final class Eq<T extends Comparable<T>> extends ColumnPredicate<T> {
@@ -488,6 +496,10 @@ public final class Operators {
     private final FilterPredicate right;
   }
 
+  //////////////////////////////////////////////////////////////
+  // Concrete implementation of binary logical predicate (And, Or)
+  //////////////////////////////////////////////////////////////
+
   /** "And" logical operator */
   public static final class And extends BinaryLogicalPredicate {
     And(FilterPredicate left, FilterPredicate right) {
@@ -569,6 +581,10 @@ public final class Operators {
 
     private final FilterPredicate child;
   }
+
+  //////////////////////////////////////////////////////////////
+  // Concrete implementation of unary logical predicate (Not)
+  //////////////////////////////////////////////////////////////
 
   /** "Not" inversion operator */
   public static final class Not extends UnaryLogicalPredicate {
