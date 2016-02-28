@@ -31,6 +31,11 @@ import com.github.sadikovi.netflowlib.statistics.Statistics;
 public final class Operators {
   private Operators() { }
 
+  /**
+   * Abstract [[FilterPredicate]] interface defines a common predicate instance that can be
+   * transformed into another predicate or converted into [[ValueInspector]]. This class represents
+   * original user-defined predicate tree.
+   */
   public static abstract interface FilterPredicate {
 
     public FilterPredicate update(PredicateTransform transformer,

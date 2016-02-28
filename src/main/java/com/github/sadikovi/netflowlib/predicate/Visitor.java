@@ -21,6 +21,11 @@ import com.github.sadikovi.netflowlib.predicate.Inspectors.NotInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.OrInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 
+/**
+ * [[Visitor]] interface to traverse [[Inspector]] instances and resolve boolean expressions for
+ * each of them. Usually implemented by [[RecordMaterializer]] subclasses to resolve predicate
+ * for each record.
+ */
 public abstract interface Visitor {
   boolean visit(ValueInspector inspector);
 
