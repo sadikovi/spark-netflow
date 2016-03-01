@@ -50,28 +50,29 @@ import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.GenericStatisti
  */
 public final class ScanPlanner implements PredicateTransform {
   /** Build appropriate strategy based on pruned columns, predicate tree and statistics */
-  public static <T extends Comparable<T>> ScanStrategy buildStrategy(
-      Column<T>[] columns,
+  public static ScanStrategy buildStrategy(
+      Column[] columns,
       FilterPredicate predicate,
-      HashMap<Column<T>, GenericStatistics<T>> stats) {
+      HashMap<Column, GenericStatistics> stats) {
     ScanPlanner planner = new ScanPlanner(columns, predicate, stats);
     return planner.getStrategy();
   }
 
-  public static <T extends Comparable<T>> ScanStrategy buildStrategy(Column<T>[] columns) {
+  public static ScanStrategy buildStrategy(Column[] columns) {
     return buildStrategy(columns, null, null);
   }
 
-  public static <T extends Comparable<T>> ScanStrategy buildStrategy(
-      Column<T>[] columns,
+  public static ScanStrategy buildStrategy(
+      Column[] columns,
       FilterPredicate predicate) {
     return buildStrategy(columns, predicate, null);
   }
 
-  private <T extends Comparable<T>> ScanPlanner(
-      Column<T>[] columns,
+  @SuppressWarnings("unchecked")
+  private ScanPlanner(
+      Column[] columns,
       FilterPredicate predicate,
-      HashMap<Column<T>, GenericStatistics<T>> stats) {
+      HashMap<Column, GenericStatistics> stats) {
     // Building strategy involves several steps, such as variables check, making sure that we can
     // prune columns, predicate is defined, and statistics can be resolved; next is folding
     // predicate tree and applying statistics to modified predicate; next step is converting
@@ -88,7 +89,7 @@ public final class ScanPlanner implements PredicateTransform {
     // constructor.
     HashMap<String, Statistics> internalStats = new HashMap<String, Statistics>();
     if (stats != null) {
-      for (Column<T> col: stats.keySet()) {
+      for (Column col: stats.keySet()) {
         internalStats.put(col.getColumnName(), stats.get(col));
       }
     }

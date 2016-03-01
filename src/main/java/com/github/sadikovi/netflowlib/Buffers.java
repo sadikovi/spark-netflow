@@ -16,8 +16,8 @@
 
 package com.github.sadikovi.netflowlib;
 
-import java.io.FilterInputStream;
 import java.io.DataInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.Iterator;

@@ -38,6 +38,8 @@ public final class Strategies {
   public static abstract class ScanStrategy {
     public abstract boolean skipScan();
 
+    public abstract boolean fullScan();
+
     public abstract RecordMaterializer getRecordMaterializer();
 
     @Override
@@ -59,6 +61,11 @@ public final class Strategies {
     }
 
     @Override
+    public boolean fullScan() {
+      return false;
+    }
+
+    @Override
     public RecordMaterializer getRecordMaterializer() {
       throw new UnsupportedOperationException("RecordMaterializer is not supported for " +
         getClass().getSimpleName());
@@ -76,6 +83,11 @@ public final class Strategies {
     }
 
     @Override
+    public boolean fullScan() {
+      return true;
+    }
+
+    @Override
     public RecordMaterializer getRecordMaterializer() {
       return rm;
     }
@@ -83,7 +95,7 @@ public final class Strategies {
     private final RecordMaterializer rm;
   }
 
-  public static final class FilterScan extends ScanStrategy {
+  public static class FilterScan extends ScanStrategy {
     public <T extends Comparable<T>> FilterScan(
         Column<T>[] columns,
         Inspector tree,
@@ -93,6 +105,11 @@ public final class Strategies {
 
     @Override
     public boolean skipScan() {
+      return false;
+    }
+
+    @Override
+    public boolean fullScan() {
       return false;
     }
 
