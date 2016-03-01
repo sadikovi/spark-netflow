@@ -60,6 +60,12 @@ public final class NetFlowReader {
   private static final short HEADER_LITTLE_ENDIAN = 1;
   private static final short HEADER_BIG_ENDIAN = 2;
 
+  public static NetFlowReader prepareReader(
+      DataInputStream inputStream,
+      int bufferSize) throws IOException {
+    return new NetFlowReader(inputStream, bufferSize);
+  }
+
   /**
    * In order to create [[NetFlowReader]] instance, metadata is collected from input stream.
    *
@@ -132,7 +138,7 @@ public final class NetFlowReader {
     } else {
       // Version 3 with dynamic header size
       headerArray = new byte[HEADER_OFFSET_LENGTH];
-      numBytesRead = this.in.read(headerArray, 0, HEADER_OFFSET_LENGTH);
+      numBytesRead = in.read(headerArray, 0, HEADER_OFFSET_LENGTH);
       if (numBytesRead != HEADER_OFFSET_LENGTH) {
         throw new UnsupportedOperationException("Short read while loading header offset");
       }
@@ -341,7 +347,7 @@ public final class NetFlowReader {
       buf = null;
       pr = null;
     }
-    return header;
+    return internalHeader;
   }
 
   /** Return NetFlow header for current input stream */
@@ -401,6 +407,12 @@ public final class NetFlowReader {
       return new FilterRecordBuffer(in, strategy.getRecordMaterializer(), recordSize, byteOrder,
         isCompressed, bufferLength);
     }
+  }
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + "[byte order: " + byteOrder + ", stream version: " +
+      streamVersion + ", buffer length: " + bufferLength + "]";
   }
 
   // Stream of the NetFlow file
