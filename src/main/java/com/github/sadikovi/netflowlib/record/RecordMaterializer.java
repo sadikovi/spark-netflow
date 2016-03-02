@@ -19,6 +19,7 @@ package com.github.sadikovi.netflowlib.record;
 import io.netty.buffer.ByteBuf;
 
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
 /**
@@ -35,15 +36,30 @@ public abstract class RecordMaterializer {
   public Object readField(Column column, ByteBuf buffer) {
     Class<?> type = column.getColumnType();
     if (type.equals(Byte.class)) {
-      return type.cast(buffer.getByte(column.getColumnOffset()));
+      return buffer.getByte(column.getColumnOffset());
     } else if (type.equals(Short.class)) {
-      return type.cast(buffer.getUnsignedByte(column.getColumnOffset()));
+      return buffer.getUnsignedByte(column.getColumnOffset());
     } else if (type.equals(Integer.class)) {
-      return type.cast(buffer.getUnsignedShort(column.getColumnOffset()));
+      return buffer.getUnsignedShort(column.getColumnOffset());
     } else if (type.equals(Long.class)) {
-      return type.cast(buffer.getUnsignedInt(column.getColumnOffset()));
+      return buffer.getUnsignedInt(column.getColumnOffset());
     } else {
-      throw new UnsupportedOperationException("Unsupported read type " + type.toString());
+      throw new UnsupportedOperationException("Unsupported read type " + type);
+    }
+  }
+
+  public void updateValueInspector(Column column, ByteBuf buffer, ValueInspector vi) {
+    Class<?> type = column.getColumnType();
+    if (type.equals(Byte.class)) {
+      vi.update(buffer.getByte(column.getColumnOffset()));
+    } else if (type.equals(Short.class)) {
+      vi.update(buffer.getUnsignedByte(column.getColumnOffset()));
+    } else if (type.equals(Integer.class)) {
+      vi.update(buffer.getUnsignedShort(column.getColumnOffset()));
+    } else if (type.equals(Long.class)) {
+      vi.update(buffer.getUnsignedInt(column.getColumnOffset()));
+    } else {
+      throw new UnsupportedOperationException("Unsupported read type " + type);
     }
   }
 }

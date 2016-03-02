@@ -47,7 +47,7 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
 
   @Override
   public Object[] processRecord(ByteBuf buffer) {
-    // Process filter columns, evaluate predicate and decide whether or not to proceed scanning
+    // Process filter columns, evaluate predicate upfront
     for (int i=0; i<numFilterColumns; i++) {
       updateValueInspectors(filterColumns[i], buffer);
     }
@@ -72,18 +72,7 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
   private void updateValueInspectors(Column column, ByteBuf buffer) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
     for (ValueInspector vi: ins) {
-      if (column.getColumnType().equals(Byte.class)) {
-        vi.update(buffer.getByte(column.getColumnOffset()));
-      } else if (column.getColumnType().equals(Short.class)) {
-        vi.update(buffer.getUnsignedByte(column.getColumnOffset()));
-      } else if (column.getColumnType().equals(Integer.class)) {
-        vi.update(buffer.getUnsignedShort(column.getColumnOffset()));
-      } else if (column.getColumnType().equals(Long.class)) {
-        vi.update(buffer.getUnsignedInt(column.getColumnOffset()));
-      } else {
-        throw new UnsupportedOperationException("Unsupported read type " +
-          column.getColumnType().toString());
-      }
+      updateValueInspector(column, buffer, vi);
     }
   }
 
