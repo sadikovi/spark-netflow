@@ -24,6 +24,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 
@@ -218,5 +219,79 @@ public class NetFlowReaderSuite {
 
     assertEquals(rb.getClass(), FilterRecordBuffer.class);
     assertEquals(numRecordsScanned, 25 - 11 + 1);
+  }
+
+  @Test
+  public void testFilterScan5() throws IOException {
+    // test filter with statistics on time
+    String file = getClass().getResource("/correct/ftv5.2016-01-13.compress.9.sample").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR, NetFlowV5.FIELD_SRCPORT};
+    FilterPredicate filter = FilterApi.and(
+      FilterApi.ge(NetFlowV5.FIELD_UNIX_SECS, -1L),
+      FilterApi.le(NetFlowV5.FIELD_UNIX_SECS, 1L)
+    );
+    RecordBuffer rb = nr.prepareRecordBuffer(cols, filter);
+
+    assertEquals(rb.getClass(), ScanRecordBuffer.class);
+  }
+
+  @Test
+  public void testFilterScan6() throws IOException {
+    // test skip scan filter with statistics on time
+    String file = getClass().getResource("/correct/ftv5.2016-01-13.compress.9.sample").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR, NetFlowV5.FIELD_SRCPORT};
+    FilterPredicate filter = FilterApi.and(
+      FilterApi.ge(NetFlowV5.FIELD_UNIX_SECS, 2L),
+      FilterApi.le(NetFlowV5.FIELD_UNIX_SECS, 5L)
+    );
+    RecordBuffer rb = nr.prepareRecordBuffer(cols, filter);
+
+    assertEquals(rb.getClass(), EmptyRecordBuffer.class);
+  }
+
+  @Test
+  public void testFilterScan7() throws IOException {
+    // test filter scan with statistics on time
+    String file = getClass().getResource("/correct/ftv5.2016-01-13.compress.9.sample").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR, NetFlowV5.FIELD_SRCPORT,
+      NetFlowV5.FIELD_DSTPORT};
+    FilterPredicate filter = FilterApi.or(
+      FilterApi.and(
+        FilterApi.ge(NetFlowV5.FIELD_UNIX_SECS, -1L),
+        FilterApi.lt(NetFlowV5.FIELD_SRCPORT, 5)
+      ),
+      FilterApi.eq(NetFlowV5.FIELD_DSTPORT, 200)
+    );
+
+    RecordBuffer rb = nr.prepareRecordBuffer(cols, filter);
+
+    assertEquals(rb.getClass(), FilterRecordBuffer.class);
+
+    Iterator<Object[]> iter = rb.iterator();
+    Object[][] records = new Object[6][3];
+    int i = 0;
+    while (iter.hasNext()) {
+      records[i++] = iter.next();
+    }
+
+    Object[][] expected = new Object[][] {
+      {0L, 0, 65280},
+      {1L, 1, 65281},
+      {2L, 2, 65282},
+      {3L, 3, 65283},
+      {4L, 4, 65284},
+      {456L, 456, 200}
+    };
+
+    assertArrayEquals(records, expected);
   }
 }

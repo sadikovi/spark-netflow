@@ -360,10 +360,12 @@ public final class NetFlowReader {
     return header;
   }
 
+  /** Prepare record buffer for full scan */
   public RecordBuffer prepareRecordBuffer(Column[] columns) {
     return prepareRecordBuffer(columns, null);
   }
 
+  /** Prepare record buffer with default statistics on time */
   public RecordBuffer prepareRecordBuffer(Column[] columns, FilterPredicate predicate) {
     return prepareRecordBuffer(columns, predicate, null);
   }
@@ -399,6 +401,8 @@ public final class NetFlowReader {
     return prepareRecordBuffer(strategy, flowInterface);
   }
 
+  // Prepare record buffer based on strategy and flow interface. Method is currently private, so
+  // there is no option to pass custom scan strategy.
   private RecordBuffer prepareRecordBuffer(ScanStrategy strategy, NetFlow flowInterface) {
     if (strategy == null) {
       throw new IllegalArgumentException("Expected ScanStrategy instance, got null");

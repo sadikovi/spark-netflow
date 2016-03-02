@@ -52,6 +52,7 @@ public final class Strategies {
   // Strategies
   //////////////////////////////////////////////////////////////
 
+  /** Skip scan fully without reading file */
   public static final class SkipScan extends ScanStrategy {
     public SkipScan() { }
 
@@ -72,6 +73,7 @@ public final class Strategies {
     }
   }
 
+  /** Full scan of the file without any predicate */
   public static final class FullScan extends ScanStrategy {
     public FullScan(Column[] columns) {
       rm = new ScanRecordMaterializer(columns);
@@ -95,6 +97,7 @@ public final class Strategies {
     private final RecordMaterializer rm;
   }
 
+  /** Scan with filtering (fairly expensive, so we try resolving either to skip or full scan) */
   public static class FilterScan extends ScanStrategy {
     public FilterScan(
         Column[] columns,

@@ -22,9 +22,8 @@ import com.github.sadikovi.netflowlib.statistics.Statistics;
 
 /**
  * [[Column]] is a base class for all typed columns for all NetFlow versions. They contain basic
- * information about name, type, and offset in the record, so [[FlowInterface]] can use standard
- * method for parsing a row, otherwise you should be able to override and provide your own
- * implementation.
+ * information about name, type, and offset in the record, so it allows to use standard interface of
+ * [[RecordMaterializer]] for parsing a row.
  */
 public final class Columns {
   private Columns() { }
@@ -42,14 +41,17 @@ public final class Columns {
       columnOffset = offset;
     }
 
+    /** Get column name */
     public String getColumnName() {
       return columnName;
     }
 
+    /** Get column type */
     public Class<?> getColumnType() {
       return columnType;
     }
 
+    /** Get column offset in a record */
     public int getColumnOffset() {
       return columnOffset;
     }

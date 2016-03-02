@@ -16,6 +16,16 @@
 
 package com.github.sadikovi.netflowlib.predicate;
 
+/**
+ * [[Inspector]] interface is designed to provide methods of resolving predicate values and give
+ * an answer on when to skip record. [[ValueInspector]] should be implemented for all basic
+ * filters (leaf nodes). Note that [[TrivialPredicate]] does not support value inspector, so
+ * `update()` should be run beforehand to optimizie predicate and remove them. [[BinaryLogical]]
+ * inspectors are supported by corresponding predicates `And` and `Or`, and [[UnaryLogical]]
+ * inspector is backed by `Not` filter.
+ * `Inspector` can be used to resolve predicate incrementally, though it depends on design of a
+ * caller.
+ */
 public final class Inspectors {
   private Inspectors() { }
 
@@ -24,7 +34,7 @@ public final class Inspectors {
     boolean accept(Visitor visitor);
   }
 
-  /** For leaf nodes, e.g. Eq, Gt, Ge, In */
+  /** Inspector for leaf nodes, e.g. Eq, Ge, Gt, Le, Lt, In */
   public static class ValueInspector implements Inspector {
     public ValueInspector() { }
 
@@ -69,6 +79,7 @@ public final class Inspectors {
     private boolean result = false;
   }
 
+  /** Inspector for binary logical operators, e.g. And, Or */
   static abstract class BinaryLogical implements Inspector {
     BinaryLogical(Inspector left, Inspector right) {
       this.left = left;
@@ -109,6 +120,7 @@ public final class Inspectors {
     }
   }
 
+  /** Inspector for unary logical operators, e.g. Not */
   static abstract class UnaryLogical implements Inspector {
     UnaryLogical(Inspector child) {
       this.child = child;

@@ -339,10 +339,13 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
 
   @Override
   public FilterPredicate transform(In predicate, HashMap<String, Statistics> stats) {
-    // TODO: we do not do any updates for "In", since there is very low chance of being out of
-    // range {min, max}.
-    addInspector(predicate.getColumn(), predicate.inspector());
+    // TODO: we do not do any major updates for "In", since there is very low chance of being out
+    // of range {min, max}.
+    if (predicate.getValues().isEmpty()) {
+      return FilterApi.trivial(false);
+    }
 
+    addInspector(predicate.getColumn(), predicate.inspector());
     return predicate;
   }
 
