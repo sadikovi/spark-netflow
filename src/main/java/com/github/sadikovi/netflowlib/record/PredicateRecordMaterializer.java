@@ -31,17 +31,17 @@ import com.github.sadikovi.netflowlib.predicate.Visitor;
 
 public final class PredicateRecordMaterializer extends RecordMaterializer implements Visitor {
   public PredicateRecordMaterializer(
-      Column<?>[] columns,
+      Column[] columns,
       Inspector tree,
-      HashMap<Column<?>, ArrayList<ValueInspector>> inspectors) {
+      HashMap<Column, ArrayList<ValueInspector>> columnInspectors) {
     this.tree = tree;
     this.columns = columns;
     this.numColumns = this.columns.length;
-    this.filterColumns = inspectors.keySet().toArray(new Column<?>[inspectors.size()]);
+    this.filterColumns = columnInspectors.keySet().toArray(new Column[columnInspectors.size()]);
     this.numFilterColumns = this.filterColumns.length;
     this.inspectors = new HashMap<String, ArrayList<ValueInspector>>();
-    for (Column<?> col: inspectors.keySet()) {
-      this.inspectors.put(col.getColumnName(), inspectors.get(col));
+    for (Column col: filterColumns) {
+      inspectors.put(col.getColumnName(), columnInspectors.get(col));
     }
   }
 
@@ -69,7 +69,7 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
     }
   }
 
-  private <T extends Comparable<T>> void updateValueInspectors(Column<T> column, ByteBuf buffer) {
+  private void updateValueInspectors(Column column, ByteBuf buffer) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
     for (ValueInspector vi: ins) {
       if (column.getColumnType().equals(Byte.class)) {
@@ -87,7 +87,7 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
     }
   }
 
-  private <T extends Comparable<T>> void resetValueInspectors(Column<T> column) {
+  private void resetValueInspectors(Column column) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
     for (ValueInspector vi: ins) {
       vi.reset();
@@ -115,9 +115,9 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
   }
 
   private final Inspector tree;
-  private final Column<?>[] columns;
+  private final Column[] columns;
   private final int numColumns;
-  private final Column<?>[] filterColumns;
+  private final Column[] filterColumns;
   private final int numFilterColumns;
   private final HashMap<String, ArrayList<ValueInspector>> inspectors;
 }

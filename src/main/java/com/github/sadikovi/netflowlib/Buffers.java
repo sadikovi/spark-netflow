@@ -45,6 +45,11 @@ public final class Buffers {
     public static final int BUFFER_LENGTH_1 = 3698688;
 
     public abstract Iterator<Object[]> iterator();
+
+    @Override
+    public String toString() {
+      return "Record buffer: " + getClass().getCanonicalName();
+    }
   }
 
   /**
@@ -180,6 +185,12 @@ public final class Buffers {
           throw new UnsupportedOperationException("Remove operation is not supported");
         }
       };
+    }
+
+    @Override
+    public String toString() {
+      return "Record buffer: " + getClass().getCanonicalName() + "[compression: " + compression +
+        ", record size: " + recordSize + "]";
     }
 
     // Whether or not input stream is compressed

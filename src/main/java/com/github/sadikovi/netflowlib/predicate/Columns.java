@@ -18,48 +18,35 @@ package com.github.sadikovi.netflowlib.predicate;
 
 import java.io.Serializable;
 
+import com.github.sadikovi.netflowlib.statistics.Statistics;
+
 /**
  * [[Column]] is a base class for all typed columns for all NetFlow versions. They contain basic
  * information about name, type, and offset in the record, so [[FlowInterface]] can use standard
  * method for parsing a row, otherwise you should be able to override and provide your own
- * implementation. This will also allow us to change column name to String with minimum work.
+ * implementation.
  */
 public final class Columns {
   private Columns() { }
 
-  /**
-   * [[Column]] is a base class for all the columns in the library, provides simple interface for
-   * column name, type, offset and other features that might be added later. Column interface brings
-   * type safety to the parsing.
-   * @param columnName name of the column
-   * @param columnType type of the column
-   * @param offset offset in the record for that column (index in the buffer)
-   * @param min lower bound for the column (statistics property)
-   * @param max upper bound for the column (statistics property)
-   */
-  public static abstract class Column<T extends Comparable<T>> implements Serializable {
-    Column(String name, Class<T> type, int offset, T min, T max) {
+  public static abstract class Column implements Serializable, Statistics {
+    Column() { }
+
+    Column(String name, Class<?> type, int offset) {
       if (offset < 0) {
         throw new IllegalArgumentException("Wrong offset " + offset);
-      }
-
-      if (min.compareTo(max) > 0) {
-        throw new IllegalArgumentException("Min " + min + " is greater than max " + max);
       }
 
       columnName = name;
       columnType = type;
       columnOffset = offset;
-      minValue = min;
-      maxValue = max;
     }
 
-    /** Return column name */
     public String getColumnName() {
       return columnName;
     }
 
-    public Class<T> getColumnType() {
+    public Class<?> getColumnType() {
       return columnType;
     }
 
@@ -67,19 +54,9 @@ public final class Columns {
       return columnOffset;
     }
 
-    /** Statistics method to return lower bound for the column. */
-    public T getMinValue() {
-      return minValue;
-    }
-
-    /** Statistics method to return upper bound for the column. */
-    public T getMaxValue() {
-      return maxValue;
-    }
-
     @Override
     public String toString() {
-      return "column(" + columnName + ")[" + columnType.getSimpleName() + "][" + columnOffset + "]";
+      return "Column(" + columnName + ")[" + columnType.getSimpleName() + "][" + columnOffset + "]";
     }
 
     @Override
@@ -104,55 +81,120 @@ public final class Columns {
       return result;
     }
 
-    private final String columnName;
-    private final Class<T> columnType;
-    private final int columnOffset;
-    private final T minValue;
-    private final T maxValue;
+    private String columnName = null;
+    private Class<?> columnType = null;
+    private int columnOffset = -1;
   }
 
   /** Column for byte values */
-  public static class ByteColumn extends Column<Byte> {
-    /** private constructor for statistics column */
+  public static class ByteColumn extends Column {
+    ByteColumn() { }
+
     ByteColumn(String name, int offset, byte min, byte max) {
-      super(name, Byte.class, offset, min, max);
+      super(name, Byte.class, offset);
+      minValue = min;
+      maxValue = max;
     }
 
     public ByteColumn(String name, int offset) {
       this(name, offset, (byte) 0, Byte.MAX_VALUE);
     }
+
+    @Override
+    public Object getMin() {
+      return minValue;
+    }
+
+    @Override
+    public Object getMax() {
+      return maxValue;
+    }
+
+    private byte minValue;
+    private byte maxValue;
   }
 
   /** Column for short values */
-  public static class ShortColumn extends Column<Short> {
+  public static class ShortColumn extends Column {
+    ShortColumn() { }
+
     ShortColumn(String name, int offset, short min, short max) {
-      super(name, Short.class, offset, min, max);
+      super(name, Short.class, offset);
+      minValue = min;
+      maxValue = max;
     }
 
     public ShortColumn(String name, int offset) {
       this(name, offset, (short) 0, Short.MAX_VALUE);
     }
+
+    @Override
+    public Object getMin() {
+      return minValue;
+    }
+
+    @Override
+    public Object getMax() {
+      return maxValue;
+    }
+
+    private short minValue;
+    private short maxValue;
   }
 
   /** Column for integer values */
-  public static class IntColumn extends Column<Integer> {
+  public static class IntColumn extends Column {
+    IntColumn() { }
+
     IntColumn(String name, int offset, int min, int max) {
-      super(name, Integer.class, offset, min, max);
+      super(name, Integer.class, offset);
+      minValue = min;
+      maxValue = max;
     }
 
     public IntColumn(String name, int offset) {
       this(name, offset, (int) 0, Integer.MAX_VALUE);
     }
+
+    @Override
+    public Object getMin() {
+      return minValue;
+    }
+
+    @Override
+    public Object getMax() {
+      return maxValue;
+    }
+
+    private int minValue;
+    private int maxValue;
   }
 
   /** Column for long values */
-  public static class LongColumn extends Column<Long> {
+  public static class LongColumn extends Column {
+    LongColumn() { }
+
     LongColumn(String name, int offset, long min, long max) {
-      super(name, Long.class, offset, min, max);
+      super(name, Long.class, offset);
+      minValue = min;
+      maxValue = max;
     }
 
     public LongColumn(String name, int offset) {
       this(name, offset, (long) 0, Long.MAX_VALUE);
     }
+
+    @Override
+    public Object getMin() {
+      return minValue;
+    }
+
+    @Override
+    public Object getMax() {
+      return maxValue;
+    }
+
+    private long minValue;
+    private long maxValue;
   }
 }

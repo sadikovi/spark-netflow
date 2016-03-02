@@ -37,23 +37,17 @@ import com.github.sadikovi.netflowlib.statistics.Statistics;
  * optimizations might apply in concrete implementations.
  */
 public abstract interface PredicateTransform {
-  <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(Eq predicate, HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(Gt predicate, HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(Ge predicate, HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(Lt predicate, HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(Le predicate, HashMap<String, Statistics> stats);
 
-  <T extends Comparable<T>> FilterPredicate transform(In<T> predicate,
-    HashMap<String, Statistics> stats);
+  FilterPredicate transform(In predicate, HashMap<String, Statistics> stats);
 
   FilterPredicate transform(And predicate);
 

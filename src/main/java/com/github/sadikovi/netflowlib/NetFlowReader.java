@@ -35,7 +35,7 @@ import com.github.sadikovi.netflowlib.Buffers.ScanRecordBuffer;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
-import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.GenericStatistics;
+import com.github.sadikovi.netflowlib.statistics.Statistics;
 import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.LongStatistics;
 
 import com.github.sadikovi.netflowlib.version.NetFlow;
@@ -62,17 +62,18 @@ public final class NetFlowReader {
 
   public static NetFlowReader prepareReader(
       DataInputStream inputStream,
-      int bufferSize) throws IOException {
-    return new NetFlowReader(inputStream, bufferSize);
+      int buffer) throws IOException {
+    return new NetFlowReader(inputStream, buffer);
   }
 
   /**
-   * In order to create [[NetFlowReader]] instance, metadata is collected from input stream.
-   *
+   * [[NetFlowReader]] provides interface to get parsed header and record buffer with chosen
+   * strategy based on columns, predicate and statistics. Metadata, header are parsed as part of
+   * initialization.
    */
-  private NetFlowReader(DataInputStream inputStream, int bufferSize) throws IOException {
+  private NetFlowReader(DataInputStream inputStream, int buffer) throws IOException {
     in = inputStream;
-    bufferLength = bufferSize;
+    bufferLength = buffer;
 
     byte[] metadata = new byte[METADATA_LENGTH];
     in.read(metadata, 0, METADATA_LENGTH);
@@ -359,11 +360,25 @@ public final class NetFlowReader {
     return header;
   }
 
+  public RecordBuffer prepareRecordBuffer(Column[] columns) {
+    return prepareRecordBuffer(columns, null);
+  }
+
+  public RecordBuffer prepareRecordBuffer(Column[] columns, FilterPredicate predicate) {
+    return prepareRecordBuffer(columns, predicate, null);
+  }
+
   /** Prepare record buffer based on input stream */
   public RecordBuffer prepareRecordBuffer(
       Column[] columns,
       FilterPredicate predicate,
-      HashMap<Column, GenericStatistics> stats) {
+      HashMap<Column, Statistics> stats) {
+    // Since we are using statistics on a field, we have to make sure that it is initialized
+    // properly
+    if (stats == null) {
+      stats = new HashMap<Column, Statistics>();
+    }
+
     // Find out appropriate strategy for set of columns and predicate. We also update statistics
     // with start and end capture time of the file.
     NetFlow flowInterface;
@@ -384,7 +399,7 @@ public final class NetFlowReader {
     return prepareRecordBuffer(strategy, flowInterface);
   }
 
-  public RecordBuffer prepareRecordBuffer(ScanStrategy strategy, NetFlow flowInterface) {
+  private RecordBuffer prepareRecordBuffer(ScanStrategy strategy, NetFlow flowInterface) {
     if (strategy == null) {
       throw new IllegalArgumentException("Expected ScanStrategy instance, got null");
     }

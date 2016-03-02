@@ -51,26 +51,25 @@ public final class Operators {
    * @param value filtering value
    * @param values list of values for predicates that support multiple values
    */
-  static abstract class ColumnPredicate<T extends Comparable<T>>
-      implements FilterPredicate, Serializable {
-    ColumnPredicate(Column<T> column, T value) {
+  static abstract class ColumnPredicate implements FilterPredicate, Serializable {
+    ColumnPredicate(Column column, Object value) {
       this.column = column;
       this.value = value;
       this.inspector = getValueInspector(column.getColumnType());
     }
 
-    protected abstract ValueInspector getValueInspector(Class<T> klass);
+    protected abstract ValueInspector getValueInspector(Class<?> klass);
 
-    public Column<T> getColumn() {
+    public Column getColumn() {
       return column;
     }
 
-    public T getValue() {
+    public Object getValue() {
       return value;
     }
 
     public ValueInspector inspector() {
-      return this.inspector;
+      return inspector;
     }
 
     public final Inspector convert() {
@@ -79,7 +78,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName() + "(" + column.toString() + ", " + value.toString() + ")";
+      return getClass().getSimpleName() + "(" + column + ", " + value + ")";
     }
 
     @Override
@@ -103,8 +102,8 @@ public final class Operators {
       return result;
     }
 
-    private final Column<T> column;
-    private final T value;
+    private final Column column;
+    private final Object value;
     private final ValueInspector inspector;
   }
 
@@ -113,8 +112,8 @@ public final class Operators {
   //////////////////////////////////////////////////////////////
 
   /** Equality filter including null-safe filtering */
-  public static final class Eq<T extends Comparable<T>> extends ColumnPredicate<T> {
-    Eq(Column<T> column, T value) {
+  public static final class Eq extends ColumnPredicate {
+    Eq(Column column, Object value) {
       super(column, value);
     }
 
@@ -125,7 +124,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
@@ -161,8 +160,8 @@ public final class Operators {
   }
 
   /** "Greater Than" filter */
-  public static final class Gt<T extends Comparable<T>> extends ColumnPredicate<T> {
-    Gt(Column<T> column, T value) {
+  public static final class Gt extends ColumnPredicate {
+    Gt(Column column, Object value) {
       super(column, value);
     }
 
@@ -174,7 +173,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
@@ -210,8 +209,8 @@ public final class Operators {
   }
 
   /** "Greater Than Or Equal" filter */
-  public static final class Ge<T extends Comparable<T>> extends ColumnPredicate<T> {
-    Ge(Column<T> column, T value) {
+  public static final class Ge extends ColumnPredicate {
+    Ge(Column column, Object value) {
       super(column, value);
     }
 
@@ -223,7 +222,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
@@ -259,8 +258,8 @@ public final class Operators {
   }
 
   /** "Less Than" filter */
-  public static final class Lt<T extends Comparable<T>> extends ColumnPredicate<T> {
-    Lt(Column<T> column, T value) {
+  public static final class Lt extends ColumnPredicate {
+    Lt(Column column, Object value) {
       super(column, value);
     }
 
@@ -272,7 +271,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
@@ -308,8 +307,8 @@ public final class Operators {
   }
 
   /** "Less Than Or Equal" filter */
-  public static final class Le<T extends Comparable<T>> extends ColumnPredicate<T> {
-    Le(Column<T> column, T value) {
+  public static final class Le extends ColumnPredicate {
+    Le(Column column, Object value) {
       super(column, value);
     }
 
@@ -321,7 +320,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
@@ -362,20 +361,21 @@ public final class Operators {
    * case of multi value predicate returns null, use `getValues()` instead.
    * @param values set of values to compare
    */
-  static abstract class MultiValueColumnPredicate<T extends Comparable<T>> extends
-      ColumnPredicate<T> {
-    MultiValueColumnPredicate(Column<T> column, HashSet<T> values) {
+  static abstract class MultiValueColumnPredicate extends ColumnPredicate {
+    MultiValueColumnPredicate(Column column, HashSet<?> values) {
       super(column, null);
-      this.values = values;
+      for (Object obj: values) {
+        this.values.add(obj);
+      }
     }
 
-    public HashSet<T> getValues() {
+    public HashSet<Object> getValues() {
       return values;
     }
 
     @Override
     public String toString() {
-      return getClass().getSimpleName() + "(" + getColumn().toString() + ", <" +
+      return getClass().getSimpleName() + "(" + getColumn() + ", <" +
         values.getClass().getSimpleName() + ">)";
     }
 
@@ -400,12 +400,12 @@ public final class Operators {
       return result;
     }
 
-    private final HashSet<T> values;
+    private HashSet<Object> values = new HashSet<Object>();
   }
 
   /** "In" filter, should be evaluated to true, if value contains in the set */
-  public static final class In<T extends Comparable<T>> extends MultiValueColumnPredicate<T> {
-    In(Column<T> column, HashSet<T> values) {
+  public static final class In extends MultiValueColumnPredicate {
+    In(Column column, HashSet<?> values) {
       super(column, values);
     }
 
@@ -417,7 +417,7 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<T> klass) {
+    protected ValueInspector getValueInspector(Class<?> klass) {
       if (klass.equals(Byte.class)) {
         return new ValueInspector() {
           @Override

@@ -16,8 +16,6 @@
 
 package com.github.sadikovi.netflowlib.predicate;
 
-import java.io.Serializable;
-
 public final class Inspectors {
   private Inspectors() { }
 

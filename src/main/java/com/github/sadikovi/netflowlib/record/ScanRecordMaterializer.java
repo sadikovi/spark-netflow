@@ -31,7 +31,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
  * LongColumn("c")].
  */
 public final class ScanRecordMaterializer extends RecordMaterializer {
-  public ScanRecordMaterializer(Column<?>[] columns) {
+  public ScanRecordMaterializer(Column[] columns) {
     this.columns = columns;
     numColumns = columns.length;
   }
@@ -47,6 +47,6 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     return newRecord;
   }
 
-  private final Column<?>[] columns;
+  private final Column[] columns;
   private final int numColumns;
 }

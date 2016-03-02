@@ -32,8 +32,8 @@ public abstract class RecordMaterializer {
   public abstract Object[] processRecord(ByteBuf buffer);
 
   /** Read buffer bytes sequence for column offset */
-  public <T extends Comparable<T>> T readField(Column<T> column, ByteBuf buffer) {
-    Class<T> type = column.getColumnType();
+  public Object readField(Column column, ByteBuf buffer) {
+    Class<?> type = column.getColumnType();
     if (type.equals(Byte.class)) {
       return type.cast(buffer.getByte(column.getColumnOffset()));
     } else if (type.equals(Short.class)) {

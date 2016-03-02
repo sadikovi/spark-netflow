@@ -43,17 +43,19 @@ import com.github.sadikovi.netflowlib.predicate.Operators.Not;
 import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
 
 import com.github.sadikovi.netflowlib.statistics.Statistics;
-import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.GenericStatistics;
+
+import com.github.sadikovi.netflowlib.util.Logging;
 
 /**
  * [[ScanPlanner]] interface defines strategies for parsing a record and resolving predicate tree.
  */
-public final class ScanPlanner implements PredicateTransform {
+public final class ScanPlanner extends Logging implements PredicateTransform {
+
   /** Build appropriate strategy based on pruned columns, predicate tree and statistics */
   public static ScanStrategy buildStrategy(
       Column[] columns,
       FilterPredicate predicate,
-      HashMap<Column, GenericStatistics> stats) {
+      HashMap<Column, Statistics> stats) {
     ScanPlanner planner = new ScanPlanner(columns, predicate, stats);
     return planner.getStrategy();
   }
@@ -68,11 +70,10 @@ public final class ScanPlanner implements PredicateTransform {
     return buildStrategy(columns, predicate, null);
   }
 
-  @SuppressWarnings("unchecked")
   private ScanPlanner(
       Column[] columns,
       FilterPredicate predicate,
-      HashMap<Column, GenericStatistics> stats) {
+      HashMap<Column, Statistics> stats) {
     // Building strategy involves several steps, such as variables check, making sure that we can
     // prune columns, predicate is defined, and statistics can be resolved; next is folding
     // predicate tree and applying statistics to modified predicate; next step is converting
@@ -80,7 +81,7 @@ public final class ScanPlanner implements PredicateTransform {
     // used in [[RecordMaterializer]].
     if (columns == null || columns.length == 0) {
       throw new IllegalArgumentException("Expected columns to select, got " + columns +
-        ". Make sure that you provide correct Column<T> instances when requesting a scan");
+        ". Make sure that you provide correct Column instances when requesting a scan");
     }
 
     // Resolve statistics, if available. Note that we manage statistics as map of column name and
@@ -104,6 +105,8 @@ public final class ScanPlanner implements PredicateTransform {
       internalFilter = predicate.update(this, internalStats);
     }
 
+    log.debug("Predicate after update: " + internalFilter.toString());
+
     // Flags for predicate, whether it is known or not, whether result is known or not
     boolean known = (internalFilter instanceof TrivialPredicate);
     boolean result = (known) ? ((TrivialPredicate) internalFilter).getResult() : false;
@@ -126,35 +129,55 @@ public final class ScanPlanner implements PredicateTransform {
       throw new IllegalStateException("Cannot find suitable strategy for scan. Make sure you " +
         "provide correct arguments in constructor");
     }
+
+    log.debug("Strategy chosen: " + strategy.toString());
   }
 
   private ScanStrategy getStrategy() {
     return strategy;
   }
 
-  @SuppressWarnings("unchecked")
-  protected <T extends Comparable<T>> T resolveMin(Column<T> column, Statistics stats) {
-    T min = column.getMinValue();
-    if (stats != null) {
-      min = (T) stats.getMin();
+  protected Object resolveMin(Column column, Statistics stats) {
+    if (stats == null) {
+      return column.getMin();
+    } else {
+      return stats.getMin();
     }
-
-    return min;
   }
 
-  @SuppressWarnings("unchecked")
-  protected <T extends Comparable<T>> T resolveMax(Column<T> column, Statistics stats) {
-    T max = column.getMaxValue();
-    if (stats != null) {
-      max = (T) stats.getMax();
+  protected Object resolveMax(Column column, Statistics stats) {
+    if (stats == null) {
+      return column.getMax();
+    } else {
+      return stats.getMax();
     }
-
-    return max;
   }
 
-  protected <T extends Comparable<T>> void addInspector(
-      Column<T> column,
-      ValueInspector inspector) {
+  // Method to compare two objects based on provided class. Interface is similar to `compareTo`
+  // method from `Comparable` interface. Note that only certain types are supported
+  protected int compare(Class<?> klass, Object it, Object that) {
+    if (klass.equals(Byte.class)) {
+      Byte itValue = Byte.class.cast(it);
+      Byte thatValue = Byte.class.cast(that);
+      return itValue.compareTo(thatValue);
+    } else if (klass.equals(Short.class)) {
+      Short itValue = Short.class.cast(it);
+      Short thatValue = Short.class.cast(that);
+      return itValue.compareTo(thatValue);
+    } else if (klass.equals(Integer.class)) {
+      Integer itValue = Integer.class.cast(it);
+      Integer thatValue = Integer.class.cast(that);
+      return itValue.compareTo(thatValue);
+    } else if (klass.equals(Long.class)) {
+      Long itValue = Long.class.cast(it);
+      Long thatValue = Long.class.cast(that);
+      return itValue.compareTo(thatValue);
+    } else {
+      throw new UnsupportedOperationException("Unsupported read type " + klass.toString());
+    }
+  }
+
+  protected void addInspector(Column column, ValueInspector inspector) {
     if (!inspectors.containsKey(column)) {
       inspectors.put(column, new ArrayList<ValueInspector>());
     }
@@ -167,21 +190,20 @@ public final class ScanPlanner implements PredicateTransform {
   //////////////////////////////////////////////////////////////
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(Eq<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(Eq predicate, HashMap<String, Statistics> stats) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
-    Column<T> col = predicate.getColumn();
-    T min = resolveMin(col, stats.get(col.getColumnName()));
-    T max = resolveMax(col, stats.get(col.getColumnName()));
+    Column col = predicate.getColumn();
+    Object min = resolveMin(col, stats.get(col.getColumnName()));
+    Object max = resolveMax(col, stats.get(col.getColumnName()));
 
-    if (predicate.getValue().compareTo(min) < 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), min) < 0) {
       return FilterApi.trivial(false);
     }
 
-    if (predicate.getValue().compareTo(max) > 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), max) > 0) {
       return FilterApi.trivial(false);
     }
 
@@ -191,25 +213,24 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(Gt<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(Gt predicate, HashMap<String, Statistics> stats) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
-    Column<T> col = predicate.getColumn();
-    T min = resolveMin(col, stats.get(col.getColumnName()));
-    T max = resolveMax(col, stats.get(col.getColumnName()));
+    Column col = predicate.getColumn();
+    Object min = resolveMin(col, stats.get(col.getColumnName()));
+    Object max = resolveMax(col, stats.get(col.getColumnName()));
 
     // If predicate value is less than minimum value then predicate is trivial. Note, if predicate
     // greater than minimum value, we still have to scan, since values can be minimal.
-    if (predicate.getValue().compareTo(min) < 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), min) < 0) {
       return FilterApi.trivial(true);
     }
 
     // If predicate value is greater or equals than maximum value then predicate "Greater than" is
     // trivial, since there are no such values greater than upper bound.
-    if (predicate.getValue().compareTo(max) >= 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), max) >= 0) {
       return FilterApi.trivial(false);
     }
 
@@ -219,33 +240,32 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(Ge<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(Ge predicate, HashMap<String, Statistics> stats) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
-    Column<T> col = predicate.getColumn();
-    T min = resolveMin(col, stats.get(col.getColumnName()));
-    T max = resolveMax(col, stats.get(col.getColumnName()));
+    Column col = predicate.getColumn();
+    Object min = resolveMin(col, stats.get(col.getColumnName()));
+    Object max = resolveMax(col, stats.get(col.getColumnName()));
 
     // If predicate value is less than or equals minimum value, then predicate is trivial, since it
     // would mean that we scan entire range anyway.
-    if (predicate.getValue().compareTo(min) <= 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), min) <= 0) {
       return FilterApi.trivial(true);
     }
 
     // If predicate value is greater than maximum value, then predicate is trivial, since there are
     // no such values in range.
-    if (predicate.getValue().compareTo(max) > 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), max) > 0) {
       return FilterApi.trivial(false);
     }
 
     // If "GreaterThanOrEqual" value is a maximum value, then this simply becomes equality
     // predicate, since there are no values greater than maximum value.
     // Note since we return new equality predicate we have to add it to the list of inspectors.
-    if (predicate.getValue().compareTo(max) == 0) {
-      Eq<T> equalityPredicate = FilterApi.eq(predicate.getColumn(), max);
+    if (compare(col.getColumnType(), predicate.getValue(), max) == 0) {
+      Eq equalityPredicate = FilterApi.eq(predicate.getColumn(), max);
 
       addInspector(col, equalityPredicate.inspector());
       return equalityPredicate;
@@ -256,25 +276,24 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(Lt<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(Lt predicate, HashMap<String, Statistics> stats) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
-    Column<T> col = predicate.getColumn();
-    T min = resolveMin(col, stats.get(col.getColumnName()));
-    T max = resolveMax(col, stats.get(col.getColumnName()));
+    Column col = predicate.getColumn();
+    Object min = resolveMin(col, stats.get(col.getColumnName()));
+    Object max = resolveMax(col, stats.get(col.getColumnName()));
 
     // If predicate value is less than or equal minimum value, then predicate is trivial, since
     // there are no values less than minimum value.
-    if (predicate.getValue().compareTo(min) <= 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), min) <= 0) {
       return FilterApi.trivial(false);
     }
 
     // If predicate value is greater than maximum value, then predicate is trivial, since all
     // values fall into range (< value which is larger than maximum value).
-    if (predicate.getValue().compareTo(max) > 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), max) > 0) {
       return FilterApi.trivial(true);
     }
 
@@ -284,32 +303,31 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(Le<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(Le predicate, HashMap<String, Statistics> stats) {
     if (predicate.getValue() == null) {
       return FilterApi.trivial(false);
     }
 
-    Column<T> col = predicate.getColumn();
-    T min = resolveMin(col, stats.get(col.getColumnName()));
-    T max = resolveMax(col, stats.get(col.getColumnName()));
+    Column col = predicate.getColumn();
+    Object min = resolveMin(col, stats.get(col.getColumnName()));
+    Object max = resolveMax(col, stats.get(col.getColumnName()));
 
     // If predicate value is less than minimum value, then predicate is trivial, see above for more
     // information.
-    if (predicate.getValue().compareTo(min) < 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), min) < 0) {
       return FilterApi.trivial(false);
     }
 
     // If predicate value is greater than or equal to maximum value, then predicate is trivial, and
     // full scan is performed.
-    if (predicate.getValue().compareTo(max) >= 0) {
+    if (compare(col.getColumnType(), predicate.getValue(), max) >= 0) {
       return FilterApi.trivial(true);
     }
 
     // If predicate value equals minimum value, then predicate becomes equality operator.
     // Note since we return new equality predicate we have to add it to the list of inspectors.
-    if (predicate.getValue().compareTo(min) == 0) {
-      Eq<T> equalityPredicate = FilterApi.eq(predicate.getColumn(), min);
+    if (compare(col.getColumnType(), predicate.getValue(), min) == 0) {
+      Eq equalityPredicate = FilterApi.eq(predicate.getColumn(), min);
 
       addInspector(col, equalityPredicate.inspector());
       return equalityPredicate;
@@ -320,8 +338,7 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate transform(In<T> predicate,
-      HashMap<String, Statistics> stats) {
+  public FilterPredicate transform(In predicate, HashMap<String, Statistics> stats) {
     // TODO: we do not do any updates for "In", since there is very low chance of being out of
     // range {min, max}.
     addInspector(predicate.getColumn(), predicate.inspector());
@@ -413,6 +430,6 @@ public final class ScanPlanner implements PredicateTransform {
   }
 
   private ScanStrategy strategy = null;
-  private final HashMap<Column<?>, ArrayList<ValueInspector>> inspectors =
-    new HashMap<Column<?>, ArrayList<ValueInspector>>();
+  private HashMap<Column, ArrayList<ValueInspector>> inspectors =
+    new HashMap<Column, ArrayList<ValueInspector>>();
 }

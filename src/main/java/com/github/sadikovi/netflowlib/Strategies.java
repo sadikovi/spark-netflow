@@ -73,7 +73,7 @@ public final class Strategies {
   }
 
   public static final class FullScan extends ScanStrategy {
-    public <T extends Comparable<T>> FullScan(Column<T>[] columns) {
+    public FullScan(Column[] columns) {
       rm = new ScanRecordMaterializer(columns);
     }
 
@@ -96,10 +96,10 @@ public final class Strategies {
   }
 
   public static class FilterScan extends ScanStrategy {
-    public <T extends Comparable<T>> FilterScan(
-        Column<T>[] columns,
+    public FilterScan(
+        Column[] columns,
         Inspector tree,
-        HashMap<Column<?>, ArrayList<ValueInspector>> inspectors) {
+        HashMap<Column, ArrayList<ValueInspector>> inspectors) {
       rm = new PredicateRecordMaterializer(columns, tree, inspectors);
     }
 
