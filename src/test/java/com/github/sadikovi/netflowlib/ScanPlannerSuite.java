@@ -1,3 +1,19 @@
+/*
+ * Copyright 2016 sadikovi
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.sadikovi.netflowlib;
 
 import java.util.HashMap;
@@ -27,20 +43,20 @@ import static com.github.sadikovi.netflowlib.predicate.FilterApi.or;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.trivial;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 
+import com.github.sadikovi.netflowlib.statistics.Statistics;
 import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.IntStatistics;
-import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.GenericStatistics;
 
 public class ScanPlannerSuite {
   @Test(expected = IllegalArgumentException.class)
-  public <T extends Comparable<T>> void testColumnsNullFailure() {
-    Column<T>[] cols = null;
+  public void testColumnsNullFailure() {
+    Column[] cols = null;
     FilterPredicate tree = null;
 
     ScanPlanner.buildStrategy(cols, tree, null);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public <T extends Comparable<T>> void testColumnsEmptyFailure() {
+  public void testColumnsEmptyFailure() {
     IntColumn[] cols = new IntColumn[0];
     FilterPredicate tree = null;
 
@@ -77,8 +93,7 @@ public class ScanPlannerSuite {
     FilterPredicate tree = or(and(lt(col1, 0), eq(col2, 10)), and(ge(col3, 10), le(col3, 19)));
 
     // statistics on column 3, even when it is a different object
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
-      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
+    HashMap<Column, Statistics> stats = new HashMap<Column, Statistics>();
     stats.put(col3, new IntStatistics(21, 25));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
@@ -129,8 +144,7 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
-      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
+    HashMap<Column, Statistics> stats = new HashMap<Column, Statistics>();
     stats.put(col1, new IntStatistics(12, 18));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
@@ -153,8 +167,7 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
-      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
+    HashMap<Column, Statistics> stats = new HashMap<Column, Statistics>();
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
     assertSame(ss.getClass(), FullScan.class);
@@ -176,8 +189,7 @@ public class ScanPlannerSuite {
       )
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
-      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
+    HashMap<Column, Statistics> stats = new HashMap<Column, Statistics>();
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
     assertSame(ss.getClass(), FilterScan.class);
@@ -197,8 +209,7 @@ public class ScanPlannerSuite {
       eq(col2, 100)
     );
 
-    HashMap<Column<Integer>, GenericStatistics<Integer>> stats =
-      new HashMap<Column<Integer>, GenericStatistics<Integer>>();
+    HashMap<Column, Statistics> stats = new HashMap<Column, Statistics>();
     stats.put(col1, new IntStatistics(12, 18));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);

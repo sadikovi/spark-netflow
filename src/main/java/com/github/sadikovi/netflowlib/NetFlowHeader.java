@@ -194,6 +194,10 @@ public class NetFlowHeader {
     return this.sversion;
   }
 
+  public ByteOrder getByteOrder() {
+    return this.order;
+  }
+
   /** Get actual header size */
   public int getHeaderSize() {
     // header size is fixed for stream version 1

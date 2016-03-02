@@ -1,3 +1,19 @@
+/*
+ * Copyright 2016 sadikovi
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.sadikovi.netflowlib.predicate;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -22,58 +38,58 @@ public class JavaColumnSuite {
     assertEquals(col1.getColumnName(), "name");
     assertEquals(col1.getColumnOffset(), 1);
     assertEquals(col1.getColumnType(), Byte.class);
-    assertSame(col1.getMinValue(), (byte) 0);
-    assertSame(col1.getMaxValue() - Byte.MAX_VALUE, 0);
+    assertSame(Byte.class.cast(col1.getMin()), (byte) 0);
+    assertSame(Byte.class.cast(col1.getMax()) - Byte.MAX_VALUE, 0);
 
     ByteColumn col2 = new ByteColumn("name", 1, (byte) 1, (byte) 2);
     assertEquals(col2.getColumnName(), "name");
     assertEquals(col2.getColumnOffset(), 1);
     assertEquals(col2.getColumnType(), Byte.class);
-    assertSame(col2.getMinValue(), (byte) 1);
-    assertSame(col2.getMaxValue(), (byte) 2);
+    assertSame(Byte.class.cast(col2.getMin()), (byte) 1);
+    assertSame(Byte.class.cast(col2.getMax()), (byte) 2);
 
     // initialize short column and check min, max
     ShortColumn col3 = new ShortColumn("name", 2);
     assertEquals(col3.getColumnName(), "name");
     assertEquals(col3.getColumnOffset(), 2);
     assertEquals(col3.getColumnType(), Short.class);
-    assertSame(col3.getMinValue(), (short) 0);
-    assertSame(col3.getMaxValue() - Short.MAX_VALUE, 0);
+    assertSame(Short.class.cast(col3.getMin()), (short) 0);
+    assertSame(Short.class.cast(col3.getMax()) - Short.MAX_VALUE, 0);
 
     ShortColumn col4 = new ShortColumn("name", 2, (short) 10, (short) 100);
     assertEquals(col4.getColumnName(), "name");
     assertEquals(col4.getColumnOffset(), 2);
     assertEquals(col4.getColumnType(), Short.class);
-    assertSame(col4.getMinValue(), (short) 10);
-    assertSame(col4.getMaxValue(), (short) 100);
+    assertSame(Short.class.cast(col4.getMin()), (short) 10);
+    assertSame(Short.class.cast(col4.getMax()), (short) 100);
 
     IntColumn col5 = new IntColumn("name", 3);
     assertEquals(col5.getColumnName(), "name");
     assertEquals(col5.getColumnOffset(), 3);
     assertEquals(col5.getColumnType(), Integer.class);
-    assertSame(col5.getMinValue(), 0);
-    assertSame(col5.getMaxValue() - Integer.MAX_VALUE, 0);
+    assertSame(Integer.class.cast(col5.getMin()), 0);
+    assertSame(Integer.class.cast(col5.getMax()) - Integer.MAX_VALUE, 0);
 
     IntColumn col6 = new IntColumn("name", 3, 10, 100);
     assertEquals(col6.getColumnName(), "name");
     assertEquals(col6.getColumnOffset(), 3);
     assertEquals(col6.getColumnType(), Integer.class);
-    assertSame(col6.getMinValue(), 10);
-    assertSame(col6.getMaxValue(), 100);
+    assertSame(Integer.class.cast(col6.getMin()), 10);
+    assertSame(Integer.class.cast(col6.getMax()), 100);
 
     LongColumn col7 = new LongColumn("name", 4);
     assertEquals(col7.getColumnName(), "name");
     assertEquals(col7.getColumnOffset(), 4);
     assertEquals(col7.getColumnType(), Long.class);
-    assertSame(col7.getMinValue(), (long) 0);
-    assertSame(col7.getMaxValue() - Long.MAX_VALUE, (long) 0);
+    assertSame(Long.class.cast(col7.getMin()), (long) 0);
+    assertSame(Long.class.cast(col7.getMax()) - Long.MAX_VALUE, (long) 0);
 
     LongColumn col8 = new LongColumn("name", 4, 10, 100);
     assertEquals(col8.getColumnName(), "name");
     assertEquals(col8.getColumnOffset(), 4);
     assertEquals(col8.getColumnType(), Long.class);
-    assertSame(col8.getMinValue(), (long) 10);
-    assertSame(col8.getMaxValue(), (long) 100);
+    assertSame(Long.class.cast(col8.getMin()), (long) 10);
+    assertSame(Long.class.cast(col8.getMax()), (long) 100);
   }
 
   @Test
