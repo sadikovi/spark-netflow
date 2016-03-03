@@ -18,21 +18,29 @@ package com.github.sadikovi.spark.netflow.sources
 
 import org.apache.spark.sql.types._
 
+import com.github.sadikovi.netflowlib.predicate.Columns.Column
+
 /**
  * Representation of columns of Spark SQL into NetFlow fields.
- * @param columnName SQL name of the column
- * @param internalColumnName internal NetFlow name of the column
- * @param dtype SQL data type
+ * @param columnName SQL name of the column (in most cases derived from internal column)
+ * @param internalColumn internal NetFlow column
  * @param collectStatistics whether or not to collect statistics on column
  * @param convertFunction possible conversion (usually to human-readable format)
  */
 private[spark] case class MappedColumn(
   columnName: String,
-  internalColumnName: Long,
-  dtype: DataType,
+  internalColumn: Column,
   collectStatistics: Boolean,
   convertFunction: Option[ConvertFunction]
 )
+
+/** Internal types, used to resolve SQL type for a column */
+private[spark] object InternalType {
+  val BYTE = classOf[java.lang.Byte]
+  val SHORT = classOf[java.lang.Short]
+  val INT = classOf[java.lang.Integer]
+  val LONG = classOf[java.lang.Long]
+}
 
 /**
  * Abstract interface for NetFlow version.
@@ -57,7 +65,7 @@ abstract class ResolvedInterface {
       if (applyConversion && column.convertFunction.isDefined) {
         StructField(column.columnName, StringType, false)
       } else {
-        StructField(column.columnName, column.dtype, false)
+        StructField(column.columnName, javaToSQLType(column.internalColumn.getColumnType()), false)
       }
     })
     StructType(sqlColumns)
@@ -87,6 +95,15 @@ abstract class ResolvedInterface {
       case other => throw new UnsupportedOperationException(s"Cannot get size for ${other} type")
   }
 
+  /** Resolve internal type into SQL type */
+  private[sources] def javaToSQLType(klass: Class[_]): DataType = klass match {
+    case InternalType.BYTE => ByteType
+    case InternalType.SHORT => ShortType
+    case InternalType.INT => IntegerType
+    case InternalType.LONG => LongType
+    case otherType => throw new UnsupportedOperationException(s"Unsupported type ${otherType}")
+  }
+
   private[sources] def ensureColumnConsistency(): Unit = {
     if (columns.isEmpty) {
       throw new IllegalArgumentException(s"Columns are empty for ${toString()}")
@@ -96,7 +113,7 @@ abstract class ResolvedInterface {
     assert(columnNames.length == columnNames.distinct.length,
       s"Found duplicate column names in ${toString()}")
 
-    val internalColumnNames = columns.map(_.internalColumnName)
+    val internalColumnNames = columns.map(_.internalColumn)
     assert(internalColumnNames.length == internalColumnNames.distinct.length,
       s"Found duplicate internal column names in ${toString()}")
   }

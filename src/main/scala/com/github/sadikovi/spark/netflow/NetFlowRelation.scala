@@ -30,7 +30,8 @@ import org.apache.spark.sql.types.StructType
 
 import org.slf4j.LoggerFactory
 
-import com.github.sadikovi.netflowlib.RecordBuffer
+import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
+import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.{NetFlowFileRDD, NetFlowMetadata}
 import com.github.sadikovi.spark.util.Utils
@@ -109,7 +110,15 @@ private[netflow] class NetFlowRelation(
       }
 
       // Resolve filters into filters we support, also reduce to return only one Filter value
-      val resolvedFilter: Option[Filter] = resolveFilter(filters)
+      val reducedFilter: Option[Filter] = NetFlowFilters.reduceFilter(filters)
+      logger.info(s"Reduced filter: ${reducedFilter}")
+
+      // convert filters into NetFlow filters
+      val resolvedFilter: Option[FilterPredicate] = reducedFilter match {
+        case Some(filter) => Option(NetFlowFilters.convertFilter(filter, interface))
+        case other => None
+      }
+      logger.info(s"Resolved NetFlow filter: ${resolvedFilter}")
 
       // NetFlow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
@@ -130,17 +139,5 @@ private[netflow] class NetFlowRelation(
 
   override def toString: String = {
     s"${getClass.getSimpleName}: version ${interface.version()}"
-  }
-
-  /** Resolve array of Spark filters to single `Filter` instance as option. */
-  private[spark] def resolveFilter(filters: Array[Filter]): Option[Filter] = {
-    if (filters.isEmpty) {
-      None
-    } else if (filters.length == 1) {
-      Option(filters.head)
-    } else {
-      // recursivly collapse filters
-      Option(filters.reduce { (left, right) => And(left, right) })
-    }
   }
 }

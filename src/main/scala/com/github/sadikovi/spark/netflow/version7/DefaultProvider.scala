@@ -16,8 +16,6 @@
 
 package com.github.sadikovi.spark.netflow.version7
 
-import org.apache.spark.sql.types.{IntegerType, LongType, ShortType}
-
 import com.github.sadikovi.netflowlib.version.NetFlowV7
 import com.github.sadikovi.spark.netflow.sources._
 
@@ -30,34 +28,32 @@ class DefaultProvider extends NetFlowProvider {
 /** NetFlow interface for version 7. */
 private class InterfaceV7 extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("unix_secs", NetFlowV7.V7_FIELD_UNIX_SECS, LongType, false, None),
-    MappedColumn("unix_nsecs", NetFlowV7.V7_FIELD_UNIX_NSECS, LongType, false, None),
-    MappedColumn("sysuptime", NetFlowV7.V7_FIELD_SYSUPTIME, LongType, false, None),
-    MappedColumn("exaddr", NetFlowV7.V7_FIELD_EXADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("srcip", NetFlowV7.V7_FIELD_SRCADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("dstip", NetFlowV7.V7_FIELD_DSTADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("nexthop", NetFlowV7.V7_FIELD_NEXTHOP, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("input", NetFlowV7.V7_FIELD_INPUT, IntegerType, false, None),
-    MappedColumn("output", NetFlowV7.V7_FIELD_OUTPUT, IntegerType, false, None),
-    MappedColumn("packets", NetFlowV7.V7_FIELD_DPKTS, LongType, false, None),
-    MappedColumn("octets", NetFlowV7.V7_FIELD_DOCTETS, LongType, false, None),
-    MappedColumn("first_flow", NetFlowV7.V7_FIELD_FIRST, LongType, false, None),
-    MappedColumn("last_flow", NetFlowV7.V7_FIELD_LAST, LongType, false, None),
-    MappedColumn("srcport", NetFlowV7.V7_FIELD_SRCPORT, IntegerType, false, None),
-    MappedColumn("dstport", NetFlowV7.V7_FIELD_DSTPORT, IntegerType, false, None),
-    MappedColumn("protocol", NetFlowV7.V7_FIELD_PROT, ShortType, false,
-      Some(ProtocolConvertFunction())),
-    MappedColumn("tos", NetFlowV7.V7_FIELD_TOS, ShortType, false, None),
-    MappedColumn("tcp_flags", NetFlowV7.V7_FIELD_TCP_FLAGS, ShortType, false, None),
-    MappedColumn("flags", NetFlowV7.V7_FIELD_FLAGS, ShortType, false, None),
-    MappedColumn("engine_type", NetFlowV7.V7_FIELD_ENGINE_TYPE, ShortType, false, None),
-    MappedColumn("engine_id", NetFlowV7.V7_FIELD_ENGINE_ID, ShortType, false, None),
-    MappedColumn("src_mask", NetFlowV7.V7_FIELD_SRC_MASK, ShortType, false, None),
-    MappedColumn("dst_mask", NetFlowV7.V7_FIELD_DST_MASK, ShortType, false, None),
-    MappedColumn("src_as", NetFlowV7.V7_FIELD_SRC_AS, IntegerType, false, None),
-    MappedColumn("dst_as", NetFlowV7.V7_FIELD_DST_AS, IntegerType, false, None),
-    MappedColumn("router_sc", NetFlowV7.V7_FIELD_ROUTER_SC, LongType, false,
-      Some(IPConvertFunction()))
+    MappedColumn("unix_secs", NetFlowV7.FIELD_UNIX_SECS, false, None),
+    MappedColumn("unix_nsecs", NetFlowV7.FIELD_UNIX_NSECS, false, None),
+    MappedColumn("sysuptime", NetFlowV7.FIELD_SYSUPTIME, false, None),
+    MappedColumn("exaddr", NetFlowV7.FIELD_EXADDR, false, Some(IPConvertFunction())),
+    MappedColumn("srcip", NetFlowV7.FIELD_SRCADDR, false, Some(IPConvertFunction())),
+    MappedColumn("dstip", NetFlowV7.FIELD_DSTADDR, false, Some(IPConvertFunction())),
+    MappedColumn("nexthop", NetFlowV7.FIELD_NEXTHOP, false, Some(IPConvertFunction())),
+    MappedColumn("input", NetFlowV7.FIELD_INPUT, false, None),
+    MappedColumn("output", NetFlowV7.FIELD_OUTPUT, false, None),
+    MappedColumn("packets", NetFlowV7.FIELD_DPKTS, false, None),
+    MappedColumn("octets", NetFlowV7.FIELD_DOCTETS, false, None),
+    MappedColumn("first_flow", NetFlowV7.FIELD_FIRST, false, None),
+    MappedColumn("last_flow", NetFlowV7.FIELD_LAST, false, None),
+    MappedColumn("srcport", NetFlowV7.FIELD_SRCPORT, false, None),
+    MappedColumn("dstport", NetFlowV7.FIELD_DSTPORT, false, None),
+    MappedColumn("protocol", NetFlowV7.FIELD_PROT, false, Some(ProtocolConvertFunction())),
+    MappedColumn("tos", NetFlowV7.FIELD_TOS, false, None),
+    MappedColumn("tcp_flags", NetFlowV7.FIELD_TCP_FLAGS, false, None),
+    MappedColumn("flags", NetFlowV7.FIELD_FLAGS, false, None),
+    MappedColumn("engine_type", NetFlowV7.FIELD_ENGINE_TYPE, false, None),
+    MappedColumn("engine_id", NetFlowV7.FIELD_ENGINE_ID, false, None),
+    MappedColumn("src_mask", NetFlowV7.FIELD_SRC_MASK, false, None),
+    MappedColumn("dst_mask", NetFlowV7.FIELD_DST_MASK, false, None),
+    MappedColumn("src_as", NetFlowV7.FIELD_SRC_AS, false, None),
+    MappedColumn("dst_as", NetFlowV7.FIELD_DST_AS, false, None),
+    MappedColumn("router_sc", NetFlowV7.FIELD_ROUTER_SC, false, Some(IPConvertFunction()))
   )
 
   override def version(): Short = 7

@@ -16,8 +16,6 @@
 
 package com.github.sadikovi.spark.netflow.version5
 
-import org.apache.spark.sql.types.{IntegerType, LongType, ShortType}
-
 import com.github.sadikovi.netflowlib.version.NetFlowV5
 import com.github.sadikovi.spark.netflow.sources._
 
@@ -30,31 +28,30 @@ class DefaultProvider extends NetFlowProvider {
 /** NetFlow interface for version 5. */
 private class InterfaceV5 extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("unix_secs", NetFlowV5.V5_FIELD_UNIX_SECS, LongType, false, None),
-    MappedColumn("unix_nsecs", NetFlowV5.V5_FIELD_UNIX_NSECS, LongType, false, None),
-    MappedColumn("sysuptime", NetFlowV5.V5_FIELD_SYSUPTIME, LongType, false, None),
-    MappedColumn("exaddr", NetFlowV5.V5_FIELD_EXADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("srcip", NetFlowV5.V5_FIELD_SRCADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("dstip", NetFlowV5.V5_FIELD_DSTADDR, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("nexthop", NetFlowV5.V5_FIELD_NEXTHOP, LongType, false, Some(IPConvertFunction())),
-    MappedColumn("input", NetFlowV5.V5_FIELD_INPUT, IntegerType, false, None),
-    MappedColumn("output", NetFlowV5.V5_FIELD_OUTPUT, IntegerType, false, None),
-    MappedColumn("packets", NetFlowV5.V5_FIELD_DPKTS, LongType, false, None),
-    MappedColumn("octets", NetFlowV5.V5_FIELD_DOCTETS, LongType, false, None),
-    MappedColumn("first_flow", NetFlowV5.V5_FIELD_FIRST, LongType, false, None),
-    MappedColumn("last_flow", NetFlowV5.V5_FIELD_LAST, LongType, false, None),
-    MappedColumn("srcport", NetFlowV5.V5_FIELD_SRCPORT, IntegerType, false, None),
-    MappedColumn("dstport", NetFlowV5.V5_FIELD_DSTPORT, IntegerType, false, None),
-    MappedColumn("protocol", NetFlowV5.V5_FIELD_PROT, ShortType, false,
-      Some(ProtocolConvertFunction())),
-    MappedColumn("tos", NetFlowV5.V5_FIELD_TOS, ShortType, false, None),
-    MappedColumn("tcp_flags", NetFlowV5.V5_FIELD_TCP_FLAGS, ShortType, false, None),
-    MappedColumn("engine_type", NetFlowV5.V5_FIELD_ENGINE_TYPE, ShortType, false, None),
-    MappedColumn("engine_id", NetFlowV5.V5_FIELD_ENGINE_ID, ShortType, false, None),
-    MappedColumn("src_mask", NetFlowV5.V5_FIELD_SRC_MASK, ShortType, false, None),
-    MappedColumn("dst_mask", NetFlowV5.V5_FIELD_DST_MASK, ShortType, false, None),
-    MappedColumn("src_as", NetFlowV5.V5_FIELD_SRC_AS, IntegerType, false, None),
-    MappedColumn("dst_as", NetFlowV5.V5_FIELD_DST_AS, IntegerType, false, None)
+    MappedColumn("unix_secs", NetFlowV5.FIELD_UNIX_SECS, false, None),
+    MappedColumn("unix_nsecs", NetFlowV5.FIELD_UNIX_NSECS, false, None),
+    MappedColumn("sysuptime", NetFlowV5.FIELD_SYSUPTIME, false, None),
+    MappedColumn("exaddr", NetFlowV5.FIELD_EXADDR, false, Some(IPConvertFunction())),
+    MappedColumn("srcip", NetFlowV5.FIELD_SRCADDR, false, Some(IPConvertFunction())),
+    MappedColumn("dstip", NetFlowV5.FIELD_DSTADDR, false, Some(IPConvertFunction())),
+    MappedColumn("nexthop", NetFlowV5.FIELD_NEXTHOP, false, Some(IPConvertFunction())),
+    MappedColumn("input", NetFlowV5.FIELD_INPUT, false, None),
+    MappedColumn("output", NetFlowV5.FIELD_OUTPUT, false, None),
+    MappedColumn("packets", NetFlowV5.FIELD_DPKTS, false, None),
+    MappedColumn("octets", NetFlowV5.FIELD_DOCTETS, false, None),
+    MappedColumn("first_flow", NetFlowV5.FIELD_FIRST, false, None),
+    MappedColumn("last_flow", NetFlowV5.FIELD_LAST, false, None),
+    MappedColumn("srcport", NetFlowV5.FIELD_SRCPORT, false, None),
+    MappedColumn("dstport", NetFlowV5.FIELD_DSTPORT, false, None),
+    MappedColumn("protocol", NetFlowV5.FIELD_PROT, false, Some(ProtocolConvertFunction())),
+    MappedColumn("tos", NetFlowV5.FIELD_TOS, false, None),
+    MappedColumn("tcp_flags", NetFlowV5.FIELD_TCP_FLAGS, false, None),
+    MappedColumn("engine_type", NetFlowV5.FIELD_ENGINE_TYPE, false, None),
+    MappedColumn("engine_id", NetFlowV5.FIELD_ENGINE_ID, false, None),
+    MappedColumn("src_mask", NetFlowV5.FIELD_SRC_MASK, false, None),
+    MappedColumn("dst_mask", NetFlowV5.FIELD_DST_MASK, false, None),
+    MappedColumn("src_as", NetFlowV5.FIELD_SRC_AS, false, None),
+    MappedColumn("dst_as", NetFlowV5.FIELD_DST_AS, false, None)
   )
 
   override def version(): Short = 5
