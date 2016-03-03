@@ -54,7 +54,9 @@ public final class Operators {
   static abstract class ColumnPredicate implements FilterPredicate, Serializable {
     ColumnPredicate(Column column, Object value) {
       this.column = column;
-      this.value = value;
+      // Since value can be any object potentially, we store it as Serializable to make sure that
+      // any distributed systems can resolve predicate once, and ship it to any node.
+      this.value = (Serializable) value;
       this.inspector = getValueInspector(column.getColumnType());
     }
 
@@ -103,7 +105,7 @@ public final class Operators {
     }
 
     private final Column column;
-    private final Object value;
+    private final Serializable value;
     private final ValueInspector inspector;
   }
 

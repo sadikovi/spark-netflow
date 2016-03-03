@@ -29,6 +29,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row => SQLRow}
 import org.apache.spark.sql.sources._
 
+import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
 
@@ -108,7 +109,68 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
     for (elem <- s.asInstanceOf[NetFlowFilePartition[NetFlowMetadata]].iterator) {
-      // do nothing here for now
+      // Reconstruct file status: file path, length in bytes
+      val path = new Path(elem.path)
+      val fs = path.getFileSystem(conf)
+      val fileLength = elem.length
+
+      // Prepare file stream
+      val stm: FSDataInputStream = fs.open(path)
+      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize)
+      val header = reader.getHeader()
+      // Actual version of the file
+      val actualVersion = header.getFlowVersion()
+      // Compression flag
+      val isCompressed = header.isCompressed()
+
+      logInfo(s"""
+          > NetFlow: {
+          >   File: ${elem.path},
+          >   File length: ${fileLength} bytes,
+          >   Flow version: ${actualVersion},
+          >   Compression: ${isCompressed},
+          >   Buffer size: ${elem.bufferSize} bytes,
+          >   Start capture: ${header.getStartCapture()},
+          >   End capture: ${header.getEndCapture()},
+          >   Hostname: ${header.getHostname()},
+          >   Comments: ${header.getComments()}
+          > }
+        """.stripMargin('>'))
+
+      // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
+      require(actualVersion == elem.version,
+        s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}. " +
+          "Scan of the files with different (compatible) versions, e.g. 5, 6, and 7 is not " +
+          "supported currently")
+
+      // Build record buffer based on resolved filter, if filter is not defined use default scan
+      // with trivial predicate
+      val recordBuffer = if (resolvedFilter.nonEmpty) {
+        reader.prepareRecordBuffer(internalColumns, resolvedFilter.get)
+      } else {
+        reader.prepareRecordBuffer(internalColumns)
+      }
+
+      val rawIterator = recordBuffer.iterator().asScala
+
+      // Conversion iterator, applies defined modification for convertable fields
+      val conversionsIterator = if (applyConversion) {
+        // For each field we check if possible conversion is available. If it is we apply direct
+        // conversion, otherwise return unchanged value
+        rawIterator.map(arr => {
+          for (i <- 0 until numColumns) {
+            resolvedColumns(i).convertFunction match {
+              case Some(func) => arr(i) = func.direct(arr(i))
+              case None => // do nothing
+            }
+          }
+          arr
+        })
+      } else {
+        rawIterator
+      }
+
+      buffer = buffer ++ conversionsIterator
     }
 
     new Iterator[SQLRow] {

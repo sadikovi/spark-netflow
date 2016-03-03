@@ -28,7 +28,7 @@ import org.apache.spark.sql.sources._
 
 import org.scalatest.ConfigMap
 
-import com.github.sadikovi.netflowlib.RecordBuffer
+import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetFlowV5
 import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.NetFlowFileRDD
@@ -326,13 +326,10 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
   }
 
-  test("resolve filter") {
-    val sqlContext = new SQLContext(sc)
-    val relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
-
+  test("reduce filter") {
     // simple filter
     var filters: Array[Filter] = Array(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L))
-    var resultFilter = relation.resolveFilter(filters).get
+    var resultFilter = NetFlowFilters.reduceFilter(filters).get
     resultFilter should be (And(
       EqualTo("unix_secs", 1L),
       GreaterThan("srcip", 1L)
@@ -342,7 +339,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     filters = Array(
       Or(And(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L)), LessThanOrEqual("dstip", 0L))
     )
-    resultFilter = relation.resolveFilter(filters).get
+    resultFilter = NetFlowFilters.reduceFilter(filters).get
     resultFilter should be (Or(
         And(
           EqualTo("unix_secs", 1L),
@@ -354,59 +351,28 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
     // filter with unresolved step
     filters = Array(IsNull("unix_secs"), GreaterThan("srcip", 1L))
-    resultFilter = relation.resolveFilter(filters).get
+    resultFilter = NetFlowFilters.reduceFilter(filters).get
     resultFilter should be (And(
       IsNull("unix_secs"),
       GreaterThan("srcip", 1L)
     ))
   }
 
-  test("compile filter") {
-    val sqlContext = new SQLContext(sc)
-    val hadoopPath = new Path(s"file:${path1}")
-    val fs = hadoopPath.getFileSystem(sc.hadoopConfiguration)
-    val relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
-    val rdd = relation.buildScan(Array.empty, Array(fs.getFileStatus(hadoopPath))).
-      asInstanceOf[NetFlowFileRDD[Row]]
-
-    // simple filter
-    var status = rdd.compileFilter(EqualTo("a", 1L), Map("a" -> (0L, 10L)))
-    status should be (true)
-
-    // "Between" and "And" filters
-    status = rdd.compileFilter(And(EqualTo("a", 11L),
-      And(GreaterThanOrEqual("a", 7L), LessThanOrEqual("a", 10L))), Map("a" -> (0L, 10L)))
-    status should be (false)
-
-    // "Greater" and "Less" filters
-    status = rdd.compileFilter(And(GreaterThan("a", 1L), LessThan("a", 12L)),
-      Map("a" -> (0L, 10L)))
-    status should be (true)
-
-    // "Or" test
-    status = rdd.compileFilter(Or(GreaterThan("a", 15L), LessThan("a", 12L)),
-      Map("a" -> (0L, 10L)))
-    status should be (true)
-
-    // "In" filter
-    status = rdd.compileFilter(In("a", Array(1L, 5L, 11L)), Map("a" -> (0L, 10L)))
-    status should be (true)
-
-    status = rdd.compileFilter(In("a", Array(-1L, 12L, 15L)), Map("a" -> (0L, 10L)))
-    status should be (false)
-
-    // unsupported filter test
-    status = rdd.compileFilter(IsNull("a"), Map("a" -> (0L, 10L)))
-    status should be (true)
-
-    // filter with empty catalog test
-    status = rdd.compileFilter(In("a", Array(-1L, 12L, 15L)), Map.empty)
-    status should be (true)
-  }
-
   test("ignore scanning file for unix_secs out of range") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.netflow5(s"file:${path1}").filter(col("unix_secs") === -1)
     df.count() should be (0)
+  }
+
+  ignore("scan variations with simple predicate") {
+
+  }
+
+  ignore("scan variations with complex predicate") {
+
+  }
+
+  ignore("scan with unsupported predicate") {
+
   }
 }

@@ -43,7 +43,7 @@ private[netflow] class NetFlowRelation(
     private val parameters: Map[String, String])
     (@transient val sqlContext: SQLContext) extends HadoopFsRelation {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger(getClass())
 
   // Interface for NetFlow version
   private val interface = parameters.get("version") match {
@@ -53,8 +53,8 @@ private[netflow] class NetFlowRelation(
       case Failure(error) =>
         NetFlowRegistry.createInterface(str)
     }
-    case None => sys.error("'version' must be specified for NetFlow data. " +
-      "Can be a number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
+    case None => sys.error("'version' must be specified for NetFlow data. Can be a version " +
+      "number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
   }
 
   // Buffer size, by default use standard record buffer size ~3Mb
@@ -99,6 +99,7 @@ private[netflow] class NetFlowRelation(
       filters: Array[Filter],
       inputFiles: Array[FileStatus]): RDD[Row] = {
     if (inputFiles.isEmpty) {
+      logger.warn("Could not resolve input files, potentially files do not exist")
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
       // Convert to internal mapped columns

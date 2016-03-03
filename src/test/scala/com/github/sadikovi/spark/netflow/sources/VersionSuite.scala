@@ -53,7 +53,7 @@ class VersionSuite extends UnitTestSpec {
   }
 
   test("get mapped column as option") {
-    interface5.getFirstColumnOption() should be (Option(interface5.getFirstColumn()))
+    interface5.getFirstColumnOption() should be (Some(interface5.getFirstColumn()))
   }
 
   test("get mapped column for name v5") {
@@ -61,8 +61,8 @@ class VersionSuite extends UnitTestSpec {
       interface5.getColumn("wrong-column")
     }
 
-    interface5.getColumn("unix_secs").internalColumnName should be (NetFlowV5.V5_FIELD_UNIX_SECS)
-    interface5.getColumn("srcip").internalColumnName should be (NetFlowV5.V5_FIELD_SRCADDR)
+    interface5.getColumn("unix_secs").internalColumn should be (NetFlowV5.FIELD_UNIX_SECS)
+    interface5.getColumn("srcip").internalColumn should be (NetFlowV5.FIELD_SRCADDR)
   }
 
   test("get mapped column for name v7") {
@@ -70,9 +70,9 @@ class VersionSuite extends UnitTestSpec {
       interface7.getColumn("wrong-column")
     }
 
-    interface7.getColumn("unix_secs").internalColumnName should be (NetFlowV7.V7_FIELD_UNIX_SECS)
-    interface7.getColumn("srcip").internalColumnName should be (NetFlowV7.V7_FIELD_SRCADDR)
-    interface7.getColumn("router_sc").internalColumnName should be (NetFlowV7.V7_FIELD_ROUTER_SC)
+    interface7.getColumn("unix_secs").internalColumn should be (NetFlowV7.FIELD_UNIX_SECS)
+    interface7.getColumn("srcip").internalColumn should be (NetFlowV7.FIELD_SRCADDR)
+    interface7.getColumn("router_sc").internalColumn should be (NetFlowV7.FIELD_ROUTER_SC)
   }
 
   test("get conversions for fields") {

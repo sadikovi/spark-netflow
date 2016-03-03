@@ -63,7 +63,7 @@ private[spark] object NetFlowFilters {
       makeLe(mappedColumn, maybeConvertValue(value, mappedColumn.convertFunction))
     case In(attribute: String, values: Array[Any]) =>
       val mappedColumn = catalog.getColumn(attribute)
-      makeLe(mappedColumn, maybeConvertValues(values, mappedColumn.convertFunction))
+      makeIn(mappedColumn, maybeConvertValues(values, mappedColumn.convertFunction))
     case IsNull(attribute: String) =>
       FilterApi.trivial(false)
     case IsNotNull(attribute: String) =>

@@ -42,6 +42,8 @@ import com.github.sadikovi.netflowlib.version.NetFlow;
 import com.github.sadikovi.netflowlib.version.NetFlowV5;
 import com.github.sadikovi.netflowlib.version.NetFlowV7;
 
+import com.github.sadikovi.netflowlib.util.Logging;
+
 /**
  * [[NetFlowReader]] is a main entry to process input stream of NetFlow file either from local
  * file system or HDFS. Provides API to retrieve header and other metadata before scanning records.
@@ -49,7 +51,7 @@ import com.github.sadikovi.netflowlib.version.NetFlowV7;
  * to be scanned.
  * [[FilterPredicate]] support is introduced to filter data on row basis.
  */
-public final class NetFlowReader {
+public final class NetFlowReader extends Logging {
   // Internal byte offsets
   private static final short METADATA_LENGTH = 4;
   private static final short HEADER_OFFSET_LENGTH = 4;
@@ -418,11 +420,14 @@ public final class NetFlowReader {
     int recordSize = flowInterface.recordSize();
 
     if (strategy.skipScan()) {
+      log.info("Skip scan based on strategy " + strategy);
       return new EmptyRecordBuffer();
     } else if (strategy.fullScan()) {
+      log.info("Full scan based on strategy " + strategy);
       return new ScanRecordBuffer(in, strategy.getRecordMaterializer(), recordSize, byteOrder,
         isCompressed, bufferLength);
     } else {
+      log.info("Filter scan based on strategy " + strategy);
       return new FilterRecordBuffer(in, strategy.getRecordMaterializer(), recordSize, byteOrder,
         isCompressed, bufferLength);
     }

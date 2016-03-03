@@ -18,6 +18,8 @@ package com.github.sadikovi.spark.netflow.sources
 
 import org.apache.spark.sql.types.LongType
 
+import com.github.sadikovi.netflowlib.predicate.Columns.LongColumn
+
 /** Test providers */
 private class DefaultProvider extends NetFlowProvider {
   def createInterface(): ResolvedInterface = null
@@ -50,23 +52,23 @@ private class TestEmptyInterface extends ResolvedInterface {
 
 private class TestFullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("a", 1L, LongType, false, None))
+    MappedColumn("test", new LongColumn("test", 0), false, None))
 
   override def version(): Short = -2
 }
 
 private class Test1FullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("a", 1L, LongType, false, None),
-    MappedColumn("a", 2L, LongType, false, None))
+    MappedColumn("duplicate", new LongColumn("duplicate", 0), false, None),
+    MappedColumn("duplicate", new LongColumn("duplicate", 0), false, None))
 
   override def version(): Short = -3
 }
 
 private class Test2FullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("a", 1L, LongType, false, None),
-    MappedColumn("b", 1L, LongType, false, None))
+    MappedColumn("test", new LongColumn("test1", 0), false, None),
+    MappedColumn("test", new LongColumn("test2", 1), false, None))
 
   override def version(): Short = -3
 }

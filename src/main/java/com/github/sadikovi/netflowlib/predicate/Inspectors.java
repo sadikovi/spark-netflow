@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.netflowlib.predicate;
 
+import java.io.Serializable;
+
 /**
  * [[Inspector]] interface is designed to provide methods of resolving predicate values and give
  * an answer on when to skip record. [[ValueInspector]] should be implemented for all basic
@@ -35,7 +37,7 @@ public final class Inspectors {
   }
 
   /** Inspector for leaf nodes, e.g. Eq, Ge, Gt, Le, Lt, In */
-  public static class ValueInspector implements Inspector {
+  public static class ValueInspector implements Inspector, Serializable {
     public ValueInspector() { }
 
     public void update(boolean value) { throw new UnsupportedOperationException(); }
@@ -80,7 +82,9 @@ public final class Inspectors {
   }
 
   /** Inspector for binary logical operators, e.g. And, Or */
-  static abstract class BinaryLogical implements Inspector {
+  static abstract class BinaryLogical implements Inspector, Serializable {
+    BinaryLogical() { }
+
     BinaryLogical(Inspector left, Inspector right) {
       this.left = left;
       this.right = right;
@@ -94,8 +98,8 @@ public final class Inspectors {
       return right;
     }
 
-    private final Inspector left;
-    private final Inspector right;
+    private Inspector left;
+    private Inspector right;
   }
 
   public static final class AndInspector extends BinaryLogical {
@@ -121,7 +125,7 @@ public final class Inspectors {
   }
 
   /** Inspector for unary logical operators, e.g. Not */
-  static abstract class UnaryLogical implements Inspector {
+  static abstract class UnaryLogical implements Inspector, Serializable {
     UnaryLogical(Inspector child) {
       this.child = child;
     }
