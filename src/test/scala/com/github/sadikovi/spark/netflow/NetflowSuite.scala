@@ -326,38 +326,6 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
   }
 
-  test("reduce filter") {
-    // simple filter
-    var filters: Array[Filter] = Array(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L))
-    var resultFilter = NetFlowFilters.reduceFilter(filters).get
-    resultFilter should be (And(
-      EqualTo("unix_secs", 1L),
-      GreaterThan("srcip", 1L)
-    ))
-
-    // complex filter with `OR` and `AND`
-    filters = Array(
-      Or(And(EqualTo("unix_secs", 1L), GreaterThan("srcip", 1L)), LessThanOrEqual("dstip", 0L))
-    )
-    resultFilter = NetFlowFilters.reduceFilter(filters).get
-    resultFilter should be (Or(
-        And(
-          EqualTo("unix_secs", 1L),
-          GreaterThan("srcip", 1L)
-        ),
-        LessThanOrEqual("dstip", 0L)
-      )
-    )
-
-    // filter with unresolved step
-    filters = Array(IsNull("unix_secs"), GreaterThan("srcip", 1L))
-    resultFilter = NetFlowFilters.reduceFilter(filters).get
-    resultFilter should be (And(
-      IsNull("unix_secs"),
-      GreaterThan("srcip", 1L)
-    ))
-  }
-
   test("ignore scanning file for unix_secs out of range") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.netflow5(s"file:${path1}").filter(col("unix_secs") === -1)

@@ -16,9 +16,7 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
-import org.apache.spark.sql.types.LongType
-
-import com.github.sadikovi.netflowlib.predicate.Columns.LongColumn
+import com.github.sadikovi.netflowlib.predicate.Columns.{ByteColumn, ShortColumn, IntColumn, LongColumn}
 
 /** Test providers */
 private class DefaultProvider extends NetFlowProvider {
@@ -71,4 +69,22 @@ private class Test2FullInterface extends ResolvedInterface {
     MappedColumn("test", new LongColumn("test2", 1), false, None))
 
   override def version(): Short = -3
+}
+
+////////////////////////////////////////////////////////////////
+// Fake provider and interface for NetFlowFilters suite
+////////////////////////////////////////////////////////////////
+
+private class FakeDefaultProvider extends NetFlowProvider {
+  def createInterface(): ResolvedInterface = new FakeInterface()
+}
+
+private class FakeInterface extends ResolvedInterface {
+  override protected val columns: Seq[MappedColumn] = Seq(
+    MappedColumn("col1", new ByteColumn("col1", 0), false, None),
+    MappedColumn("col2", new ShortColumn("col2", 0), false, None),
+    MappedColumn("col3", new IntColumn("col3", 0), false, None),
+    MappedColumn("col4", new LongColumn("col4", 0), false, None))
+
+  override def version(): Short = -1
 }
