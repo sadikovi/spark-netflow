@@ -31,6 +31,7 @@ Currently supported options:
 | `version` | _5, 7_ | version to use when parsing NetFlow files
 | `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
 | `stringify` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
+| `predicate-pushdown` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
 
 ## Example
 
@@ -71,3 +72,48 @@ This library is built using `sbt`, to build a JAR file simply run `sbt package` 
 
 ## Testing
 Run `sbt test` from project root.
+
+## Running benchmark
+Run `sbt package` to package project, next run `spark-submit` with following options:
+```shell
+$ spark-submit --class com.github.sadikovi.spark.util.NetFlowReadBenchmark \
+  target/scala-2.10/spark-netflow_2.10-0.2.0-SNAPSHOT.jar \
+  --iterations 3 \
+  --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
+  --version 5
+```
+
+Output will be similar to this:
+```
+- Iterations: 3
+- Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*
+- Version: 5
+
+Running benchmark: NetFlow full scan
+  Running case: Full scan with stringify 'true'
+  Running case: Full scan with stringify 'false'                                
+
+Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
+NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------
+Full scan with stringify 'true'          2581 / 2770          0.0     2580922.0       1.0X
+Full scan with stringify 'false'         1996 / 1999          0.0     1996453.0       1.3X
+
+Running benchmark: NetFlow predicate scan
+  Running case: Filter scan w/ predicate pushdown
+  Running case: Filter scan w/o predicate pushdown                              
+
+Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
+NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------
+Filter scan w/ predicate pushdown        1233 / 1246          0.0     1232769.0       1.0X
+Filter scan w/o predicate pushdown       1108 / 1273          0.0     1108083.0       1.1X
+
+Running benchmark: NetFlow aggregated report
+  Running case: Aggregated report
+
+Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
+NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------
+Aggregated report                        1405 / 1540          0.0     1404913.0       1.0X
+```

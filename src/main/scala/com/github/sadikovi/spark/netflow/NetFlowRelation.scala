@@ -80,6 +80,13 @@ private[netflow] class NetFlowRelation(
     case _ => true
   }
 
+  // Whether or not to use predicate pushdown at the NetFlow library level
+  private val usePredicatePushdown = parameters.get("predicate-pushdown") match {
+    case Some("true") => true
+    case Some("false") => false
+    case _ => true
+  }
+
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
 
@@ -115,10 +122,17 @@ private[netflow] class NetFlowRelation(
       val reducedFilter: Option[Filter] = NetFlowFilters.reduceFilter(filters)
       logger.info(s"Reduced filter: ${reducedFilter}")
 
-      // convert filters into NetFlow filters
+      // Convert filters into NetFlow filters, we also use `usePredicatePushdown` to disable
+      // predicate pushdown (normally it is used for benchmarks), but in some situations when
+      // library filters incorrectly this can be a short time fix
       val resolvedFilter: Option[FilterPredicate] = reducedFilter match {
-        case Some(filter) => Option(NetFlowFilters.convertFilter(filter, interface))
-        case other => None
+        case Some(filter) if usePredicatePushdown =>
+          Option(NetFlowFilters.convertFilter(filter, interface))
+        case Some(filter) if !usePredicatePushdown =>
+          logger.warn("Predicate pushdown is disabled")
+          None
+        case other =>
+          None
       }
       logger.info(s"Resolved NetFlow filter: ${resolvedFilter}")
 
