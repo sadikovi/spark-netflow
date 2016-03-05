@@ -17,8 +17,10 @@
 package com.github.sadikovi.netflowlib;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.junit.Test;
+import org.junit.Ignore;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -38,6 +40,7 @@ import static com.github.sadikovi.netflowlib.predicate.FilterApi.gt;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.ge;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.lt;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.le;
+import static com.github.sadikovi.netflowlib.predicate.FilterApi.in;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.and;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.or;
 import static com.github.sadikovi.netflowlib.predicate.FilterApi.trivial;
@@ -213,6 +216,60 @@ public class ScanPlannerSuite {
     stats.put(col1, new IntStatistics(12, 18));
 
     ScanStrategy ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FilterScan.class);
+    assertFalse(ss.skipScan());
+  }
+
+  @Test
+  public void testPredicateScan3() {
+    // Test of "In" predicate optimization. Currently, if "In" set contains only one element we
+    // still use set, instead of converting it into equality predicate which is supposed to be
+    // faster. We also test empty set optimization.
+    IntColumn col1 = new IntColumn("col1", 0);
+    IntColumn col2 = new IntColumn("col2", 4);
+    IntColumn[] cols = new IntColumn[] {col1, col2};
+
+    FilterPredicate tree = null;
+    ScanStrategy ss = null;
+    HashMap<Column, Statistics> stats = null;
+    HashSet<Integer> values = null;
+
+    // Case 1: set is empty, we should skip scan
+    tree = in(col1, new HashSet<Integer>());
+    stats = new HashMap<Column, Statistics>();
+    ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), SkipScan.class);
+    assertTrue(ss.skipScan());
+
+    // Case 2: set contains only one value and no statistics
+    values = new HashSet<Integer>();
+    values.add(10);
+    tree = in(col1, values);
+
+    stats = new HashMap<Column, Statistics>();
+    ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), FilterScan.class);
+    assertFalse(ss.skipScan());
+
+    // Case 3: set contains only one value and we have statistics on a column
+    values = new HashSet<Integer>();
+    values.add(10);
+    tree = in(col1, values);
+
+    stats = new HashMap<Column, Statistics>();
+    stats.put(col1, new IntStatistics(1, 3));
+    ss = ScanPlanner.buildStrategy(cols, tree, stats);
+    assertSame(ss.getClass(), SkipScan.class);
+    assertTrue(ss.skipScan());
+
+    // Case 4: set contains more than one value and we do not have any statistics
+    values = new HashSet<Integer>();
+    values.add(10);
+    values.add(20);
+    tree = in(col1, values);
+
+    stats = new HashMap<Column, Statistics>();
+    ss = ScanPlanner.buildStrategy(cols, tree, stats);
     assertSame(ss.getClass(), FilterScan.class);
     assertFalse(ss.skipScan());
   }

@@ -618,7 +618,9 @@ public final class Operators {
    * answer it immediately. For example, if object is null or is not null.
    * @param result result of trivial filter
    */
-  public static final class TrivialPredicate implements FilterPredicate {
+  public static final class TrivialPredicate implements FilterPredicate, Serializable {
+    TrivialPredicate() { }
+
     TrivialPredicate(boolean result) {
       this.result = result;
     }
@@ -656,6 +658,6 @@ public final class Operators {
         "no TrivialPredicate instances");
     }
 
-    private final boolean result;
+    private boolean result;
   }
 }

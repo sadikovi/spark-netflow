@@ -36,9 +36,9 @@ public class NetFlowV5 extends NetFlow {
   public static final LongColumn FIELD_DSTADDR = new LongColumn("dstip", 20);
   // Next hop router's IP Address, size: 4
   public static final LongColumn FIELD_NEXTHOP = new LongColumn("nexthop", 24);
-  // Input interface index, size: 2
+  // Input interface index (known as Sif), size: 2
   public static final IntColumn FIELD_INPUT = new IntColumn("input", 28);
-  // Output interface index, size: 2
+  // Output interface index (known as Dif), size: 2
   public static final IntColumn FIELD_OUTPUT = new IntColumn("output", 30);
   // Packets sent in Duration, size: 4
   public static final LongColumn FIELD_DPKTS = new LongColumn("packets", 32);

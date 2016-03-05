@@ -345,6 +345,16 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
       return FilterApi.trivial(false);
     }
 
+    Column col = predicate.getColumn();
+    // If predicate values length is 1, we transform it into "Eq" predicate,
+    // Note that in this case we need to update equality predicate, since it can be out of
+    // statistics. `transform` on `Eq` will add it to the value inspectors list, if necessary, so
+    // we do not need to do it here.
+    if (predicate.getValues().size() == 1) {
+      Eq equalityPredicate = FilterApi.eq(col, predicate.getValues().iterator().next());
+      return equalityPredicate.update(this, stats);
+    }
+
     addInspector(predicate.getColumn(), predicate.inspector());
     return predicate;
   }
@@ -355,6 +365,10 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
 
   @Override
   public FilterPredicate transform(And predicate) {
+    // Note that "transform" on "And" predicate is called after it is called on children of the
+    // predicate, so effectively, leaf nodes of "And" predicate are already resolved, so we just
+    // need to check result.
+
     // both children are trivial
     if (predicate.getLeft() instanceof TrivialPredicate &&
         predicate.getRight() instanceof TrivialPredicate) {
@@ -389,6 +403,10 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
 
   @Override
   public FilterPredicate transform(Or predicate) {
+    // Note that "transform" on "Or" predicate is called after it is called on children of the
+    // predicate, so effectively, leaf nodes of "Or" predicate are already resolved, so we just
+    // need to check result.
+
     // both children are trivial
     if (predicate.getLeft() instanceof TrivialPredicate &&
         predicate.getRight() instanceof TrivialPredicate) {
@@ -423,6 +441,10 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
 
   @Override
   public FilterPredicate transform(Not predicate) {
+    // Note that "transform" on "Not" predicate is called after it is called on a child node of the
+    // predicate, so effectively, child leaf node of "Not" predicate is already resolved, so we
+    // just need to check result.
+
     // transform trivial predicate directly to minimize recursion depth.
     if (predicate.getChild() instanceof TrivialPredicate) {
       TrivialPredicate child = (TrivialPredicate)(predicate.getChild());

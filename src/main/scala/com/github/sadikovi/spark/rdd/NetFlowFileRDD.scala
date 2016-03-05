@@ -156,7 +156,8 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
       // Conversion iterator, applies defined modification for convertable fields
       val conversionsIterator = if (applyConversion) {
         // For each field we check if possible conversion is available. If it is we apply direct
-        // conversion, otherwise return unchanged value
+        // conversion, otherwise return unchanged value. Note that this should be in sync with
+        // `applyConversion` and updated schema from `ResolvedInterface`.
         rawIterator.map(arr => {
           for (i <- 0 until numColumns) {
             resolvedColumns(i).convertFunction match {

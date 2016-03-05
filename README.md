@@ -29,8 +29,8 @@ Currently supported options:
 | Name | Example | Description |
 |------|:-------:|-------------|
 | `version` | _5, 7_ | version to use when parsing NetFlow files
-| `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: 3Mb)
-| `stringify` | _true, false_ | convert certain fields (e.g. IP) into human-readable format (default: false)
+| `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
+| `stringify` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
 
 ## Example
 
@@ -54,8 +54,8 @@ import com.github.sadikovi.spark.netflow._
 // this will read version 5 with default buffer size
 val df = sqlContext.read.netflow5("file:/...")
 
-// this will read version 7 with fields conversion
-val df = sqlContext.read.option("stringify", "true").netflow7("file:/...")
+// this will read version 7 without fields conversion
+val df = sqlContext.read.option("stringify", "false").netflow7("file:/...")
 ```
 
 ### Python API

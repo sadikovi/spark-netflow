@@ -70,7 +70,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   test("read uncompressed v5 format") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-      load(s"file:${path1}")
+      option("stringify", "false").load(s"file:${path1}")
 
     val res = df.collect()
     res.length should be (1000)
@@ -83,7 +83,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   test("read compressed v5 format") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-      load(s"file:${path2}")
+      option("stringify", "false").load(s"file:${path2}")
 
     val res = df.collect()
     res.length should be (1000)
@@ -96,7 +96,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   test("read uncompressed v7 format") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
-      load(s"file:${path6}")
+      option("stringify", "false").load(s"file:${path6}")
 
     val res = df.collect()
     res.length should be (1000)
@@ -109,7 +109,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   test("read compressed v7 LITTLE_ENDIAN format") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
-      load(s"file:${path7}")
+      option("stringify", "false").load(s"file:${path7}")
 
     val res = df.collect()
     res.length should be (1000)
@@ -122,7 +122,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   test("read compressed v7 BIG_ENDIAN format") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
-      load(s"file:${path8}")
+      option("stringify", "false").load(s"file:${path8}")
 
     val res = df.collect()
     res.length should be (1000)
@@ -332,15 +332,52 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.count() should be (0)
   }
 
-  ignore("scan variations with simple predicate") {
+  test("scan variations with simple predicate") {
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = null
 
+    df = sqlContext.read.netflow5(s"file:${path2}").filter(col("srcip") === "0.0.0.1").
+      select("srcip", "dstip", "protocol")
+    df.collect() should be (Array(Row.fromSeq(Seq("0.0.0.1", "255.255.0.1", "UDP"))))
+
+    df = sqlContext.read.netflow7(s"file:${path7}").
+      filter(col("srcport") > 0 && col("srcport") <= 5).
+      select("srcip", "dstip", "protocol", "srcport")
+    df.collect() should be (Array(
+      Row.fromSeq(Seq("0.0.0.1", "255.255.0.1", "UDP", 1)),
+      Row.fromSeq(Seq("0.0.0.2", "255.255.0.2", "UDP", 2)),
+      Row.fromSeq(Seq("0.0.0.3", "255.255.0.3", "UDP", 3)),
+      Row.fromSeq(Seq("0.0.0.4", "255.255.0.4", "UDP", 4)),
+      Row.fromSeq(Seq("0.0.0.5", "255.255.0.5", "UDP", 5))
+    ))
   }
 
-  ignore("scan variations with complex predicate") {
+  test("scan variations with complex predicate") {
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = null
 
+    df = sqlContext.read.netflow5(s"file:${path2}").
+      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
+      filter(col("unix_secs").between(0L, 1L) && col("srcip") === "0.0.1.1")
+    df.collect() should be (Array(Row.fromSeq(Seq(0L, "0.0.1.1", "255.255.1.1", 257, 1, 258))))
+
+    df = sqlContext.read.netflow5(s"file:${path2}").
+      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
+      filter(col("unix_secs").between(1L, 2L) && col("srcip") === "0.0.1.1")
+    df.collect() should be (Array.empty)
   }
 
-  ignore("scan with unsupported predicate") {
+  test("scan with unsupported predicate") {
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = null
 
+    df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").startsWith("0.0."))
+    df.collect() should be (Array.empty)
+
+    df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").isNull)
+    df.collect() should be (Array.empty)
+
+    df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").isNotNull)
+    df.count() should be (1000)
   }
 }

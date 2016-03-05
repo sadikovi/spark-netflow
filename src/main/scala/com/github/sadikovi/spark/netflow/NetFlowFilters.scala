@@ -194,12 +194,19 @@ private[spark] object NetFlowFilters {
   // Util functions
   //////////////////////////////////////////////////////////////
 
-  /** Convertion of the value into internal format */
+  /**
+   * Convertion of the value into internal format. When we convert String field, we check old
+   * Spark SQL format `UTF8String` as well as `String`, which is obtained from StringType.
+   */
   private def maybeConvertValue(
       value: Any,
       convertFunction: Option[ConvertFunction]): Any = convertFunction match {
-    case Some(func) if value.isInstanceOf[String] => func.reversed(value.asInstanceOf[String])
-    case otherCases => value
+    case Some(func) if value.isInstanceOf[String] =>
+      func.reversed(value.asInstanceOf[String])
+    case Some(func) if value.getClass().getCanonicalName().endsWith("UTF8String") =>
+      func.reversed(value.toString())
+    case otherCases =>
+      value
   }
 
   /** Convertion of the array of values into internal format */

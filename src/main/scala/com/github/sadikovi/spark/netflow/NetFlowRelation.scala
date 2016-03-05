@@ -73,10 +73,11 @@ private[netflow] class NetFlowRelation(
     case None => RecordBuffer.BUFFER_LENGTH_1
   }
 
-  // Conversion of numeric field into string, such as IP, by default is off
+  // Conversion of numeric field into string, such as IP, by default is on
   private val applyConversion = parameters.get("stringify") match {
     case Some("true") => true
-    case _ => false
+    case Some("false") => false
+    case _ => true
   }
 
   // Get buffer size in bytes, mostly for testing
