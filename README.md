@@ -88,16 +88,19 @@ Output will be similar to this:
 - Iterations: 3
 - Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*
 - Version: 5
-
 Running benchmark: NetFlow full scan
-  Running case: Full scan with stringify 'true'
-  Running case: Full scan with stringify 'false'                                
+  Running case: Scan w/o stringify, buffer: 10Kb
+  Running case: Scan w/o stringify, buffer: 50Mb                                
+  Running case: Scan w/ stringify, buffer: 10Kb                                 
+  Running case: Scan w/ stringify, buffer: 50Mb                                 
 
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Full scan with stringify 'true'          2581 / 2770          0.0     2580922.0       1.0X
-Full scan with stringify 'false'         1996 / 1999          0.0     1996453.0       1.3X
+Scan w/o stringify, buffer: 10Kb         2033 / 2227          0.0      203281.6       1.0X
+Scan w/o stringify, buffer: 50Mb         2069 / 2103          0.0      206884.9       1.0X
+Scan w/ stringify, buffer: 10Kb          2553 / 2602          0.0      255300.5       0.8X
+Scan w/ stringify, buffer: 50Mb          2836 / 2953          0.0      283586.6       0.7X
 
 Running benchmark: NetFlow predicate scan
   Running case: Filter scan w/ predicate pushdown
@@ -106,8 +109,8 @@ Running benchmark: NetFlow predicate scan
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Filter scan w/ predicate pushdown        1233 / 1246          0.0     1232769.0       1.0X
-Filter scan w/o predicate pushdown       1108 / 1273          0.0     1108083.0       1.1X
+Filter scan w/ predicate pushdown        1174 / 1231          0.0      117373.4       1.0X
+Filter scan w/o predicate pushdown       1040 / 1135          0.0      104024.8       1.1X
 
 Running benchmark: NetFlow aggregated report
   Running case: Aggregated report
@@ -115,5 +118,5 @@ Running benchmark: NetFlow aggregated report
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Aggregated report                        1405 / 1540          0.0     1404913.0       1.0X
+Aggregated report                        1448 / 1492          0.0      144783.1       1.0X
 ```

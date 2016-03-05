@@ -92,18 +92,36 @@ object NetFlowReadBenchmark {
   }
 
   def fullScanBenchmark(iters: Int, version: String, files: String): Unit = {
-    val sqlBenchmark = new Benchmark("NetFlow full scan", 1000, iters)
+    val sqlBenchmark = new Benchmark("NetFlow full scan", 10000, iters)
 
-    sqlBenchmark.addCase("Full scan with stringify 'true'") { iter =>
+    sqlBenchmark.addCase("Scan w/o stringify, buffer: 10Kb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
-        option("version", version).option("stringify", "true").load(files)
+        option("version", version).option("stringify", "false").option("buffer", "10Kb").
+        load(files)
       df.persist(StorageLevel.MEMORY_AND_DISK)
       df.count()
     }
 
-    sqlBenchmark.addCase("Full scan with stringify 'false'") { iter =>
+    sqlBenchmark.addCase("Scan w/o stringify, buffer: 50Mb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
-        option("version", version).option("stringify", "false").load(files)
+        option("version", version).option("stringify", "false").option("buffer", "50Mb").
+        load(files)
+      df.persist(StorageLevel.MEMORY_AND_DISK)
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Scan w/ stringify, buffer: 10Kb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("stringify", "true").option("buffer", "10Kb").
+        load(files)
+      df.persist(StorageLevel.MEMORY_AND_DISK)
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Scan w/ stringify, buffer: 50Mb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("stringify", "true").option("buffer", "50Mb").
+        load(files)
       df.persist(StorageLevel.MEMORY_AND_DISK)
       df.count()
     }
@@ -112,7 +130,7 @@ object NetFlowReadBenchmark {
   }
 
   def predicateScanBenchmark(iters: Int, version: String, files: String): Unit = {
-    val sqlBenchmark = new Benchmark("NetFlow predicate scan", 1000, iters)
+    val sqlBenchmark = new Benchmark("NetFlow predicate scan", 10000, iters)
 
     sqlBenchmark.addCase("Filter scan w/ predicate pushdown") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
@@ -134,7 +152,7 @@ object NetFlowReadBenchmark {
   }
 
   def aggregatedScanBenchmark(iters: Int, version: String, files: String): Unit = {
-    val sqlBenchmark = new Benchmark("NetFlow aggregated report", 1000, iters)
+    val sqlBenchmark = new Benchmark("NetFlow aggregated report", 10000, iters)
 
     sqlBenchmark.addCase("Aggregated report") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
