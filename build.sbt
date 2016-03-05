@@ -54,6 +54,10 @@ ScoverageSbtPlugin.ScoverageKeys.coverageHighlighting := {
   else true
 }
 
+ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 80
+ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
+ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := ".*.benchmark"
+
 EclipseKeys.eclipseOutput := Some("target/eclipse")
 
 // tasks dependencies

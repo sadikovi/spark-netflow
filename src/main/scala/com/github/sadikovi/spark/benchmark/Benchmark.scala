@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.util
+package com.github.sadikovi.spark.benchmark
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
