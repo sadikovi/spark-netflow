@@ -7,21 +7,22 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 ## Requirements
 | Spark version | spark-netflow version |
 |---------------|-----------------------|
-| 1.4+ | [0.1.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.4+ | [0.2.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 ## Linking
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
 ```shell
- $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.1.0-s_2.10
+ $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.0-s_2.10
 ```
 
 ## Features
 - Column pruning
-- Predicate pushdown on capture time (`unix_secs` field)
+- Predicate pushdown to the NetFlow file
+- Statistics on `unix_secs` (read only files that pass predicate on that column)
 - Fields conversion (IP addresses, protocol, etc.)
-- NetFlow version 5 support
-- NetFlow version 7 support
+- NetFlow version 5 support ([list of columns](./docs/NETFLOW_V5.md))
+- NetFlow version 7 support ([list of columns](./docs/NETFLOW_V7.md))
 
 ### Options
 Currently supported options:
