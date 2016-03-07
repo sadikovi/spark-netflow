@@ -5,8 +5,8 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 [![codecov.io](https://codecov.io/github/sadikovi/spark-netflow/coverage.svg?branch=master)](https://codecov.io/github/sadikovi/spark-netflow?branch=master)
 
 ## Requirements
-| Spark version | spark-netflow version |
-|---------------|-----------------------|
+| Spark version | spark-netflow latest version |
+|---------------|------------------------------|
 | 1.4+ | [0.2.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 ## Linking
