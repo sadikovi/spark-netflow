@@ -77,8 +77,8 @@ Run `sbt test` from project root.
 ## Running benchmark
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
-$ spark-submit --class com.github.sadikovi.spark.util.NetFlowReadBenchmark \
-  target/scala-2.10/spark-netflow_2.10-0.2.0-SNAPSHOT.jar \
+$ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
+  target/scala-2.10/spark-netflow_2.10-0.2.1-SNAPSHOT.jar \
   --iterations 3 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
   --version 5
