@@ -350,11 +350,14 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       Map("version" -> "5", "partitions" -> "100"))(sqlContext)
     relation.getPartitionMode() should be (DefaultPartitionMode(100))
 
-    // We do not validate number of partitions at this step yet, so negative number of partitions
-    // is okay at this step
-    relation = new NetFlowRelation(Array(path1), None, None,
-      Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
-    relation.getPartitionMode() should be (DefaultPartitionMode(-100))
+    try {
+      new NetFlowRelation(Array(path1), None, None,
+        Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
+    } catch {
+      case illegal: IllegalArgumentException =>
+        illegal.getMessage() should be ("Expected at least one partition, got -100")
+      case other: Throwable => throw other
+    }
 
     try {
       new NetFlowRelation(Array(path1), None, None,

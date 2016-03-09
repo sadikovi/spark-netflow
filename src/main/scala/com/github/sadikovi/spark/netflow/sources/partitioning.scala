@@ -39,7 +39,10 @@ final case class SimplePartitionMode() extends PartitionMode {
  *
  */
 final case class DefaultPartitionMode(numPartitions: Int) extends PartitionMode {
-  override def resolveNumPartitions(max: Int): Int = Math.min(numPartitions, max)
+  override def resolveNumPartitions(max: Int): Int = {
+    require(numPartitions >= 1, s"Expected at least one partition, got ${numPartitions}")
+    Math.min(numPartitions, max)
+  }
 }
 
 /**
