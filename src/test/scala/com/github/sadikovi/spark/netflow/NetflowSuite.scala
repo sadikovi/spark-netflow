@@ -34,6 +34,7 @@ import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.NetFlowFileRDD
 import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
+import com.github.sadikovi.testutil.implicits._
 
 class NetFlowSuite extends UnitTestSpec with SparkLocal {
   override def beforeAll(configMap: ConfigMap) {
@@ -57,6 +58,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   // version 5 correct files
   val path1 = getClass().getResource("/correct/ftv5.2016-01-13.nocompress.bigend.sample").getPath
   val path2 = getClass().getResource("/correct/ftv5.2016-01-13.compress.9.sample").getPath
+  val paths12 = testDirectory() / "resources" / "correct" / "ftv5*"
   // version 5 corrupt files
   val path3 = getClass().getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-01").getPath
   val path4 = getClass().getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-00").getPath
@@ -326,6 +328,44 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
   }
 
+  // Resolve partition mode based on option specified, only tests `NetFlowRelation`
+  test("resolve partition mode") {
+    val sqlContext = new SQLContext(sc)
+    var relation: NetFlowRelation = null
+
+    relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
+    relation.getPartitionMode() should be (SimplePartitionMode())
+    // This is valid since simple partition mode just returns maximum
+    relation.getPartitionMode().resolveNumPartitions(100) should be (100)
+
+    relation = new NetFlowRelation(Array(path1), None, None,
+      Map("version" -> "5", "partitions" -> "simple"))(sqlContext)
+    relation.getPartitionMode() should be (SimplePartitionMode())
+
+    relation = new NetFlowRelation(Array(path1), None, None,
+      Map("version" -> "5", "partitions" -> "auto"))(sqlContext)
+    relation.getPartitionMode() should be (AutoPartitionMode())
+
+    relation = new NetFlowRelation(Array(path1), None, None,
+      Map("version" -> "5", "partitions" -> "100"))(sqlContext)
+    relation.getPartitionMode() should be (DefaultPartitionMode(100))
+
+    // We do not validate number of partitions at this step yet, so negative number of partitions
+    // is okay at this step
+    relation = new NetFlowRelation(Array(path1), None, None,
+      Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
+    relation.getPartitionMode() should be (DefaultPartitionMode(-100))
+
+    try {
+      new NetFlowRelation(Array(path1), None, None,
+        Map("version" -> "5", "partitions" -> "test100"))(sqlContext)
+    } catch {
+      case runtime: RuntimeException =>
+        runtime.getMessage() should be ("Wrong number of partitions test100")
+      case other: Throwable => throw other
+    }
+  }
+
   test("ignore scanning file for unix_secs out of range") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.netflow5(s"file:${path1}").filter(col("unix_secs") === -1)
@@ -379,5 +419,28 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
     df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").isNotNull)
     df.count() should be (1000)
+  }
+
+  // Test scan with different number of partitions, currently do not support "auto" mode
+  test("scan with number of partitions") {
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = null
+
+    df = sqlContext.read.option("partitions", "simple").netflow5(s"file:${paths12}")
+    df.rdd.partitions.length should be (2)
+    df.count() should be (2000)
+
+    df = sqlContext.read.option("partitions", "1").netflow5(s"file:${paths12}")
+    df.rdd.partitions.length should be (1)
+    df.count() should be (2000)
+
+    df = sqlContext.read.option("partitions", "10").netflow5(s"file:${paths12}")
+    df.rdd.partitions.length should be (2)
+    df.count() should be (2000)
+
+    intercept[IllegalArgumentException] {
+      df = sqlContext.read.option("partitions", "-1").netflow5(s"file:${paths12}")
+      df.count()
+    }
   }
 }

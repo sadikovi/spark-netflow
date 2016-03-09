@@ -76,6 +76,8 @@ testScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Test).toTask
 
 publishMavenStyle := true
 
+pomIncludeRepository := { _ => false }
+
 releaseCrossBuild := true
 
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
