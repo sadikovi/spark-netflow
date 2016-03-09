@@ -146,6 +146,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     try {
       sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:${path3}").count()
+      assert(false, "No exception was thrown")
     } catch {
       case se: SparkException =>
         val msg = se.getMessage()
@@ -161,6 +162,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       load(s"file:${path4}")
     try {
       df.select("srcip").count()
+      assert(false, "No exception was thrown")
     } catch {
       case se: SparkException =>
         val msg = se.getMessage()
@@ -245,6 +247,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     try {
       df = sqlContext.read.netflow5(s"file:${path5}")
       df.count()
+      assert(false, "No exception was thrown")
     } catch {
       case se: SparkException => msg = se.getMessage()
       case other: Throwable => throw other
@@ -266,6 +269,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     try {
       df = sqlContext.read.netflow7(s"file:${path5}")
       df.count()
+      assert(false, "No exception was thrown")
     } catch {
       case se: SparkException => msg = se.getMessage()
       case other: Throwable => throw other
@@ -350,18 +354,16 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       Map("version" -> "5", "partitions" -> "100"))(sqlContext)
     relation.getPartitionMode() should be (DefaultPartitionMode(100))
 
-    try {
-      new NetFlowRelation(Array(path1), None, None,
-        Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
-    } catch {
-      case illegal: IllegalArgumentException =>
-        illegal.getMessage() should be ("Expected at least one partition, got -100")
-      case other: Throwable => throw other
-    }
+    // We check invalid number of partitions when we build scan, so at the step of creating a
+    // relation we can have negative number of partitions
+    relation = new NetFlowRelation(Array(path1), None, None,
+      Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
+    relation.getPartitionMode() should be (DefaultPartitionMode(-100))
 
     try {
       new NetFlowRelation(Array(path1), None, None,
         Map("version" -> "5", "partitions" -> "test100"))(sqlContext)
+      assert(false, "No exception was thrown")
     } catch {
       case runtime: RuntimeException =>
         runtime.getMessage() should be ("Wrong number of partitions test100")
