@@ -40,13 +40,14 @@ Currently supported options:
 ```scala
 val sqlContext = new SQLContext(sc)
 
+// You can read files from local file system or HDFS
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").load("file:/...").
   select("srcip", "dstip", "packets")
 
 // You can also specify buffer size when reading compressed NetFlow files
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
-  option("version", "5").option("buffer", "50Mb").load("file:/...")
+  option("version", "5").option("buffer", "50Mb").load("hdfs://sandbox:8020/tmp/...")
 ```
 
 Alternatively you can use shortcuts for NetFlow files
@@ -54,7 +55,7 @@ Alternatively you can use shortcuts for NetFlow files
 import com.github.sadikovi.spark.netflow._
 
 // this will read version 5 with default buffer size
-val df = sqlContext.read.netflow5("file:/...")
+val df = sqlContext.read.netflow5("hdfs:/...")
 
 // this will read version 7 without fields conversion
 val df = sqlContext.read.option("stringify", "false").netflow7("file:/...")
