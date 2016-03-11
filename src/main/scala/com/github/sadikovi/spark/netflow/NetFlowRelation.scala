@@ -91,7 +91,7 @@ private[netflow] class NetFlowRelation(
   // partitions is larger than number of files we use default partitioning (per file)
   private val partitionMode = parameters.get("partitions") match {
     case Some("auto") => AutoPartitionMode()
-    case Some("simple") => DefaultPartitionMode(None)
+    case Some("default") => DefaultPartitionMode(None)
     case Some(maybeNumPartitions) => Try(maybeNumPartitions.toInt) match {
       case Success(numPartitions) => DefaultPartitionMode(Some(numPartitions))
       case Failure(error) => sys.error(s"Wrong number of partitions ${maybeNumPartitions}")

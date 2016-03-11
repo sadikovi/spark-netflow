@@ -23,6 +23,7 @@ example, run this to include it when starting the spark shell:
 - Fields conversion (IP addresses, protocol, etc.)
 - NetFlow version 5 support ([list of columns](./docs/NETFLOW_V5.md))
 - NetFlow version 7 support ([list of columns](./docs/NETFLOW_V7.md))
+- Reading files from local file system and HDFS
 
 ### Options
 Currently supported options:
