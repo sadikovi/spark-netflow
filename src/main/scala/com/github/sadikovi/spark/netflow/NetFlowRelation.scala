@@ -91,12 +91,12 @@ private[netflow] class NetFlowRelation(
   // partitions is larger than number of files we use default partitioning (per file)
   private val partitionMode = parameters.get("partitions") match {
     case Some("auto") => AutoPartitionMode()
-    case Some("simple") => SimplePartitionMode()
+    case Some("simple") => DefaultPartitionMode(None)
     case Some(maybeNumPartitions) => Try(maybeNumPartitions.toInt) match {
-      case Success(numPartitions) => DefaultPartitionMode(numPartitions)
+      case Success(numPartitions) => DefaultPartitionMode(Some(numPartitions))
       case Failure(error) => sys.error(s"Wrong number of partitions ${maybeNumPartitions}")
     }
-    case None => SimplePartitionMode()
+    case None => DefaultPartitionMode(None)
   }
 
   // Get buffer size in bytes, mostly for testing
@@ -158,11 +158,8 @@ private[netflow] class NetFlowRelation(
           bufferSize)
       } }
 
-      // Resolve number of partitions based on partitioning mode
-      val numPartitions = partitionMode.resolveNumPartitions(metadata.length)
-
       // Return `NetFlowFileRDD`, we store data of each file in individual partition
-      new NetFlowFileRDD(sqlContext.sparkContext, metadata, numPartitions, applyConversion,
+      new NetFlowFileRDD(sqlContext.sparkContext, metadata, partitionMode, applyConversion,
         resolvedColumns, resolvedFilter)
     }
   }

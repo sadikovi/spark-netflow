@@ -338,13 +338,13 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     var relation: NetFlowRelation = null
 
     relation = new NetFlowRelation(Array(path1), None, None, Map("version" -> "5"))(sqlContext)
-    relation.getPartitionMode() should be (SimplePartitionMode())
+    relation.getPartitionMode() should be (DefaultPartitionMode(None))
     // This is valid since simple partition mode just returns maximum
     relation.getPartitionMode().resolveNumPartitions(100) should be (100)
 
     relation = new NetFlowRelation(Array(path1), None, None,
       Map("version" -> "5", "partitions" -> "simple"))(sqlContext)
-    relation.getPartitionMode() should be (SimplePartitionMode())
+    relation.getPartitionMode() should be (DefaultPartitionMode(None))
 
     relation = new NetFlowRelation(Array(path1), None, None,
       Map("version" -> "5", "partitions" -> "auto"))(sqlContext)
@@ -352,13 +352,13 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
     relation = new NetFlowRelation(Array(path1), None, None,
       Map("version" -> "5", "partitions" -> "100"))(sqlContext)
-    relation.getPartitionMode() should be (DefaultPartitionMode(100))
+    relation.getPartitionMode() should be (DefaultPartitionMode(Option(100)))
 
     // We check invalid number of partitions when we build scan, so at the step of creating a
     // relation we can have negative number of partitions
     relation = new NetFlowRelation(Array(path1), None, None,
       Map("version" -> "5", "partitions" -> "-100"))(sqlContext)
-    relation.getPartitionMode() should be (DefaultPartitionMode(-100))
+    relation.getPartitionMode() should be (DefaultPartitionMode(Option(-100)))
 
     try {
       new NetFlowRelation(Array(path1), None, None,

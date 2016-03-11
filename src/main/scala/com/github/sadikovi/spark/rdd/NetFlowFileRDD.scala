@@ -71,30 +71,12 @@ private[spark] class NetFlowFilePartition[T<:NetFlowMetadata: ClassTag] (
 private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     @transient sc: SparkContext,
     @transient data: Seq[NetFlowMetadata],
-    private val numSlices: Int,
+    val partitionMode: PartitionMode,
     val applyConversion: Boolean,
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate]) extends FileRDD[SQLRow](sc, Nil) {
-  /** Partition [[NetFlowMetadata]], slightly modified Spark partitioning function */
-  private def slice(seq: Seq[NetFlowMetadata], numSlices: Int): Seq[Seq[NetFlowMetadata]] = {
-    require(numSlices >= 1, "Positive number of slices required")
-
-    def positions(length: Long, numSlices: Int): Iterator[(Int, Int)] = {
-      (0 until numSlices).iterator.map(i => {
-        val start = ((i * length) / numSlices).toInt
-        val end = (((i + 1) * length) / numSlices).toInt
-        (start, end)
-      })
-    }
-
-    val array = seq.toArray
-    positions(array.length, numSlices).map { case (start, end) =>
-      array.slice(start, end).toSeq
-    }.toSeq
-  }
-
   override def getPartitions: Array[Partition] = {
-    val slices = this.slice(data, numSlices).toArray
+    val slices = partitionMode.tryToPartition(data)
     slices.indices.map(i => new NetFlowFilePartition[NetFlowMetadata](id, i, slices(i))).toArray
   }
 

@@ -16,43 +16,62 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import scala.reflect.ClassTag
+
 /**
  * [[PartitionMode]] interface defines how many partitions and how data is sorted into those
  * buckets, provides common API to either return appropriate number of partitions or slice list of
  * items into partitions.
  */
-private[netflow] abstract class PartitionMode {
-  def resolveNumPartitions(max: Int): Int
-}
+private[spark] abstract class PartitionMode {
+  def resolveNumPartitions(maxSlices: Int): Int
 
-/**
- * [[SimplePartitionMode]] always returns the maximum number of partitions available.
- *
- */
-final case class SimplePartitionMode() extends PartitionMode {
-  override def resolveNumPartitions(max: Int): Int = max
+  def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]]
 }
 
 /**
  * [[DefaultPartitionMode]] either returns provided number of partitions or maximum slices
  * whichever is larger.
- *
  */
-final case class DefaultPartitionMode(numPartitions: Int) extends PartitionMode {
-  override def resolveNumPartitions(max: Int): Int = {
-    require(numPartitions >= 1, s"Expected at least one partition, got ${numPartitions}")
-    Math.min(numPartitions, max)
+final case class DefaultPartitionMode(numPartitions: Option[Int]) extends PartitionMode {
+  override def resolveNumPartitions(maxSlices: Int): Int = numPartitions match {
+    case Some(possibleSlices) =>
+      require(possibleSlices >= 1, s"Expected at least one partition, got ${possibleSlices}")
+      Math.min(possibleSlices, maxSlices)
+    case None =>
+      maxSlices
+  }
+
+  override def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]] = {
+    val numSlices = resolveNumPartitions(seq.length)
+    require(numSlices >= 1, "Positive number of slices required")
+
+    def positions(length: Long, numSlices: Int): Iterator[(Int, Int)] = {
+      (0 until numSlices).iterator.map(i => {
+        val start = ((i * length) / numSlices).toInt
+        val end = (((i + 1) * length) / numSlices).toInt
+        (start, end)
+      })
+    }
+
+    val array = seq.toArray
+    positions(array.length, numSlices).map { case (start, end) =>
+      array.slice(start, end).toSeq
+    }.toSeq
   }
 }
 
 /**
  * [[AutoPartitionMode]] allows to customize slices split based on certain constraints, such as
  * maximum number of partitions, and maximum size of each partition.
- *
  */
 final case class AutoPartitionMode() extends PartitionMode {
-  override def resolveNumPartitions(max: Int): Int = {
+  override def resolveNumPartitions(maxSlices: Int): Int = {
     throw new UnsupportedOperationException(
       s"${getClass().getSimpleName()} does not support partitions resolution")
+  }
+
+  override def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]] = {
+    throw new UnsupportedOperationException("Not supported")
   }
 }
