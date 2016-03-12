@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.mapreduce.Job
 
-import org.apache.spark.rdd.{RDD, UnionRDD}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SQLContext, Row}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
-import com.github.sadikovi.spark.rdd.{NetFlowFileRDD, NetFlowMetadata}
+import com.github.sadikovi.spark.rdd.NetFlowFileRDD
 import com.github.sadikovi.spark.util.Utils
 
 private[netflow] class NetFlowRelation(

@@ -16,8 +16,6 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
-import scala.reflect.ClassTag
-
 /**
  * [[PartitionMode]] interface defines how many partitions and how data is sorted into those
  * buckets, provides common API to either return appropriate number of partitions or slice list of
@@ -26,7 +24,7 @@ import scala.reflect.ClassTag
 private[spark] abstract class PartitionMode {
   def resolveNumPartitions(maxSlices: Int): Int
 
-  def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]]
+  def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]]
 }
 
 /**
@@ -42,7 +40,7 @@ final case class DefaultPartitionMode(numPartitions: Option[Int]) extends Partit
       maxSlices
   }
 
-  override def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]] = {
+  override def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]] = {
     val numSlices = resolveNumPartitions(seq.length)
     require(numSlices >= 1, "Positive number of slices required")
 
@@ -71,7 +69,7 @@ final case class AutoPartitionMode() extends PartitionMode {
       s"${getClass().getSimpleName()} does not support partitions resolution")
   }
 
-  override def tryToPartition[T: ClassTag](seq: Seq[T]): Seq[Seq[T]] = {
+  override def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]] = {
     throw new UnsupportedOperationException("Not supported")
   }
 }

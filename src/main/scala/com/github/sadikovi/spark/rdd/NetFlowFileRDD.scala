@@ -33,18 +33,6 @@ import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
 
-/**
- * NetFlow metadata that describes file to process. Contains expected version of a file, absolute
- * resolved path to the file, and it's length, buffer size for a particular file (currently we
- * do not make that distinction).
- */
-private[spark] case class NetFlowMetadata(
-  version: Short,
-  path: String,
-  length: Long,
-  bufferSize: Int
-)
-
 /** NetFlowFilePartition to hold sequence of file paths */
 private[spark] class NetFlowFilePartition[T<:NetFlowMetadata: ClassTag] (
     var rddId: Long,

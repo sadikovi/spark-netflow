@@ -443,9 +443,25 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.rdd.partitions.length should be (2)
     df.count() should be (2000)
 
-    intercept[IllegalArgumentException] {
+    // since Spark 1.6+ resolves number of partitions when building plan, this fails with
+    // TreeNodeException with a cause of wrong number of partitions, though in Spark 1.5 and before
+    // it actually throws IllegalArgumentException, so we need to check for both.
+    try {
       df = sqlContext.read.option("partitions", "-1").netflow5(s"file:${paths12}")
       df.count()
+      assert(false, "No exception was thrown")
+    } catch {
+      case iae: IllegalArgumentException =>
+        assert(iae.getMessage().contains("Expected at least one partition, got"),
+          "Target exception mismatch")
+      case other: Throwable =>
+        var cause = other
+        // find the actual cause of the tree node exception
+        while (cause.getCause() != null) {
+          cause = cause.getCause()
+        }
+        assert(cause.getMessage().contains("Expected at least one partition, got"),
+          "Target exception mismatch")
     }
   }
 }
