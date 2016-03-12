@@ -343,7 +343,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     relation.getPartitionMode().resolveNumPartitions(100) should be (100)
 
     relation = new NetFlowRelation(Array(path1), None, None,
-      Map("version" -> "5", "partitions" -> "simple"))(sqlContext)
+      Map("version" -> "5", "partitions" -> "default"))(sqlContext)
     relation.getPartitionMode() should be (DefaultPartitionMode(None))
 
     relation = new NetFlowRelation(Array(path1), None, None,
@@ -431,7 +431,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     val sqlContext = new SQLContext(sc)
     var df: DataFrame = null
 
-    df = sqlContext.read.option("partitions", "simple").netflow5(s"file:${paths12}")
+    df = sqlContext.read.option("partitions", "default").netflow5(s"file:${paths12}")
     df.rdd.partitions.length should be (2)
     df.count() should be (2000)
 
