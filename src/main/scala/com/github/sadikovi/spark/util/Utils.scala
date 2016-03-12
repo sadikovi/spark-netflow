@@ -47,4 +47,75 @@ private[spark] object Utils {
   def getContextClassLoader(): ClassLoader = {
     Option(Thread.currentThread().getContextClassLoader).getOrElse(getClass.getClassLoader)
   }
+
+  /**
+   * Compute histogram mode, default step is chosen as square root of data points in array, but can
+   * be provided custom step function. Instead of computing average of the largest bucket (one has
+   * more elements), we just return the largest element in the bucket, since bucket range can be
+   * very significant. `stepFunc` takes min element, max element and number of data points and
+   * expects number of buckets as a return value.
+   */
+  def histogramMode(arr: Array[Long], stepFunc: Option[(Long, Long, Int) => Int] = None): Long = {
+    require(arr.nonEmpty, "Expected non-empty array to compute histogram mode")
+    if (arr.length == 1) {
+      arr.head
+    } else {
+      // Sort in increasing order
+      val srt = arr.sortWith(_ < _)
+      val min = srt.head
+      val max = srt.last
+
+      // Compute number of buckets based on step function
+      val numBuckets = stepFunc match {
+        case Some(func) => func(min, max, arr.length)
+        case None => Math.ceil(Math.pow(arr.length, 0.5)).toInt
+      }
+
+      val buckets = for (bucket <- 0 until numBuckets) yield {
+        val start = Math.ceil((max - min) * bucket.toDouble / numBuckets).toLong + min
+        val end = Math.floor((max - min) * (bucket + 1).toDouble / numBuckets).toLong + min
+        (start, end)
+      }
+
+      val bucketStats = buckets.map { case (start, end) => {
+        var maxElem: Long = 0
+        var cnt: Int = 0
+
+        for (elem <- srt) {
+          if (elem >= start && elem <= end) {
+            cnt += 1
+            maxElem = Math.max(elem, maxElem)
+          }
+        }
+        (maxElem, cnt)
+      } }
+
+      // Extract largest bucket, and return maximum value from the bucket
+      val largestBucket = bucketStats.sortWith(_._2 > _._2).head
+      largestBucket._1
+    }
+  }
+
+  /**
+   * Compute truncated mean of the dataset based on sample. `1 - sample` of the dataset is
+   * discarded, mean is computed on the rest and flatten across all data points.
+   */
+  def truncatedMean(arr: Array[Long], sample: Double): Long = {
+    val n = arr.length
+    require(n > 0, "Expected non-empty array to compute mean")
+    require(sample > 0, s"Expected positive sample, got ${sample}")
+
+    if (n == 1) {
+      arr.head
+    } else {
+      val srt = arr.sortWith(_ < _)
+
+      var sum: Long = 0
+      for (i <- 0 until (sample * n).toInt) {
+        sum = sum + srt(i)
+      }
+
+      Math.ceil(sum / n / sample).toLong
+    }
+  }
 }

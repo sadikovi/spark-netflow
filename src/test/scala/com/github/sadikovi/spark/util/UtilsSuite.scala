@@ -48,4 +48,39 @@ class UtilsSuite extends UnitTestSpec {
     uuids.distinct.length should be (1)
     uuids.distinct.head should be (uuids.head)
   }
+
+  test("truncate mean - empty array") {
+    intercept[IllegalArgumentException] {
+      Utils.truncatedMean(Array.empty, 0.5)
+    }
+  }
+
+  test("truncate mean - negative sample") {
+    intercept[IllegalArgumentException] {
+      Utils.truncatedMean(Array(1L, 2L), -0.5)
+    }
+  }
+
+  test("truncate mean - simple array") {
+    Utils.truncatedMean(Array(1L, 2L, 3L, 4L, 5L), 1.0) should be (3)
+    Utils.truncatedMean(Array(1L, 2L, 3L, 4L, 5L), 0.8) should be (3)
+    Utils.truncatedMean(Array(1L, 2L, 3L, 4L, 5L), 0.6) should be (2)
+  }
+
+  test("histogram mode - empty array") {
+    intercept[IllegalArgumentException] {
+      Utils.histogramMode(Array.empty, None)
+    }
+  }
+
+  test("histogram mode - single element") {
+    val mean = Utils.histogramMode(Array(1L), None)
+    mean should be (1L)
+  }
+
+  test("histogram mode - simple array") {
+    val arr = Array(1L, 1L, 1L, 1L, 2L, 2L, 3L, 4L, 5L)
+    val mean = Utils.histogramMode(arr, None)
+    mean should be (2L)
+  }
 }

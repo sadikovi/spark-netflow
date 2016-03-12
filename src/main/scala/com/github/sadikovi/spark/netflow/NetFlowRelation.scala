@@ -57,7 +57,7 @@ private[netflow] class NetFlowRelation(
       "number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
   }
 
-  // Buffer size, by default use standard record buffer size ~3Mb
+  // Buffer size in bytes, by default use standard record buffer size ~3Mb
   private val bufferSize = parameters.get("buffer") match {
     case Some(str) =>
       val bytes = Utils.byteStringAsBytes(str)
@@ -90,13 +90,31 @@ private[netflow] class NetFlowRelation(
   // Partition mode, allows to specify custom number of partitions. Note that if number of
   // partitions is larger than number of files we use default partitioning (per file)
   private val partitionMode = parameters.get("partitions") match {
-    case Some("auto") => AutoPartitionMode()
-    case Some("default") => DefaultPartitionMode(None)
+    case Some("auto") =>
+      // Average partition size, it will be compared with mean size eventually to pick the best
+      // suited bucket size
+      val partitionSize = Utils.byteStringAsBytes(
+        sqlContext.getConf("spark.sql.netflow.partition.size", "144Mb"))
+      // Minimum number of partitions to keep as a result of grouping
+      val minNumPartitions = Try(sqlContext.getConf("spark.sql.netflow.partition.num").toInt).
+        getOrElse(sqlContext.sparkContext.defaultParallelism * 2)
+      // Log parameters for auto partitioning mode
+      logger.info("Selected auto partitioning mode with configured partition " +
+        s"size ${partitionSize} bytes, and minimum number of partitions ${minNumPartitions}")
+      AutoPartitionMode(partitionSize, minNumPartitions)
+    case Some("default") =>
+      logger.info("Selected default partitioning mode")
+      DefaultPartitionMode(None)
     case Some(maybeNumPartitions) => Try(maybeNumPartitions.toInt) match {
-      case Success(numPartitions) => DefaultPartitionMode(Some(numPartitions))
-      case Failure(error) => sys.error(s"Wrong number of partitions ${maybeNumPartitions}")
+      case Success(numPartitions) =>
+        logger.info(s"Selected default partitioning mode with ${numPartitions} partitions")
+        DefaultPartitionMode(Some(numPartitions))
+      case Failure(error) =>
+        sys.error(s"Wrong number of partitions ${maybeNumPartitions}")
     }
-    case None => DefaultPartitionMode(None)
+    case None =>
+      logger.info("Selected default partitioning mode")
+      DefaultPartitionMode(None)
   }
 
   // Get buffer size in bytes, mostly for testing
@@ -153,6 +171,8 @@ private[netflow] class NetFlowRelation(
 
       // NetFlow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
+      // Note that file size (`status.getLen()`) is in bytes and can be used for auto partitioning.
+      // See: https://hadoop.apache.org/docs/r2.6.0/api/org/apache/hadoop/fs/FileStatus.html
       val metadata = inputFiles.map { status => {
         NetFlowMetadata(interface.version(), status.getPath().toString(), status.getLen(),
           bufferSize)
