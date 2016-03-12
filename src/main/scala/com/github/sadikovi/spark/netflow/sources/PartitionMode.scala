@@ -70,6 +70,15 @@ final case class DefaultPartitionMode(numPartitions: Option[Int]) extends Partit
     val numSlices = resolveNumPartitions(seq.length)
     slice(seq, numSlices)
   }
+
+  override def toString(): String = {
+    val msg = if (numPartitions.isEmpty) {
+      "None, will apply trivial partitioning"
+    } else {
+      s"${numPartitions.get} partitions"
+    }
+    s"${getClass().getSimpleName()}[${msg}]"
+  }
 }
 
 /**
@@ -189,5 +198,9 @@ final case class AutoPartitionMode(
       // Convert buckets buffer into return type of sequences
       buckets.map(_.toSeq).toSeq
     }
+  }
+
+  override def toString(): String = {
+    s"${getClass().getSimpleName()}[${partitionSize} bytes, ${minNumPartitions} partitions]"
   }
 }

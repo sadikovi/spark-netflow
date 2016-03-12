@@ -98,7 +98,8 @@ private[spark] object Utils {
 
   /**
    * Compute truncated mean of the dataset based on sample. `1 - sample` of the dataset is
-   * discarded, mean is computed on the rest and flatten across all data points.
+   * discarded, mean is computed on the rest and flatten across all data points. Currently only
+   * tail is truncated, making assumption that skewness is positive only.
    */
   def truncatedMean(arr: Array[Long], sample: Double): Long = {
     val n = arr.length

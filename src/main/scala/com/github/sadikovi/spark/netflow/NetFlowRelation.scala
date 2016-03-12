@@ -98,24 +98,20 @@ private[netflow] class NetFlowRelation(
       // Minimum number of partitions to keep as a result of grouping
       val minNumPartitions = Try(sqlContext.getConf("spark.sql.netflow.partition.num").toInt).
         getOrElse(sqlContext.sparkContext.defaultParallelism * 2)
-      // Log parameters for auto partitioning mode
-      logger.info("Selected auto partitioning mode with configured partition " +
-        s"size ${partitionSize} bytes, and minimum number of partitions ${minNumPartitions}")
       AutoPartitionMode(partitionSize, minNumPartitions)
     case Some("default") =>
-      logger.info("Selected default partitioning mode")
       DefaultPartitionMode(None)
     case Some(maybeNumPartitions) => Try(maybeNumPartitions.toInt) match {
       case Success(numPartitions) =>
-        logger.info(s"Selected default partitioning mode with ${numPartitions} partitions")
         DefaultPartitionMode(Some(numPartitions))
       case Failure(error) =>
         sys.error(s"Wrong number of partitions ${maybeNumPartitions}")
     }
     case None =>
-      logger.info("Selected default partitioning mode")
       DefaultPartitionMode(None)
   }
+  // Log partition mode
+  logger.info(s"Selected ${partitionMode}")
 
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize

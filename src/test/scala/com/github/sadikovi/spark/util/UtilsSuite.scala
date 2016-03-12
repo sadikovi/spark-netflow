@@ -83,4 +83,10 @@ class UtilsSuite extends UnitTestSpec {
     val mean = Utils.histogramMode(arr, None)
     mean should be (2L)
   }
+
+  test("histogram mode - extreme array") {
+    val arr = Array(1L, 2L)
+    val mean = Utils.histogramMode(arr, None)
+    mean should be (1L)
+  }
 }
