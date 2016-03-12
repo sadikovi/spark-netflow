@@ -24,16 +24,42 @@ example, run this to include it when starting the spark shell:
 - NetFlow version 5 support ([list of columns](./docs/NETFLOW_V5.md))
 - NetFlow version 7 support ([list of columns](./docs/NETFLOW_V7.md))
 - Reading files from local file system and HDFS
+- Different partition strategies
 
 ### Options
 Currently supported options:
 
-| Name | Example | Description |
-|------|:-------:|-------------|
-| `version` | _5, 7_ | version to use when parsing NetFlow files
-| `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
-| `stringify` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
-| `predicate-pushdown` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
+| Name | Since | Example | Description |
+|------|:-----:|:-------:|-------------|
+| `version` | `0.0.1` | _5, 7_ | version to use when parsing NetFlow files, your own version provider can be passed
+| `buffer` | `0.0.2` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
+| `stringify` | `0.0.2` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
+| `predicate-pushdown` | `0.2.0` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
+| `partitions` | `0.2.1` | _default, auto, 1, 2, 100, 1024, etc_ | partition mode to use, can be `default`, `auto`, or any number of partitions (default: `default`)
+
+### Details on partition mode
+**spark-netflow** supports three different partition modes:
+- `default` mode puts every file into its own partition (default behaviour since the first version
+  of package).
+- specific number of slices can be specified, e.g. `sqlContext.read.option("partitions", "210")`,
+  this will use standard RDD functionality to split files into provided number of slices.
+- `auto` will try to split provided files into partitions the best way possible following the rule
+  that each partition should be as close as possible to the best partition size. Best partition size
+  is chosen based on mean of the files' sizes (considering possible skewness of the dataset) and
+  provided best size using `spark.sql.netflow.partition.size`, default is `144Mb`. Note that auto
+  mode will not be triggered, if number of files is less than default minimum number of partitions
+  `spark.sql.netflow.partition.num` with default `sparkContext.defaultParallelism * 2`. Still
+  default values should be pretty good for most of the workloads, including compressed files.
+
+Tweak settings for auto mode:
+```scala
+// Best partition size (note that will be compared to the truncated mean of files provided)
+// Chosen to keep roughly 10,000,000 records in each partition, if possible
+sqlContext.setConf("spark.sql.netflow.partition.size", "144Mb")
+// Minimum number of partitions before considering auto mode, increases cluster utilization for
+// small batches
+sqlContext.setConf("spark.sql.netflow.partition.num", s"${sc.defaultParallelism * 2}")
+```
 
 ## Example
 
