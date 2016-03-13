@@ -71,15 +71,15 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
 
   private void updateValueInspectors(Column column, ByteBuf buffer) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
-    for (ValueInspector vi: ins) {
-      updateValueInspector(column, buffer, vi);
+    for (int i=0; i<ins.size(); i++) {
+      updateValueInspector(column, buffer, ins.get(i));
     }
   }
 
   private void resetValueInspectors(Column column) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
-    for (ValueInspector vi: ins) {
-      vi.reset();
+    for (int i=0; i<ins.size(); i++) {
+      ins.get(i).reset();
     }
   }
 
