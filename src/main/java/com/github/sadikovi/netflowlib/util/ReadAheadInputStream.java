@@ -86,8 +86,7 @@ public class ReadAheadInputStream extends InflaterInputStream {
     // the offset.
     if (isOffsetActive) {
       isOffsetActive = false;
-      n = n - 1;
-      return super.skip(n) + 1;
+      return super.skip(n - 1) + 1;
     } else {
       return super.skip(n);
     }
