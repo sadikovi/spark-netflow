@@ -68,6 +68,12 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   val path6 = getClass().getResource("/correct/ftv7.2016-02-14.nocompress.bigend.sample").getPath
   val path7 = getClass().getResource("/correct/ftv7.2016-02-14.compress.9.litend.sample").getPath
   val path8 = getClass().getResource("/correct/ftv7.2016-02-14.compress.9.bigend.sample").getPath
+  // version 5 empty files
+  val path9 = getClass().getResource("/anomaly/ftv5.2016-03-15.nocompress.bigend.empty").getPath
+  val path10 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress2.bigend.empty").getPath
+  val path11 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.empty").getPath
+  // version 5 file with 1 record
+  val path12 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.records1").getPath
 
   test("read uncompressed v5 format") {
     val sqlContext = new SQLContext(sc)
@@ -183,6 +189,37 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     intercept[RuntimeException] {
       new NetFlowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
     }
+  }
+
+  test("read empty non-compressed NetFlow file") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:${path9}")
+    df.collect().length should be (0)
+  }
+
+  test("read empty compressed NetFlow file") {
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = null
+
+    // Read file with compression 2
+    df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:${path10}")
+    df.collect().length should be (0)
+
+    df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:${path11}")
+    df.collect().length should be (0)
+  }
+
+  test("read NetFlow file with 1 record only") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").option("stringify", "false").load(s"file:${path12}")
+    val res = df.collect()
+    res.length should be (1)
+    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
+      65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
   }
 
   test("issue #5 - prune only one column when running cound directly") {

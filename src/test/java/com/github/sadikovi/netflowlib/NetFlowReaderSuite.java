@@ -49,7 +49,6 @@ import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.statistics.Statistics;
 
 public class NetFlowReaderSuite {
-
   private FSDataInputStream getTestStream(String file) throws IOException {
     Configuration conf = new Configuration(false);
     Path path = new Path(file);
@@ -85,6 +84,10 @@ public class NetFlowReaderSuite {
     assertEquals(header.getEndCapture(), 0L);
     assertEquals(header.getComments(), "flow-gen");
     assertEquals(header.getByteOrder(), ByteOrder.LITTLE_ENDIAN);
+
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR};
+    RecordBuffer rb = nr.prepareRecordBuffer(cols);
+    assertEquals(rb.iterator().hasNext(), true);
   }
 
   @Test
@@ -102,6 +105,52 @@ public class NetFlowReaderSuite {
     assertEquals(header.getEndCapture(), 0L);
     assertEquals(header.getComments(), "flow-gen");
     assertEquals(header.getByteOrder(), ByteOrder.BIG_ENDIAN);
+
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR};
+    RecordBuffer rb = nr.prepareRecordBuffer(cols);
+    assertEquals(rb.iterator().hasNext(), true);
+  }
+
+  @Test
+  public void testReadingUncompressedEmpty() throws IOException {
+    String file = getClass().
+      getResource("/anomaly/ftv5.2016-03-15.nocompress.bigend.empty").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    NetFlowHeader header = nr.getHeader();
+
+    assertEquals(header.getFlowVersion(), (short) 5);
+    assertEquals(header.isCompressed(), false);
+    assertEquals(header.getStartCapture(), 0L);
+    assertEquals(header.getEndCapture(), 0L);
+    assertEquals(header.getComments(), "flow-gen");
+    assertEquals(header.getByteOrder(), ByteOrder.BIG_ENDIAN);
+
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR};
+    RecordBuffer rb = nr.prepareRecordBuffer(cols);
+    assertEquals(rb.iterator().hasNext(), false);
+  }
+
+  @Test
+  public void testReadingCompressedEmpty() throws IOException {
+    String file = getClass().
+      getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.empty").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    NetFlowHeader header = nr.getHeader();
+
+    assertEquals(header.getFlowVersion(), (short) 5);
+    assertEquals(header.isCompressed(), true);
+    assertEquals(header.getStartCapture(), 0L);
+    assertEquals(header.getEndCapture(), 0L);
+    assertEquals(header.getComments(), "flow-gen");
+    assertEquals(header.getByteOrder(), ByteOrder.BIG_ENDIAN);
+
+    Column[] cols = new Column[]{NetFlowV5.FIELD_SRCADDR};
+    RecordBuffer rb = nr.prepareRecordBuffer(cols);
+    assertEquals(rb.iterator().hasNext(), false);
   }
 
   @Test

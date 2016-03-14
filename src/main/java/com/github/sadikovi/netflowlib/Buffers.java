@@ -30,6 +30,7 @@ import io.netty.buffer.Unpooled;
 
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.util.FilterIterator;
+import com.github.sadikovi.netflowlib.util.ReadAheadInputStream;
 
 /**
  * All buffers supported in NetFlow reader.
@@ -94,7 +95,9 @@ public final class Buffers {
         int bufferLength) {
       if (isCompressed) {
         inflater = new Inflater();
-        stream = new InflaterInputStream(in, inflater, bufferLength);
+        // InflaterInputStream is replaced with ReadAheadInputStream to allow to resolve EOF before
+        // actual record reading
+        stream = new ReadAheadInputStream(in, inflater, bufferLength);
         compression = true;
       } else {
         inflater = null;
