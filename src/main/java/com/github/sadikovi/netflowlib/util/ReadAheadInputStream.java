@@ -73,6 +73,14 @@ public class ReadAheadInputStream extends InflaterInputStream {
 
   @Override
   public long skip(long n) throws IOException {
+    if (n < 0) {
+      throw new IllegalArgumentException("negative skip length");
+    }
+
+    ensureOpen();
+    if (n == 0) {
+      return 0;
+    }
     // Similar to `read()` we have to make a correction to the fact that we have used first byte.
     // Though bytes skipped are less than provided, actual returned number of bytes is corrected by
     // the offset.
