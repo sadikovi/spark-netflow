@@ -96,6 +96,15 @@ df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version
 res = df.where("srcip > 10")
 ```
 
+### SQL API
+```sql
+CREATE TEMPORARY TABLE ips
+USING com.github.sadikovi.spark.netflow
+OPTIONS (path "file:/...", version "5");
+
+SELECT srcip, dstip, srcport, dstport FROM ips LIMIT 10;
+```
+
 ## Building From Source
 This library is built using `sbt`, to build a JAR file simply run `sbt package` from project root.
 
