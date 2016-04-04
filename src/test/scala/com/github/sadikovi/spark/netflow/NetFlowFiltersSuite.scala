@@ -215,13 +215,13 @@ class NetFlowFiltersSuite extends UnitTestSpec {
 
   test("convert unsupported filter") {
     var pred = NetFlowFilters.convertFilter(StringStartsWith("col1", "a"), catalog)
-    compareSimpleFilter(pred, FilterApi.trivial(false))
+    compareSimpleFilter(pred, FilterApi.trivial(true))
 
     pred = NetFlowFilters.convertFilter(StringEndsWith("col1", "a"), catalog)
-    compareSimpleFilter(pred, FilterApi.trivial(false))
+    compareSimpleFilter(pred, FilterApi.trivial(true))
 
     pred = NetFlowFilters.convertFilter(StringContains("col1", "a"), catalog)
-    compareSimpleFilter(pred, FilterApi.trivial(false))
+    compareSimpleFilter(pred, FilterApi.trivial(true))
   }
 
   test("unconvertable filter value") {

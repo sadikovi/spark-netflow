@@ -450,18 +450,20 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.collect() should be (Array.empty)
   }
 
-  test("scan with unsupported predicate") {
+  test("scan with unsupported predicate and/or isNull") {
     val sqlContext = new SQLContext(sc)
     var df: DataFrame = null
 
     df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").startsWith("0.0."))
-    df.collect() should be (Array.empty)
+    df.count() should be (1000)
+    df.distinct.count() should be (1000)
 
     df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").isNull)
     df.collect() should be (Array.empty)
 
     df = sqlContext.read.netflow7(s"file:${path7}").filter(col("srcip").isNotNull)
     df.count() should be (1000)
+    df.distinct.count() should be (1000)
   }
 
   // Test scan with different number of partitions, currently do not support "auto" mode

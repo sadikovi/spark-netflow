@@ -76,8 +76,9 @@ private[spark] object NetFlowFilters {
       FilterApi.not(convertFilter(child, catalog))
     // Currently list of unsupported filters includes:
     // `EqualNullSafe`, `StringStartsWith`, `StringEndsWith`, `StringContains`.
+    // Full scan in NetFlow library and filtering in Spark will be done.
     case unsupportedFilter =>
-      FilterApi.trivial(false)
+      FilterApi.trivial(true)
   }
 
   //////////////////////////////////////////////////////////////
