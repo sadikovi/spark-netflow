@@ -115,40 +115,46 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.10/spark-netflow_2.10-0.2.1-SNAPSHOT.jar \
-  --iterations 3 \
-  --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
-  --version 5
+    target/scala-2.10/spark-netflow_2.10-0.2.2-SNAPSHOT.jar \
+    --iterations 5 \
+    --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
+    --version 5
 ```
 
 Output will be similar to this:
 ```
-- Iterations: 3
+- Iterations: 5
 - Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*
 - Version: 5
 Running benchmark: NetFlow full scan
   Running case: Scan w/o stringify, buffer: 10Kb
+  Running case: Scan w/o stringify, buffer: 64Kb                                
+  Running case: Scan w/o stringify, buffer: 3Mb                                 
   Running case: Scan w/o stringify, buffer: 50Mb                                
   Running case: Scan w/ stringify, buffer: 10Kb                                 
+  Running case: Scan w/ stringify, buffer: 64Kb                                 
   Running case: Scan w/ stringify, buffer: 50Mb                                 
 
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Scan w/o stringify, buffer: 10Kb         2033 / 2227          0.0      203281.6       1.0X
-Scan w/o stringify, buffer: 50Mb         2069 / 2103          0.0      206884.9       1.0X
-Scan w/ stringify, buffer: 10Kb          2553 / 2602          0.0      255300.5       0.8X
-Scan w/ stringify, buffer: 50Mb          2836 / 2953          0.0      283586.6       0.7X
+Scan w/o stringify, buffer: 10Kb         2086 / 2591    4793103.3      208633.1       1.0X
+Scan w/o stringify, buffer: 64Kb         2140 / 2401    4673672.5      213964.5       1.0X
+Scan w/o stringify, buffer: 3Mb          1909 / 2458    5239393.1      190861.8       1.1X
+Scan w/o stringify, buffer: 50Mb         2391 / 2736    4182693.4      239080.4       0.9X
+Scan w/ stringify, buffer: 10Kb          2852 / 3137    3506435.5      285189.9       0.7X
+Scan w/ stringify, buffer: 64Kb          2833 / 3132    3530016.4      283284.8       0.7X
+Scan w/ stringify, buffer: 50Mb          2965 / 3299    3372661.9      296501.7       0.7X
 
 Running benchmark: NetFlow predicate scan
-  Running case: Filter scan w/ predicate pushdown
-  Running case: Filter scan w/o predicate pushdown                              
+  Running case: Filter scan w/o predicate pushdown
+  Running case: Filter scan w/ predicate pushdown                               
 
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Filter scan w/ predicate pushdown        1174 / 1231          0.0      117373.4       1.0X
-Filter scan w/o predicate pushdown       1040 / 1135          0.0      104024.8       1.1X
+Filter scan w/o predicate pushdown       1320 / 1484    7574064.9      132029.5       1.0X
+Filter scan w/ predicate pushdown        1117 / 1133    8948561.9      111749.8       1.2X
 
 Running benchmark: NetFlow aggregated report
   Running case: Aggregated report
@@ -156,5 +162,6 @@ Running benchmark: NetFlow aggregated report
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Aggregated report                        1448 / 1492          0.0      144783.1       1.0X
+Aggregated report                        1466 / 1538    6822753.1      146568.4       1.0X
+
 ```
