@@ -31,6 +31,7 @@ import org.apache.spark.sql.sources._
 
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
+import com.github.sadikovi.spark.netflow.codegen.{DirectFunction, GenerateDirectFunction}
 import com.github.sadikovi.spark.netflow.sources._
 
 /** NetFlowFilePartition to hold sequence of file paths */
@@ -75,6 +76,17 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     val numColumns = resolvedColumns.length
     // Array of internal columns for library
     val internalColumns = resolvedColumns.map(_.internalColumn)
+    // Array of conversion functions `Any => String`, if `applyConversion` is false, empty array
+    // is generated
+    val convertFunctions: Array[(Int, Any => String)] = if (applyConversion) {
+      resolvedColumns.map(_.convertFunction).zipWithIndex.filter { case (maybeFunc, index) =>
+        maybeFunc.isDefined
+      }.map { case (maybeFunc, index) => {
+        (index, GenerateDirectFunction.generate(maybeFunc.get))
+      } }
+    } else {
+      Array.empty
+    }
     // Total buffer of records
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
@@ -128,15 +140,22 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
         // For each field we check if possible conversion is available. If it is we apply direct
         // conversion, otherwise return unchanged value. Note that this should be in sync with
         // `applyConversion` and updated schema from `ResolvedInterface`.
-        rawIterator.map(arr => {
-          for (i <- 0 until numColumns) {
-            resolvedColumns(i).convertFunction match {
-              case Some(func) => arr(i) = func.direct(arr(i))
-              case None => // do nothing
+        new Iterator[Array[Object]] {
+          override def next(): Array[Object] = {
+            val arr = rawIterator.next()
+            // Each pair is a tuple of numeric index of the column and generated conversion
+            // function. Array `convertFunctions` only includes indices that require conversion.
+            for (pair <- convertFunctions) {
+              arr(pair._1) = pair._2(arr(pair._1))
             }
+
+            arr
           }
-          arr
-        })
+
+          override def hasNext: Boolean = {
+            rawIterator.hasNext
+          }
+        }
       } else {
         rawIterator
       }

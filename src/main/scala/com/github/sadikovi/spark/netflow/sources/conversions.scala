@@ -18,6 +18,8 @@ package com.github.sadikovi.spark.netflow.sources
 
 import scala.util.Try
 
+import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenContext
+
 /**
  * [[ConvertFunction]] interface to provide direct `Any -> String` and reversed `String -> Any`
  * conversions.
@@ -28,6 +30,12 @@ abstract class ConvertFunction {
 
   /** Reversed conversion rule */
   def reversed(value: String): Any
+
+  /**
+   * Generated source code for direct function. Generated function should implement `eval()` from
+   * [[DirectFunction]].
+   */
+  def gen(ctx: CodeGenContext): String
 }
 
 /** Conversion function for IP values. */
@@ -56,6 +64,30 @@ case class IPConvertFunction() extends ConvertFunction {
     val arr = value.split('.').map(_.toLong)
     require(arr.length == 4, s"Invalid IPv4: ${value}")
     arr(0) << 24 | arr(1) << 16 | arr(2) << 8 | arr(3)
+  }
+
+  override def gen(ctx: CodeGenContext): String = {
+    """
+    public String eval(Object r) {
+      long num = (Long) r;
+      assert num >= 0 && num < (2L << 31);
+
+      StringBuilder buf = new StringBuilder();
+      int i = 24;
+
+      while (i >= 0) {
+        long part = num >> i;
+        num = part << i ^ num;
+        buf.append(part);
+        if (i > 0) {
+          buf.append(".");
+        }
+
+        i = i - 8;
+      }
+
+      return buf.toString();
+    }"""
   }
 }
 
@@ -90,5 +122,61 @@ case class ProtocolConvertFunction() extends ConvertFunction {
   override def reversed(value: String): Any = {
     reversedProtocolMap.getOrElse(value, Try(value.toShort).getOrElse(
       sys.error(s"Failed to convert ${value} for ${getClass().getSimpleName()}")))
+  }
+
+  // Note that for this function map is implemented as sequence if-else statements
+  override def gen(ctx: CodeGenContext): String = {
+    """
+    public String eval(Object r) {
+      short index = (Short) r;
+      if (index == 1) {
+        // Internet Control Message Protocol
+        return "ICMP";
+      } else if (index == 3) {
+        // Gateway-Gateway Protocol
+        return "GGP";
+      } else if (index == 6) {
+        // Transmission Control Protocol
+        return "TCP";
+      } else if (index == 8) {
+        // Exterior Gateway Protocol
+        return "EGP";
+      } else if (index == 12) {
+        // PARC Universal Packet Protocol
+        return "PUP";
+      } else if (index == 17) {
+        // User Datagram Protocol
+        return "UDP";
+      } else if (index == 20) {
+        // Host Monitoring Protocol
+        return "HMP";
+      } else if (index == 27) {
+        // Reliable Datagram Protocol
+        return "RDP";
+      } else if (index == 46) {
+        // Reservation Protocol QoS
+        return "RSVP";
+      } else if (index == 47) {
+        // General Routing Encapsulation
+        return "GRE";
+      } else if (index == 50) {
+        // Encapsulation Security Payload IPSec
+        return "ESP";
+      } else if (index == 51) {
+        // Authentication Header IPSec
+        return "AH";
+      } else if (index == 66) {
+        // MIT Remote Virtual Disk
+        return "RVD";
+      } else if (index == 88) {
+        // Internet Group Management Protocol
+        return "IGMP";
+      } else if (index == 89) {
+        // Open Shortest Path First
+        return "OSPF";
+      } else {
+        return Short.toString(index);
+      }
+    }"""
   }
 }

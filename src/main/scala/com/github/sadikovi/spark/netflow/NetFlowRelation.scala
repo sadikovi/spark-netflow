@@ -43,7 +43,7 @@ private[netflow] class NetFlowRelation(
     private val parameters: Map[String, String])
     (@transient val sqlContext: SQLContext) extends HadoopFsRelation {
 
-  private val logger = LoggerFactory.getLogger(getClass())
+  private val logger = LoggerFactory.getLogger(Utils.getLogName(getClass()))
 
   // Interface for NetFlow version
   private val interface = parameters.get("version") match {
