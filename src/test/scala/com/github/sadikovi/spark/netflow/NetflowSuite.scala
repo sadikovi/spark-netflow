@@ -238,7 +238,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     // check that buffer size is default
     var params = Map("version" -> "5")
     var relation = new NetFlowRelation(Array(path1), None, None, params)(sqlContext)
-    relation.getBufferSize() should be (RecordBuffer.BUFFER_LENGTH_1)
+    relation.getBufferSize() should be (RecordBuffer.BUFFER_LENGTH_2)
 
     // set buffer size to be 64Kb
     params = Map("version" -> "5", "buffer" -> "64Kb")
