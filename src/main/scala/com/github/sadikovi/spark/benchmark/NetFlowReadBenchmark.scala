@@ -72,9 +72,9 @@ object NetFlowReadBenchmark {
     // scalastyle:on
 
     // Defined benchmarks
-    fullScanBenchmark(iterations, version, files)
-    predicateScanBenchmark(iterations, version, files)
-    aggregatedScanBenchmark(iterations, version, files)
+    // fullScanBenchmark(iterations, version, files)
+    // predicateScanBenchmark(iterations, version, files)
+    // aggregatedScanBenchmark(iterations, version, files)
     bufferSizeBenchmark(iterations, version, files)
   }
 
@@ -176,8 +176,7 @@ object NetFlowReadBenchmark {
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "32Kb").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
-      df.cache()
-      df.count()
+      df.foreach(_ => Unit)
     }
 
     // Buffer size of 64Kb
@@ -185,8 +184,7 @@ object NetFlowReadBenchmark {
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "64Kb").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
-      df.cache()
-      df.count()
+      df.foreach(_ => Unit)
     }
 
     // Buffer size of 1Mb
@@ -194,8 +192,7 @@ object NetFlowReadBenchmark {
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "1Mb").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
-      df.cache()
-      df.count()
+      df.foreach(_ => Unit)
     }
 
     // Buffer size of 3Mb
@@ -203,8 +200,7 @@ object NetFlowReadBenchmark {
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "3Mb").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
-      df.cache()
-      df.count()
+      df.foreach(_ => Unit)
     }
 
     sqlBenchmark.run()
