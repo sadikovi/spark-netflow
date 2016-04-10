@@ -44,6 +44,8 @@ public final class Buffers {
     public static final int MIN_BUFFER_LENGTH = 32768;
     // length of buffer in bytes ~3Mb (option 1)
     public static final int BUFFER_LENGTH_1 = 3698688;
+    // length of buffer in bytes ~1Mb (option 2)
+    public static final int BUFFER_LENGTH_2 = 1048576;
 
     public abstract Iterator<Object[]> iterator();
 
@@ -123,15 +125,11 @@ public final class Buffers {
           // reach EOF.
           boolean hasNext = true;
           try {
-            if (compression) {
-              // Since we operate on compressed stream we do not know when EOF is going to happen
-              // unless it has already happened. So we check inflater to see if it is finished.
-              hasNext = !inflater.finished();
-            } else {
-              hasNext = stream.available() > 0;
-            }
+            // `ReadAheadInputStream` allows to check compressed stream availability correctly,
+            // even for empty stream.
+            hasNext = stream.available() > 0;
           } catch (IOException io) {
-            return false;
+            hasNext = false;
           } finally {
             if (!hasNext) {
               try {
@@ -147,9 +145,9 @@ public final class Buffers {
 
               buffer = null;
             }
-
-            return hasNext;
           }
+
+          return hasNext;
         }
 
         @Override

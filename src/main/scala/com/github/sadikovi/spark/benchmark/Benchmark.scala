@@ -76,7 +76,7 @@ private[spark] class Benchmark(
       printf("%-35s %16s %12s %13s %10s\n",
         benchmark.name,
         "%5.0f / %4.0f" format (result.bestMs, result.avgMs),
-        "%10.1f" format result.bestRate * 1000000000L,
+        "%10.1f" format result.bestRate * 100000,
         "%6.1f" format (1000 / result.bestRate),
         "%3.1fX" format (firstBest / result.bestMs))
     }

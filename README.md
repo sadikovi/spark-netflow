@@ -7,13 +7,13 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 ## Requirements
 | Spark version | spark-netflow latest version |
 |---------------|------------------------------|
-| 1.4+ | [0.2.1](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.4+ | [0.2.2](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 ## Linking
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
 ```shell
- $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.1-s_2.10
+ $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.2-s_2.10
 ```
 
 ## Features
@@ -32,7 +32,7 @@ Currently supported options:
 | Name | Since | Example | Description |
 |------|:-----:|:-------:|-------------|
 | `version` | `0.0.1` | _5, 7_ | version to use when parsing NetFlow files, your own version provider can be passed
-| `buffer` | `0.0.2` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
+| `buffer` | `0.0.2` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `1Mb`)
 | `stringify` | `0.0.2` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
 | `predicate-pushdown` | `0.2.0` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
 | `partitions` | `0.2.1` | _default, auto, 1, 2, 100, 1024, etc_ | partition mode to use, can be `default`, `auto`, or any number of partitions (default: `default`)
@@ -115,10 +115,10 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-    target/scala-2.10/spark-netflow_2.10-0.2.2-SNAPSHOT.jar \
-    --iterations 5 \
-    --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
-    --version 5
+  target/scala-2.10/spark-netflow_2.10-0.2.2-SNAPSHOT.jar \
+  --iterations 3 \
+  --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
+  --version 5
 ```
 
 Output will be similar to this:

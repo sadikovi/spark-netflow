@@ -57,7 +57,7 @@ private[netflow] class NetFlowRelation(
       "number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
   }
 
-  // Buffer size in bytes, by default use standard record buffer size ~3Mb
+  // Buffer size in bytes, by default use standard record buffer size ~1Mb
   private val bufferSize = parameters.get("buffer") match {
     case Some(str) =>
       val bytes = Utils.byteStringAsBytes(str)
@@ -70,7 +70,7 @@ private[netflow] class NetFlowRelation(
       } else {
         bytes.toInt
       }
-    case None => RecordBuffer.BUFFER_LENGTH_1
+    case None => RecordBuffer.BUFFER_LENGTH_2
   }
 
   // Conversion of numeric field into string, such as IP, by default is on
