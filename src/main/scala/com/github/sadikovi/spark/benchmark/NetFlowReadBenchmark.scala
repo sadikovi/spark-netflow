@@ -72,9 +72,10 @@ object NetFlowReadBenchmark {
     // scalastyle:on
 
     // Defined benchmarks
-    fullScanBenchmark(iterations, version, files)
-    predicateScanBenchmark(iterations, version, files)
-    aggregatedScanBenchmark(iterations, version, files)
+    // fullScanBenchmark(iterations, version, files)
+    // predicateScanBenchmark(iterations, version, files)
+    // aggregatedScanBenchmark(iterations, version, files)
+    bufferSizeBenchmark(iterations, version, files)
   }
 
   private def process(args: List[String], conf: Conf): Conf = args match {
@@ -162,6 +163,44 @@ object NetFlowReadBenchmark {
 
       val agg = df.groupBy(col("srcip"), col("dstip"), col("srcport"), col("dstport")).count()
       agg.count()
+    }
+
+    sqlBenchmark.run()
+  }
+
+  def bufferSizeBenchmark(iters: Int, version: String, files: String): Unit = {
+    val sqlBenchmark = new Benchmark("NetFlow buffer size report", 10000, iters)
+
+    // Buffer size of 32Kb
+    sqlBenchmark.addCase("Buffer size 32Kb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("buffer", "32Kb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    // Buffer size of 64Kb
+    sqlBenchmark.addCase("Buffer size 64Kb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("buffer", "64Kb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    // Buffer size of 1Mb
+    sqlBenchmark.addCase("Buffer size 1Mb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("buffer", "1Mb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    // Buffer size of 3Mb
+    sqlBenchmark.addCase("Buffer size 3Mb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("buffer", "3Mb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
     }
 
     sqlBenchmark.run()

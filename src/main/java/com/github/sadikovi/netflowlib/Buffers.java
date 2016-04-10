@@ -44,6 +44,8 @@ public final class Buffers {
     public static final int MIN_BUFFER_LENGTH = 32768;
     // length of buffer in bytes ~3Mb (option 1)
     public static final int BUFFER_LENGTH_1 = 3698688;
+    // length of buffer in bytes ~1Mb (option 2)
+    public static final int BUFFER_LENGTH_2 = 1048576;
 
     public abstract Iterator<Object[]> iterator();
 

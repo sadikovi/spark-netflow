@@ -32,7 +32,7 @@ Currently supported options:
 | Name | Since | Example | Description |
 |------|:-----:|:-------:|-------------|
 | `version` | `0.0.1` | _5, 7_ | version to use when parsing NetFlow files, your own version provider can be passed
-| `buffer` | `0.0.2` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `3Mb`)
+| `buffer` | `0.0.2` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default: `1Mb`)
 | `stringify` | `0.0.2` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
 | `predicate-pushdown` | `0.2.0` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
 | `partitions` | `0.2.1` | _default, auto, 1, 2, 100, 1024, etc_ | partition mode to use, can be `default`, `auto`, or any number of partitions (default: `default`)
