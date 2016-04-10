@@ -7,13 +7,13 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 ## Requirements
 | Spark version | spark-netflow latest version |
 |---------------|------------------------------|
-| 1.4+ | [0.2.1](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.4+ | [0.2.2](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 ## Linking
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
 ```shell
- $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.1-s_2.10
+ $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.2-s_2.10
 ```
 
 ## Features
@@ -115,7 +115,7 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.10/spark-netflow_2.10-0.2.1-SNAPSHOT.jar \
+  target/scala-2.10/spark-netflow_2.10-0.2.2-SNAPSHOT.jar \
   --iterations 3 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
   --version 5
