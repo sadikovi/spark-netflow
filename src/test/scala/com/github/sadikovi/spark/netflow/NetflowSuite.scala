@@ -74,6 +74,8 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   val path11 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.empty").getPath
   // version 5 file with 1 record
   val path12 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.records1").getPath
+  // version 5 file that starts with large byte 255
+  val path13 = getClass().getResource("/anomaly/ftv5.2016-04-09.compress9.large-byte-start").getPath
 
   test("read uncompressed v5 format") {
     val sqlContext = new SQLContext(sc)
@@ -220,6 +222,31 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     res.length should be (1)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
       65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
+  }
+
+  test("issue #26 - read NetFlow file that starts with large byte") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:${path13}").
+      select("srcip", "dstip", "protocol", "srcport", "dstport", "octets", "packets")
+    val res = df.collect()
+
+    res.length should be (1000)
+    res.take(5) should be (Array(
+      Row("172.29.31.106", "141.168.161.5", "ICMP", 2048, 18358, 96L, 1L),
+      Row("139.168.52.154", "172.49.40.150", "TCP", 59527, 3016, 41L, 1L),
+      Row("144.136.201.10", "192.168.177.26", "UDP", 123, 123, 76L, 1),
+      Row("147.132.239.10", "139.168.47.149", "TCP", 80, 64036, 40L, 1L),
+      Row("172.49.40.189", "172.115.30.32", "TCP", 443, 63526, 18642, 37)
+    ))
+
+    res.takeRight(5) should be (Array(
+      Row("144.132.81.10", "139.168.143.23", "UDP", 53, 50725, 164L, 1L),
+      Row("10.111.198.7", "147.132.239.10", "TCP", 56190, 80, 40L, 1L),
+      Row("139.168.112.131", "172.49.40.146", "TCP", 64424, 3217, 919L, 4L),
+      Row("10.97.217.136", "147.10.8.55", "TCP", 8080, 53941, 431L, 3L),
+      Row("10.233.198.51", "144.132.81.10", "UDP", 52865, 53, 81L, 1L)
+    ))
   }
 
   test("issue #5 - prune only one column when running cound directly") {

@@ -22,24 +22,31 @@ import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
 /**
- * [[ReadAheadInputStream]] allows to check if compressed stream is empty using stream API,
- * without calling `read()` to verify if EOF is reached. Standard method `available()` or
- * `finished()` method of the `Inflater` instance can be used.
+ * [[ReadAheadInputStream]] interface is a simple wrapper around InflaterInputStream. Provides
+ * convinient methods to check end of stream through inflater availability, even when compressed
+ * stream is empty. Standard methods `available()` method can be used to check if stream is
+ * finished.
+ * See: https://docs.oracle.com/javase/7/docs/api/java/util/zip/InflaterInputStream.html
  */
 public class ReadAheadInputStream extends InflaterInputStream {
   public ReadAheadInputStream(InputStream in, Inflater inf, int size) {
     super(in, inf, size);
+    int maybeFirstByte;
     try {
-      firstByte = (byte)super.read();
+      maybeFirstByte = super.read();
     } catch (IOException ioe) {
       throw new UnsupportedOperationException(
         "Unexpected EOF when reading first bytes, might indicate corrupt input", ioe);
     }
-    isOffsetActive = firstByte != -1;
-  }
 
-  public ReadAheadInputStream(InputStream in, Inflater inf) {
-    super(in, inf);
+    // We always use first byte offset for the second read
+    useFirstByteOffset = true;
+    // If `maybeFirstByte` returns -1, we have reached EOF, after this point `super.available()`
+    // will report stream status correctly
+    isEOF = maybeFirstByte == -1;
+    // First byte is considered to be unsigned, but we can still assign 255 as -1 byte, or -1
+    // directly, since it will be EOF in latter case anyway.
+    firstByte = (byte) maybeFirstByte;
   }
 
   /** Check if stream is still open */
@@ -62,12 +69,26 @@ public class ReadAheadInputStream extends InflaterInputStream {
     // If offset is not used yet, we correct read buffer by overwriting first byte and fetching
     // less data from the stream. Note that we have to return correct number of bytes read including
     // first byte.
-    if (isOffsetActive) {
+    if (useFirstByteOffset) {
+      useFirstByteOffset = false;
       b[off] = firstByte;
-      isOffsetActive = false;
       return super.read(b, off + 1, len - 1) + 1;
     } else {
       return super.read(b, off, len);
+    }
+  }
+
+  @Override
+  public int available() throws IOException {
+    // `available()` returns 0, if EOF has been reached, but in case of empty compressed stream, it
+    // is unclear, and `available()` will return 1.
+    // for `ReadAheadInputStream` availability is determined either by first byte offset, whether
+    // or read was successful or based on `finished()` method of Inflater instance.
+    // Note that `available()` does not reset `useFirstByteOffset`.
+    if (useFirstByteOffset) {
+      return isEOF ? 0 : 1;
+    } else {
+      return inf.finished() ? 0 : 1;
     }
   }
 
@@ -84,8 +105,8 @@ public class ReadAheadInputStream extends InflaterInputStream {
     // Similar to `read()` we have to make a correction to the fact that we have used first byte.
     // Though bytes skipped are less than provided, actual returned number of bytes is corrected by
     // the offset.
-    if (isOffsetActive) {
-      isOffsetActive = false;
+    if (useFirstByteOffset) {
+      useFirstByteOffset = false;
       return super.skip(n - 1) + 1;
     } else {
       return super.skip(n);
@@ -101,7 +122,12 @@ public class ReadAheadInputStream extends InflaterInputStream {
     }
   }
 
+  // Flag to indicate whether or not it is end of stream, syncronized with parent
+  private boolean isEOF = false;
+  // Flag to show whether or not underlying stream is closed
   private boolean closed = false;
-  private boolean isOffsetActive;
+  // Flag to indicate if we need to take offset into account
+  private boolean useFirstByteOffset;
+  // When `useFirstByteOffset` we have to include first byte read
   private byte firstByte;
 }
