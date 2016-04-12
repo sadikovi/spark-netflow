@@ -62,6 +62,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     @transient data: Seq[NetFlowMetadata],
     val partitionMode: PartitionMode,
     val applyConversion: Boolean,
+    val applyCodegen: Boolean,
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate]) extends FileRDD[SQLRow](sc, Nil) {
   override def getPartitions: Array[Partition] = {

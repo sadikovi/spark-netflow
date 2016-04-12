@@ -113,6 +113,16 @@ private[netflow] class NetFlowRelation(
   // Log partition mode
   logger.info(s"Selected ${partitionMode}")
 
+  // Code generation when conversion is selected. Technically there is no direct dependency, but
+  // we only use code generation when iterator involves invocation of convert functions
+  private val applyCodegen = parameters.get("codegen") match {
+    case Some("true") => true
+    case Some("false") => false
+    case _ => false
+  }
+  // Log usage of code generation
+  logger.info(s"Code generation: ${applyCodegen}")
+
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
 
@@ -176,7 +186,7 @@ private[netflow] class NetFlowRelation(
 
       // Return `NetFlowFileRDD`, we store data of each file in individual partition
       new NetFlowFileRDD(sqlContext.sparkContext, metadata, partitionMode, applyConversion,
-        resolvedColumns, resolvedFilter)
+        applyCodegen, resolvedColumns, resolvedFilter)
     }
   }
 

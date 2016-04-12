@@ -36,6 +36,7 @@ Currently supported options:
 | `stringify` | `0.0.2` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
 | `predicate-pushdown` | `0.2.0` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
 | `partitions` | `0.2.1` | _default, auto, 1, 2, 100, 1024, etc_ | partition mode to use, can be `default`, `auto`, or any number of partitions (default: `default`)
+| `codegen` | `1.0.0` | _true, false_ | use code generation when `stringify` is `true`
 
 ### Details on partition mode
 **spark-netflow** supports three different partition modes:
