@@ -31,7 +31,7 @@ import org.apache.spark.sql.sources._
 
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
-import com.github.sadikovi.spark.netflow.codegen.{DirectFunction, GenerateDirectFunction}
+import com.github.sadikovi.spark.netflow.codegen.GenerateIterator
 import com.github.sadikovi.spark.netflow.sources._
 
 /** NetFlowFilePartition to hold sequence of file paths */
@@ -77,17 +77,27 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     val numColumns = resolvedColumns.length
     // Array of internal columns for library
     val internalColumns = resolvedColumns.map(_.internalColumn)
-    // Array of conversion functions `Any => String`, if `applyConversion` is false, empty array
-    // is generated
-    val convertFunctions: Array[(Int, Any => String)] = if (applyConversion) {
-      resolvedColumns.map(_.convertFunction).zipWithIndex.filter { case (maybeFunc, index) =>
-        maybeFunc.isDefined
-      }.map { case (maybeFunc, index) => {
-        (index, GenerateDirectFunction.generate(maybeFunc.get))
-      } }
+    // Array of conversion functions with corresponding element index. If `applyConversion` is
+    // false, empty arrayis generated
+    val convertFunctions: Array[(Int, ConvertFunction)] = if (applyConversion) {
+      resolvedColumns.map(_.convertFunction).zipWithIndex.flatMap { case (maybeFunc, index) =>
+        if (maybeFunc.isEmpty) None else Some((index, maybeFunc.get))
+      }
     } else {
       Array.empty
     }
+
+    // Grouped functions for codegen version of iterator. If conversion is false and codegen is not
+    // used `groupedFunctions` is an empty array
+    val groupedFunctions: Array[(ConvertFunction, Array[Int])] =
+      if (applyConversion && applyCodegen) {
+        val listFunctions: Array[(ConvertFunction, Int)] = convertFunctions.map(_.swap)
+        listFunctions.groupBy(_._1).map { case (func, seq) =>
+          (func, seq.map(_._2)) }.toArray
+      } else {
+        Array.empty
+      }
+
     // Total buffer of records
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
@@ -134,31 +144,36 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
         reader.prepareRecordBuffer(internalColumns)
       }
 
-      val rawIterator = recordBuffer.iterator().asScala
+      val rawIterator: java.util.Iterator[Array[Object]] = recordBuffer.iterator()
 
       // Conversion iterator, applies defined modification for convertable fields
-      val conversionsIterator = if (applyConversion) {
-        // For each field we check if possible conversion is available. If it is we apply direct
-        // conversion, otherwise return unchanged value. Note that this should be in sync with
-        // `applyConversion` and updated schema from `ResolvedInterface`.
-        new Iterator[Array[Object]] {
-          override def next(): Array[Object] = {
-            val arr = rawIterator.next()
-            // Each pair is a tuple of numeric index of the column and generated conversion
-            // function. Array `convertFunctions` only includes indices that require conversion.
-            for (pair <- convertFunctions) {
-              arr(pair._1) = pair._2(arr(pair._1))
+      val conversionsIterator: Iterator[Array[Object]] = if (applyConversion) {
+        if (!applyCodegen) {
+          // For each field we check if possible conversion is available. If it is we apply direct
+          // conversion, otherwise return unchanged value. Note that this should be in sync with
+          // `applyConversion` and updated schema from `ResolvedInterface`.
+          new Iterator[Array[Object]] {
+            override def next(): Array[Object] = {
+              val arr = rawIterator.next()
+              // Each pair is a tuple of numeric index of the column and conversion function.
+              // Array `convertFunctions` only includes indices that require conversion.
+              for (pair <- convertFunctions) {
+                arr(pair._1) = pair._2.direct(arr(pair._1))
+              }
+
+              arr
             }
 
-            arr
+            override def hasNext: Boolean = {
+              rawIterator.hasNext
+            }
           }
-
-          override def hasNext: Boolean = {
-            rawIterator.hasNext
-          }
+        } else {
+          val codegenIterator = GenerateIterator.generate(groupedFunctions)
+          codegenIterator(rawIterator).asScala
         }
       } else {
-        rawIterator
+        rawIterator.asScala
       }
 
       buffer = buffer ++ conversionsIterator

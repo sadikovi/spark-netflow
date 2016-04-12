@@ -118,7 +118,7 @@ private[netflow] class NetFlowRelation(
   private val applyCodegen = parameters.get("codegen") match {
     case Some("true") => true
     case Some("false") => false
-    case _ => false
+    case _ => true
   }
   // Log usage of code generation
   logger.info(s"Code generation: ${applyCodegen}")

@@ -17,6 +17,8 @@
 package com.github.sadikovi.spark.netflow.codegen
 
 import java.util.concurrent.ConcurrentHashMap
+
+import scala.collection.mutable.{Map => MutableMap}
 import scala.language.existentials
 
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodeGenContext, CodeFormatter}
@@ -63,6 +65,17 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] {
     ctx.mutableStates.map(_._3).mkString("\n")
   }
 
+  // Map of added functions, each entry is "function name" -> "function code"
+  private val addedFunctions: MutableMap[String, String] = MutableMap.empty[String, String]
+
+  protected def addNewFunction(funcName: String, funcCode: String): Unit = {
+    addedFunctions += ((funcName, funcCode))
+  }
+
+  protected def declareAddedFunctions(): String = {
+    addedFunctions.map { case (funcName, funcCode) => funcCode }.mkString("\n")
+  }
+
   /**
    * Generate a class for a given input expression. Input expression is already canonicalized at
    * this stage. Should call `compile()` to produce generated code.
@@ -104,7 +117,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] {
 
     try {
       evaluator.cook("generated.java", code)
-      logger.debug(s"Formatted code: \n$formatted")
+      logger.info(s"Formatted code: \n$formatted")
     } catch {
       case e: Exception =>
         val msg = s"Failed to compile: $e\n$formatted"

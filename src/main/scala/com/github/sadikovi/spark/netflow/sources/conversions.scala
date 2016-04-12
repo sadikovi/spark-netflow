@@ -68,26 +68,17 @@ case class IPConvertFunction() extends ConvertFunction {
 
   override def gen(ctx: CodeGenContext): String = {
     """
-    public String eval(Object r) {
-      long num = (Long) r;
-      assert num >= 0 && num < (2L << 31);
+      long num = (java.lang.Long) r;
+      long fst = num >> 24;
+      num = fst << 24 ^ num;
+      long snd = num >> 16;
+      num = snd << 16 ^ num;
+      long thd = num >> 8;
+      num = thd << 8 ^ num;
+      long fth = num;
 
-      StringBuilder buf = new StringBuilder();
-      int i = 24;
-
-      while (i >= 0) {
-        long part = num >> i;
-        num = part << i ^ num;
-        buf.append(part);
-        if (i > 0) {
-          buf.append(".");
-        }
-
-        i = i - 8;
-      }
-
-      return buf.toString();
-    }"""
+      return fst + "." + snd + "." + thd + "." + fth;
+    """
   }
 }
 
@@ -127,8 +118,7 @@ case class ProtocolConvertFunction() extends ConvertFunction {
   // Note that for this function map is implemented as sequence if-else statements
   override def gen(ctx: CodeGenContext): String = {
     """
-    public String eval(Object r) {
-      short index = (Short) r;
+      short index = (java.lang.Short) r;
       if (index == 1) {
         // Internet Control Message Protocol
         return "ICMP";
@@ -175,8 +165,8 @@ case class ProtocolConvertFunction() extends ConvertFunction {
         // Open Shortest Path First
         return "OSPF";
       } else {
-        return Short.toString(index);
+        return java.lang.Short.toString(index);
       }
-    }"""
+    """
   }
 }
