@@ -31,10 +31,10 @@ private class InterfaceV7 extends ResolvedInterface {
     MappedColumn("unix_secs", NetFlowV7.FIELD_UNIX_SECS, false, None),
     MappedColumn("unix_nsecs", NetFlowV7.FIELD_UNIX_NSECS, false, None),
     MappedColumn("sysuptime", NetFlowV7.FIELD_SYSUPTIME, false, None),
-    MappedColumn("exaddr", NetFlowV7.FIELD_EXADDR, false, Some(IPConvertFunction())),
-    MappedColumn("srcip", NetFlowV7.FIELD_SRCADDR, false, Some(IPConvertFunction())),
-    MappedColumn("dstip", NetFlowV7.FIELD_DSTADDR, false, Some(IPConvertFunction())),
-    MappedColumn("nexthop", NetFlowV7.FIELD_NEXTHOP, false, Some(IPConvertFunction())),
+    MappedColumn("exaddr", NetFlowV7.FIELD_EXADDR, false, Some(IPv4ConvertFunction())),
+    MappedColumn("srcip", NetFlowV7.FIELD_SRCADDR, false, Some(IPv4ConvertFunction())),
+    MappedColumn("dstip", NetFlowV7.FIELD_DSTADDR, false, Some(IPv4ConvertFunction())),
+    MappedColumn("nexthop", NetFlowV7.FIELD_NEXTHOP, false, Some(IPv4ConvertFunction())),
     MappedColumn("input", NetFlowV7.FIELD_INPUT, false, None),
     MappedColumn("output", NetFlowV7.FIELD_OUTPUT, false, None),
     MappedColumn("packets", NetFlowV7.FIELD_DPKTS, false, None),
@@ -53,7 +53,7 @@ private class InterfaceV7 extends ResolvedInterface {
     MappedColumn("dst_mask", NetFlowV7.FIELD_DST_MASK, false, None),
     MappedColumn("src_as", NetFlowV7.FIELD_SRC_AS, false, None),
     MappedColumn("dst_as", NetFlowV7.FIELD_DST_AS, false, None),
-    MappedColumn("router_sc", NetFlowV7.FIELD_ROUTER_SC, false, Some(IPConvertFunction()))
+    MappedColumn("router_sc", NetFlowV7.FIELD_ROUTER_SC, false, Some(IPv4ConvertFunction()))
   )
 
   override def version(): Short = 7

@@ -45,7 +45,7 @@ class ConvertFunctionSuite extends UnitTestSpec {
       ("255.255.255.255", (2L<<31) - 1)
     )
 
-    val convertFunction = IPConvertFunction()
+    val convertFunction = IPv4ConvertFunction()
 
     // test direct conversion
     for (elem <- dataset) {

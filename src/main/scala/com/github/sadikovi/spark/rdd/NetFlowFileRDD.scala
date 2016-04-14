@@ -17,6 +17,7 @@
 package com.github.sadikovi.spark.rdd
 
 import java.io.IOException
+import java.util.{Iterator => JavaIterator}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -144,7 +145,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
         reader.prepareRecordBuffer(internalColumns)
       }
 
-      val rawIterator: java.util.Iterator[Array[Object]] = recordBuffer.iterator()
+      val rawIterator: JavaIterator[Array[Object]] = recordBuffer.iterator()
 
       // Conversion iterator, applies defined modification for convertable fields
       val conversionsIterator: Iterator[Array[Object]] = if (applyConversion) {

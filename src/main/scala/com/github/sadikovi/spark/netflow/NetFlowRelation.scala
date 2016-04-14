@@ -164,7 +164,7 @@ private[netflow] class NetFlowRelation(
       // Convert filters into NetFlow filters, we also use `usePredicatePushdown` to disable
       // predicate pushdown (normally it is used for benchmarks), but in some situations when
       // library filters incorrectly this can be a short time fix
-      val resolvedFilter: Option[FilterPredicate] = reducedFilter match {
+      val convertedFilter: Option[FilterPredicate] = reducedFilter match {
         case Some(filter) if usePredicatePushdown =>
           Option(NetFlowFilters.convertFilter(filter, interface))
         case Some(filter) if !usePredicatePushdown =>
@@ -173,7 +173,7 @@ private[netflow] class NetFlowRelation(
         case other =>
           None
       }
-      logger.info(s"Resolved NetFlow filter: ${resolvedFilter}")
+      logger.info(s"Converted filter: ${convertedFilter}")
 
       // NetFlow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
@@ -186,7 +186,7 @@ private[netflow] class NetFlowRelation(
 
       // Return `NetFlowFileRDD`, we store data of each file in individual partition
       new NetFlowFileRDD(sqlContext.sparkContext, metadata, partitionMode, applyConversion,
-        applyCodegen, resolvedColumns, resolvedFilter)
+        applyCodegen, resolvedColumns, convertedFilter)
     }
   }
 

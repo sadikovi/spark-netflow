@@ -50,8 +50,8 @@ object NetFlowReadBenchmark {
   private val VERSION = ConfOption("--version")
 
   // Initialize Spark context
-  val sparkConf = new SparkConf()
-  val sc = new SparkContext("local[*]", "test-sql-context", sparkConf)
+  val sparkConf = new SparkConf().setAppName("test-sql-context")
+  val sc = new SparkContext(sparkConf)
   val sqlContext = new SQLContext(sc)
 
   def main(args: Array[String]): Unit = {
@@ -75,7 +75,8 @@ object NetFlowReadBenchmark {
     // fullScanBenchmark(iterations, version, files)
     // predicateScanBenchmark(iterations, version, files)
     // aggregatedScanBenchmark(iterations, version, files)
-    bufferSizeBenchmark(iterations, version, files)
+    // bufferSizeBenchmark(iterations, version, files)
+    codegenBenchmark(iterations, version, files)
   }
 
   private def process(args: List[String], conf: Conf): Conf = args match {
@@ -216,6 +217,26 @@ object NetFlowReadBenchmark {
     sqlBenchmark.addCase("Buffer size 3Mb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "3Mb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.run()
+  }
+
+  def codegenBenchmark(iters: Int, version: String, files: String): Unit = {
+    val sqlBenchmark = new Benchmark("NetFlow codegen report", 10000, iters)
+
+    sqlBenchmark.addCase("Without codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "false").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.addCase("With codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "true").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
       df.foreach(_ => Unit)
     }

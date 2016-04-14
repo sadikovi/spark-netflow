@@ -42,6 +42,8 @@ object GenerateIterator extends CodeGenerator[Array[(ConvertFunction, Array[Int]
   // translates into {Object => String} for codegen.
   protected def create(arr: InType): ((JIterator[Array[Object]]) => JIterator[Array[Object]]) = {
     val ctx = newCodeGenContext()
+    // clear existing functions in cache
+    clearAddedFunctions()
     // Unique index is kept to generate unique function name
     var funcIndex: Int = 0
     // Statements for conversion functions

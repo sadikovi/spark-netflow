@@ -38,26 +38,11 @@ abstract class ConvertFunction {
   def gen(ctx: CodeGenContext): String
 }
 
-/** Conversion function for IP values. */
-case class IPConvertFunction() extends ConvertFunction {
-  override def direct(value: Any): String = value match {
-    case num: Long =>
-      require(num >= 0 && num < (2L << 31), s"Invalid number to convert: ${num}")
-      val buf = new StringBuilder()
-      var i = 24
-      var ip = num
-      while (i >= 0) {
-          val a = ip >> i
-          ip = a << i ^ ip
-          buf.append(a)
-          if (i > 0) {
-              buf.append(".")
-          }
-          i = i - 8
-      }
-      buf.toString()
-    case _ =>
-      value.toString()
+/** Conversion function for IPv4 values. */
+case class IPv4ConvertFunction() extends ConvertFunction {
+  override def direct(value: Any): String = {
+    val num = value.asInstanceOf[Long]
+    s"${(num & 4278190080L) >> 24}.${(num & 16711680L) >> 16}.${(num & 65280L) >> 8}.${num & 255}"
   }
 
   override def reversed(value: String): Any = {
@@ -69,15 +54,8 @@ case class IPConvertFunction() extends ConvertFunction {
   override def gen(ctx: CodeGenContext): String = {
     """
       long num = (java.lang.Long) r;
-      long fst = num >> 24;
-      num = fst << 24 ^ num;
-      long snd = num >> 16;
-      num = snd << 16 ^ num;
-      long thd = num >> 8;
-      num = thd << 8 ^ num;
-      long fth = num;
-
-      return fst + "." + snd + "." + thd + "." + fth;
+      return "" + ((num & 4278190080L) >> 24) + "." + ((num & 16711680L) >> 16) + "." +
+        ((num & 65280L) >> 8) + "." + (num & 255);
     """
   }
 }
@@ -165,7 +143,7 @@ case class ProtocolConvertFunction() extends ConvertFunction {
         // Open Shortest Path First
         return "OSPF";
       } else {
-        return java.lang.Short.toString(index);
+        return "" + index;
       }
     """
   }

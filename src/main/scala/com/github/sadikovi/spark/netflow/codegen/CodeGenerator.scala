@@ -76,6 +76,10 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] {
     addedFunctions.map { case (funcName, funcCode) => funcCode }.mkString("\n")
   }
 
+  protected def clearAddedFunctions(): Unit = {
+    addedFunctions.clear()
+  }
+
   /**
    * Generate a class for a given input expression. Input expression is already canonicalized at
    * this stage. Should call `compile()` to produce generated code.
@@ -117,7 +121,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] {
 
     try {
       evaluator.cook("generated.java", code)
-      logger.info(s"Formatted code: \n$formatted")
+      logger.debug(s"Formatted code: \n$formatted")
     } catch {
       case e: Exception =>
         val msg = s"Failed to compile: $e\n$formatted"
