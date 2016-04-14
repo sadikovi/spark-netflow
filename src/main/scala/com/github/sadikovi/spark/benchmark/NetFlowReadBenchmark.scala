@@ -227,16 +227,38 @@ object NetFlowReadBenchmark {
   def codegenBenchmark(iters: Int, version: String, files: String): Unit = {
     val sqlBenchmark = new Benchmark("NetFlow codegen report", 10000, iters)
 
-    sqlBenchmark.addCase("Without codegen") { iter =>
+    sqlBenchmark.addCase("Project without codegen") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("codegen", "false").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
       df.foreach(_ => Unit)
     }
 
-    sqlBenchmark.addCase("With codegen") { iter =>
+    sqlBenchmark.addCase("Project with codegen") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("codegen", "true").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.addCase("Count without codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "false").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Count with codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "true").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Project without conversion") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).
+        option("stringify", "false").option("codegen", "false").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
       df.foreach(_ => Unit)
     }
