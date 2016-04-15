@@ -50,8 +50,8 @@ object NetFlowReadBenchmark {
   private val VERSION = ConfOption("--version")
 
   // Initialize Spark context
-  val sparkConf = new SparkConf()
-  val sc = new SparkContext("local[*]", "test-sql-context", sparkConf)
+  val sparkConf = new SparkConf().setAppName("test-sql-context")
+  val sc = new SparkContext(sparkConf)
   val sqlContext = new SQLContext(sc)
 
   def main(args: Array[String]): Unit = {
@@ -75,7 +75,8 @@ object NetFlowReadBenchmark {
     // fullScanBenchmark(iterations, version, files)
     // predicateScanBenchmark(iterations, version, files)
     // aggregatedScanBenchmark(iterations, version, files)
-    bufferSizeBenchmark(iterations, version, files)
+    // bufferSizeBenchmark(iterations, version, files)
+    codegenBenchmark(iterations, version, files)
   }
 
   private def process(args: List[String], conf: Conf): Conf = args match {
@@ -98,33 +99,50 @@ object NetFlowReadBenchmark {
     sqlBenchmark.addCase("Scan w/o stringify, buffer: 10Kb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "false").option("buffer", "10Kb").
-        load(files)
-      df.persist(StorageLevel.MEMORY_AND_DISK)
-      df.count()
+        load(files).select("*")
+      df.collect()
+    }
+
+    sqlBenchmark.addCase("Scan w/o stringify, buffer: 64Kb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("stringify", "false").option("buffer", "64Kb").
+        load(files).select("*")
+      df.collect()
+    }
+
+    sqlBenchmark.addCase("Scan w/o stringify, buffer: 3Mb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("stringify", "false").option("buffer", "3Mb").
+        load(files).select("*")
+      df.collect()
     }
 
     sqlBenchmark.addCase("Scan w/o stringify, buffer: 50Mb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "false").option("buffer", "50Mb").
-        load(files)
-      df.persist(StorageLevel.MEMORY_AND_DISK)
-      df.count()
+        load(files).select("*")
+      df.collect()
     }
 
     sqlBenchmark.addCase("Scan w/ stringify, buffer: 10Kb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "true").option("buffer", "10Kb").
-        load(files)
-      df.persist(StorageLevel.MEMORY_AND_DISK)
-      df.count()
+        load(files).select("*")
+      df.collect()
+    }
+
+    sqlBenchmark.addCase("Scan w/ stringify, buffer: 64Kb") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("stringify", "true").option("buffer", "64Kb").
+        load(files).select("*")
+      df.collect()
     }
 
     sqlBenchmark.addCase("Scan w/ stringify, buffer: 50Mb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "true").option("buffer", "50Mb").
-        load(files)
-      df.persist(StorageLevel.MEMORY_AND_DISK)
-      df.count()
+        load(files).select("*")
+      df.collect()
     }
 
     sqlBenchmark.run()
@@ -133,19 +151,19 @@ object NetFlowReadBenchmark {
   def predicateScanBenchmark(iters: Int, version: String, files: String): Unit = {
     val sqlBenchmark = new Benchmark("NetFlow predicate scan", 10000, iters)
 
-    sqlBenchmark.addCase("Filter scan w/ predicate pushdown") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
-        option("version", version).option("predicate-pushdown", "true").load(files).
-        filter(col("srcport") > 10)
-      val agg = df.groupBy("unix_secs").count()
-      agg.count()
-    }
-
     sqlBenchmark.addCase("Filter scan w/o predicate pushdown") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "false").load(files).
         filter(col("srcport") > 10)
       val agg = df.groupBy(col("unix_secs"), col("srcport")).count()
+      agg.count()
+    }
+
+    sqlBenchmark.addCase("Filter scan w/ predicate pushdown") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("predicate-pushdown", "true").load(files).
+        filter(col("srcport") > 10)
+      val agg = df.groupBy("unix_secs").count()
       agg.count()
     }
 
@@ -199,6 +217,48 @@ object NetFlowReadBenchmark {
     sqlBenchmark.addCase("Buffer size 3Mb") { iter =>
       val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("buffer", "3Mb").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.run()
+  }
+
+  def codegenBenchmark(iters: Int, version: String, files: String): Unit = {
+    val sqlBenchmark = new Benchmark("NetFlow codegen report", 10000, iters)
+
+    sqlBenchmark.addCase("Project without codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "false").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.addCase("Project with codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "true").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.addCase("Count without codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "false").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Count with codegen") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).option("codegen", "true").load(files).
+        select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
+      df.count()
+    }
+
+    sqlBenchmark.addCase("Project without conversion") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", version).
+        option("stringify", "false").option("codegen", "false").load(files).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
       df.foreach(_ => Unit)
     }

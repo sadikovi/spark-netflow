@@ -8,7 +8,7 @@ crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-val defaultSparkVersion = "1.4.1"
+val defaultSparkVersion = "1.5.1"
 
 sparkVersion := sys.props.getOrElse("spark.testVersion", defaultSparkVersion)
 

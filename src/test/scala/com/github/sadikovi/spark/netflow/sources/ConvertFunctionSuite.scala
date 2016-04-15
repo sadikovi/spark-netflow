@@ -16,6 +16,9 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import scala.collection.JavaConverters._
+
+import com.github.sadikovi.spark.netflow.codegen.GenerateIterator
 import com.github.sadikovi.testutil.UnitTestSpec
 
 class ConvertFunctionSuite extends UnitTestSpec {
@@ -55,6 +58,16 @@ class ConvertFunctionSuite extends UnitTestSpec {
       val (ip, num) = elem
       convertFunction.reversed(ip) should equal (num)
     }
+
+    // test codegen version
+    val arr: Array[(ConvertFunction, Array[Int])] = Array(
+      (convertFunction, Array(0))
+    )
+    val iterFunc = GenerateIterator.generate(arr)
+    // apply direct conversion on second element of tuple {ip, num}
+    val mappedDataIterator = dataset.map(x => Array(x._2.asInstanceOf[Object])).toIterator
+    val resIter = iterFunc(mappedDataIterator.asJava).asScala
+    resIter.toArray.flatten should be (dataset.map(_._1))
   }
 
   test("protocol conversion") {
@@ -67,6 +80,8 @@ class ConvertFunctionSuite extends UnitTestSpec {
       val protocol = convertFunction.direct(num)
       if (!convertFunction.reversedProtocolMap.contains(protocol)) {
         protocol should be (num.toString())
+      } else {
+        convertFunction.reversed(protocol) should be (num)
       }
     }
 
@@ -95,5 +110,30 @@ class ConvertFunctionSuite extends UnitTestSpec {
     intercept[RuntimeException] {
       convertFunction.reversed("udp")
     }
+
+    // test codegen version
+    val arr: Array[(ConvertFunction, Array[Int])] = Array(
+      (convertFunction, Array(0))
+    )
+    val iterFunc = GenerateIterator.generate(arr)
+    // apply direct conversion on second element of tuple {ip, num}
+    val mappedDataIterator = protocols.map(x => Array(x.asInstanceOf[Object])).toIterator
+    val resIter = iterFunc(mappedDataIterator.asJava).asScala
+    val results = resIter.toArray.flatten
+    results(1) should be ("ICMP")
+    results(3) should be ("GGP")
+    results(6) should be ("TCP")
+    results(8) should be ("EGP")
+    results(12) should be ("PUP")
+    results(17) should be ("UDP")
+    results(20) should be ("HMP")
+    results(27) should be ("RDP")
+    results(46) should be ("RSVP")
+    results(47) should be ("GRE")
+    results(50) should be ("ESP")
+    results(51) should be ("AH")
+    results(66) should be ("RVD")
+    results(88) should be ("IGMP")
+    results(89) should be ("OSPF")
   }
 }

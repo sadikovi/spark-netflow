@@ -41,11 +41,16 @@ private[spark] object Utils {
   }
 
   /**
-   * Get context class laoder on this thread or, if not present, default class loader for this
+   * Get context class loader on this thread or, if not present, default class loader for this
    * class.
    */
   def getContextClassLoader(): ClassLoader = {
     Option(Thread.currentThread().getContextClassLoader).getOrElse(getClass.getClassLoader)
+  }
+
+  /** Get cleaned class name for logging */
+  def getLogName(klass: Class[_]): String = {
+    klass.getName().stripSuffix("$")
   }
 
   /**
