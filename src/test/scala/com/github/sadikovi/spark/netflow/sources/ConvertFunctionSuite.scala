@@ -42,7 +42,7 @@ class ConvertFunctionSuite extends UnitTestSpec {
       ("255.255.255.255", (2L<<31) - 1)
     )
 
-    val convertFunction = IPConvertFunction()
+    val convertFunction = IPv4ConvertFunction()
 
     // test direct conversion
     for (elem <- dataset) {
@@ -58,7 +58,7 @@ class ConvertFunctionSuite extends UnitTestSpec {
   }
 
   test("protocol conversion") {
-    val protocols = 0 until 256
+    val protocols: Array[Short] = (0 until 256).map(_.toShort).toArray
 
     val convertFunction = ProtocolConvertFunction()
 
@@ -69,6 +69,23 @@ class ConvertFunctionSuite extends UnitTestSpec {
         protocol should be (num.toString())
       }
     }
+
+    // test direct conversion for all indices of protocol
+    convertFunction.direct(1.toShort) should be ("ICMP")
+    convertFunction.direct(3.toShort) should be ("GGP")
+    convertFunction.direct(6.toShort) should be ("TCP")
+    convertFunction.direct(8.toShort) should be ("EGP")
+    convertFunction.direct(12.toShort) should be ("PUP")
+    convertFunction.direct(17.toShort) should be ("UDP")
+    convertFunction.direct(20.toShort) should be ("HMP")
+    convertFunction.direct(27.toShort) should be ("RDP")
+    convertFunction.direct(46.toShort) should be ("RSVP")
+    convertFunction.direct(47.toShort) should be ("GRE")
+    convertFunction.direct(50.toShort) should be ("ESP")
+    convertFunction.direct(51.toShort) should be ("AH")
+    convertFunction.direct(66.toShort) should be ("RVD")
+    convertFunction.direct(88.toShort) should be ("IGMP")
+    convertFunction.direct(89.toShort) should be ("OSPF")
 
     // test reversed conversion
     convertFunction.reversed("ICMP") should be (1)

@@ -78,7 +78,7 @@ class VersionSuite extends UnitTestSpec {
   test("get conversions for fields") {
     var convertFunction = interface5.getColumn("srcip").convertFunction
     convertFunction.isEmpty should be (false)
-    convertFunction.get.isInstanceOf[IPConvertFunction] should be (true)
+    convertFunction.get.isInstanceOf[IPv4ConvertFunction] should be (true)
 
     convertFunction = interface5.getColumn("unix_secs").convertFunction
     convertFunction.isEmpty should be (true)

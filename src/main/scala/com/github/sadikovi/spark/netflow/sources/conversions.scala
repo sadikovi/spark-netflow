@@ -16,6 +16,7 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import scala.collection.mutable.HashMap
 import scala.util.Try
 
 /**
@@ -30,26 +31,11 @@ abstract class ConvertFunction {
   def reversed(value: String): Any
 }
 
-/** Conversion function for IP values. */
-case class IPConvertFunction() extends ConvertFunction {
-  override def direct(value: Any): String = value match {
-    case num: Long =>
-      require(num >= 0 && num < (2L << 31), s"Invalid number to convert: ${num}")
-      val buf = new StringBuilder()
-      var i = 24
-      var ip = num
-      while (i >= 0) {
-          val a = ip >> i
-          ip = a << i ^ ip
-          buf.append(a)
-          if (i > 0) {
-              buf.append(".")
-          }
-          i = i - 8
-      }
-      buf.toString()
-    case _ =>
-      value.toString()
+/** Conversion function for IPv4 values. */
+case class IPv4ConvertFunction() extends ConvertFunction {
+  override def direct(value: Any): String = {
+    val num = value.asInstanceOf[Long]
+    s"${(num & 4278190080L) >> 24}.${(num & 16711680L) >> 16}.${(num & 65280L) >> 8}.${num & 255}"
   }
 
   override def reversed(value: String): Any = {
@@ -61,7 +47,7 @@ case class IPConvertFunction() extends ConvertFunction {
 
 /** Conversion function for protocol (most common services) */
 case class ProtocolConvertFunction() extends ConvertFunction {
-  private[sources] val protocolMap: Map[Short, String] = Map(
+  private[sources] val protocolMap: HashMap[Short, String] = HashMap(
     1.toShort -> "ICMP", // Internet Control Message Protocol
     3.toShort -> "GGP", // Gateway-Gateway Protocol
     6.toShort -> "TCP", // Transmission Control Protocol
@@ -79,16 +65,15 @@ case class ProtocolConvertFunction() extends ConvertFunction {
     89.toShort -> "OSPF" // Open Shortest Path First
   )
 
-  private[sources] lazy val reversedProtocolMap = protocolMap.map{ case (key, value) =>
+  private[sources] lazy val reversedProtocolMap = protocolMap.map { case (key, value) =>
     (value, key) }.toMap
 
-  override def direct(value: Any): String = value match {
-    case num: Short => protocolMap.getOrElse(num, value.toString())
-    case _ => value.toString()
+  override def direct(value: Any): String = {
+    protocolMap.getOrElse(value.asInstanceOf[Short], value.toString())
   }
 
   override def reversed(value: String): Any = {
     reversedProtocolMap.getOrElse(value, Try(value.toShort).getOrElse(
-      sys.error(s"Failed to convert ${value} for ${getClass().getSimpleName()}")))
+      sys.error(s"Failed to convert $value for ${getClass().getSimpleName()}")))
   }
 }
