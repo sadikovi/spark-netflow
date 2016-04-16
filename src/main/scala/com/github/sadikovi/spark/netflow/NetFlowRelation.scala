@@ -165,12 +165,12 @@ private[netflow] class NetFlowRelation(
       }
       logger.info(s"Resolved NetFlow filter: ${resolvedFilter}")
 
-      // NetFlow metadata/summary for each file. We cannot pass `FileStatus` for each partition from
+      // NetFlow file status for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
       // Note that file size (`status.getLen()`) is in bytes and can be used for auto partitioning.
       // See: https://hadoop.apache.org/docs/r2.6.0/api/org/apache/hadoop/fs/FileStatus.html
       val metadata = inputFiles.map { status => {
-        NetFlowMetadata(interface.version(), status.getPath().toString(), status.getLen(),
+        NetFlowFileStatus(interface.version(), status.getPath().toString(), status.getLen(),
           bufferSize)
       } }
 

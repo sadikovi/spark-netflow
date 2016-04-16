@@ -17,15 +17,15 @@
 package com.github.sadikovi.spark.netflow.sources
 
 /**
- * NetFlow metadata that describes file to process. Contains expected version of a file, absolute
- * resolved path to the file, and it's length, buffer size for a particular file (currently we
- * do not make that distinction).
+ * NetFlow file status that describes file to process. Contains expected version of a file,
+ * absolute resolved path to the file, and it's length, buffer size for a particular file
+ * (currently we do not make that distinction, so buffer size is the same across all files).
  * @param version version of NetFlow, e.g. 5, or 7
  * @param path absolute file path, in case of HDFS includes host and port
  * @param length file size in bytes
  * @param bufferSize buffer size (when file stream is compressed) in bytes
  */
-private[spark] case class NetFlowMetadata(
+private[spark] case class NetFlowFileStatus(
   version: Short,
   path: String,
   length: Long,

@@ -51,7 +51,7 @@ object NetFlowRegistry {
         s"Provider ${providerName} does not support NetFlowProvider interface")
     }
 
-    // create and check consistency of the interface
+    // Create and check consistency of the interface
     val createdInterface = provider.createInterface()
     createdInterface.ensureColumnConsistency()
 

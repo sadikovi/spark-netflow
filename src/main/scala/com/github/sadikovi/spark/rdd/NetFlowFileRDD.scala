@@ -34,7 +34,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
 
 /** NetFlowFilePartition to hold sequence of file paths */
-private[spark] class NetFlowFilePartition[T<:NetFlowMetadata: ClassTag] (
+private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus: ClassTag] (
     var rddId: Long,
     var slice: Int,
     var values: Seq[T]) extends Partition with Serializable {
@@ -58,14 +58,14 @@ private[spark] class NetFlowFilePartition[T<:NetFlowMetadata: ClassTag] (
  */
 private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     @transient sc: SparkContext,
-    @transient data: Seq[NetFlowMetadata],
+    @transient data: Seq[NetFlowFileStatus],
     val partitionMode: PartitionMode,
     val applyConversion: Boolean,
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate]) extends FileRDD[SQLRow](sc, Nil) {
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)
-    slices.indices.map(i => new NetFlowFilePartition[NetFlowMetadata](id, i, slices(i))).toArray
+    slices.indices.map(i => new NetFlowFilePartition[NetFlowFileStatus](id, i, slices(i))).toArray
   }
 
   override def compute(s: Partition, context: TaskContext): Iterator[SQLRow] = {
@@ -78,7 +78,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     // Total buffer of records
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
-    for (elem <- s.asInstanceOf[NetFlowFilePartition[NetFlowMetadata]].iterator) {
+    for (elem <- s.asInstanceOf[NetFlowFilePartition[NetFlowFileStatus]].iterator) {
       // Reconstruct file status: file path, length in bytes
       val path = new Path(elem.path)
       val fs = path.getFileSystem(conf)

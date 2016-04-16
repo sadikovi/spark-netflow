@@ -30,10 +30,10 @@ private[spark] abstract class PartitionMode {
   def resolveNumPartitions(maxSlices: Int): Int
 
   /** Try partitioning sequence of metadata depending on mode */
-  def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]]
+  def tryToPartition(seq: Seq[NetFlowFileStatus]): Seq[Seq[NetFlowFileStatus]]
 
   /** Standard slice function to partition sequence */
-  protected def slice(seq: Seq[NetFlowMetadata], numSlices: Int): Seq[Seq[NetFlowMetadata]] = {
+  protected def slice(seq: Seq[NetFlowFileStatus], numSlices: Int): Seq[Seq[NetFlowFileStatus]] = {
     require(numSlices >= 1, "Positive number of slices required")
 
     def positions(length: Long, numSlices: Int): Iterator[(Int, Int)] = {
@@ -66,7 +66,7 @@ final case class DefaultPartitionMode(numPartitions: Option[Int]) extends Partit
       maxSlices
   }
 
-  override def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]] = {
+  override def tryToPartition(seq: Seq[NetFlowFileStatus]): Seq[Seq[NetFlowFileStatus]] = {
     val numSlices = resolveNumPartitions(seq.length)
     slice(seq, numSlices)
   }
@@ -94,7 +94,7 @@ final case class AutoPartitionMode(
     Math.max(minNumPartitions, maxSlices)
   }
 
-  override def tryToPartition(seq: Seq[NetFlowMetadata]): Seq[Seq[NetFlowMetadata]] = {
+  override def tryToPartition(seq: Seq[NetFlowFileStatus]): Seq[Seq[NetFlowFileStatus]] = {
     val maxSlices = seq.length
     // If number of actual slices is less than given number of partitions then we partition actual
     // sequence similar to default mode, since there is no way for us to do anything more efficient,
@@ -115,7 +115,7 @@ final case class AutoPartitionMode(
       // Final partition size that will be used for grouping
       val bestPartitionSize = Math.max(partitionSize, realMean(sizes))
       // All buckets that will be created
-      val buckets = new ArrayBuffer[ArrayBuffer[NetFlowMetadata]]()
+      val buckets = new ArrayBuffer[ArrayBuffer[NetFlowFileStatus]]()
       // Data sorted in descending order
       val srtData = seq.toArray.sortWith(_.length > _.length)
 
@@ -123,7 +123,7 @@ final case class AutoPartitionMode(
       // split files currently, we just put them into separate buckets.
       var index = 0
       while (srtData(index).length >= bestPartitionSize && index < maxSlices) {
-        val bucket = new ArrayBuffer[NetFlowMetadata](1)
+        val bucket = new ArrayBuffer[NetFlowFileStatus](1)
         bucket.append(srtData(index))
         buckets.append(bucket)
         index += 1
@@ -141,7 +141,7 @@ final case class AutoPartitionMode(
         } else {
           val leftmostElement = restData.head
           var delta = bestPartitionSize - leftmostElement.length
-          val currentBucket = new ArrayBuffer[NetFlowMetadata]()
+          val currentBucket = new ArrayBuffer[NetFlowFileStatus]()
           currentBucket.append(leftmostElement)
 
           // Update data, since we removed element
@@ -166,8 +166,8 @@ final case class AutoPartitionMode(
       // At this stage we have to resolve left elements into 2 buckets, array is still in
       // decreasing order
       if (restData.nonEmpty) {
-        val bucket1 = new ArrayBuffer[NetFlowMetadata]()
-        val bucket2 = new ArrayBuffer[NetFlowMetadata]()
+        val bucket1 = new ArrayBuffer[NetFlowFileStatus]()
+        val bucket2 = new ArrayBuffer[NetFlowFileStatus]()
 
         val firstElem = restData.head
         var bucket1Sum = firstElem.length
