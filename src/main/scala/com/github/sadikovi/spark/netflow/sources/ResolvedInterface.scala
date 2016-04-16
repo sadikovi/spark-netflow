@@ -88,11 +88,11 @@ abstract class ResolvedInterface {
 
   /** Get size in bytes for a particular SQL data type. */
   private[sources] def sizeInBytes(dtype: DataType): Short = dtype match {
-      case byte: ByteType => 1
-      case short: ShortType => 2
-      case int: IntegerType => 4
-      case long: LongType => 8
-      case other => throw new UnsupportedOperationException(s"Cannot get size for $other type")
+    case byte: ByteType => 1
+    case short: ShortType => 2
+    case int: IntegerType => 4
+    case long: LongType => 8
+    case other => throw new UnsupportedOperationException(s"Cannot get size for $other type")
   }
 
   /** Resolve internal type into SQL type */
