@@ -110,8 +110,18 @@ private[netflow] class NetFlowRelation(
     case None =>
       DefaultPartitionMode(None)
   }
-  // Log partition mode
   logger.info(s"Partition mode: $partitionMode")
+
+  // Usage of statistics, this will trigger either writing statistics or reading them and adding
+  // more information to resolving predicate when filter pushdown is specified, otherwise it will
+  // not collect or use statistics
+  private val pathResolver = parameters.get("statistics") match {
+    case Some("true") if usePredicatePushdown => Some(StatisticsPathResolver(None))
+    case Some("false") => None
+    case Some(path) if usePredicatePushdown => Some(StatisticsPathResolver(Option(path)))
+    case otherValue => None
+  }
+  logger.info(s"Statistics: $pathResolver")
 
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
@@ -169,13 +179,19 @@ private[netflow] class NetFlowRelation(
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
       // Note that file size (`status.getLen()`) is in bytes and can be used for auto partitioning.
       // See: https://hadoop.apache.org/docs/r2.6.0/api/org/apache/hadoop/fs/FileStatus.html
-      val metadata = inputFiles.map { status => {
-        NetFlowFileStatus(interface.version(), status.getPath().toString(), status.getLen(),
-          bufferSize)
-      } }
+      val fileStatuses = inputFiles.map { status =>
+        val filePath = status.getPath().toString()
+        val fileLen = status.getLen()
+        val statisticsPath = pathResolver match {
+          case Some(statsResolver) => Option(statsResolver.getStatisticsPath(filePath))
+          case None => None
+        }
+
+        NetFlowFileStatus(interface.version(), filePath, fileLen, bufferSize, statisticsPath)
+      }
 
       // Return `NetFlowFileRDD`, we store data of each file in individual partition
-      new NetFlowFileRDD(sqlContext.sparkContext, metadata, partitionMode, applyConversion,
+      new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
         resolvedColumns, resolvedFilter)
     }
   }

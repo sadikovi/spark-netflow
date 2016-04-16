@@ -24,10 +24,12 @@ package com.github.sadikovi.spark.netflow.sources
  * @param path absolute file path, in case of HDFS includes host and port
  * @param length file size in bytes
  * @param bufferSize buffer size (when file stream is compressed) in bytes
+ * @param statisticsPath absolute file path to the statistics file
  */
 private[spark] case class NetFlowFileStatus(
   version: Short,
   path: String,
   length: Long,
-  bufferSize: Int
+  bufferSize: Int,
+  statisticsPath: Option[String]
 )
