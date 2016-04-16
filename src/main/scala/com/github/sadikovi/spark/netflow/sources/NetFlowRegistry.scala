@@ -27,14 +27,14 @@ object NetFlowRegistry {
    * datasource API.
    */
   private[sources] def lookupInterface(provider: String): Class[_] = {
-    val extendedProvider = s"${provider}.DefaultProvider"
+    val extendedProvider = s"$provider.DefaultProvider"
     val loader = Utils.getContextClassLoader()
 
     Try(loader.loadClass(provider)).orElse(Try(loader.loadClass(extendedProvider))) match {
       case Success(someInterface) =>
         someInterface
       case Failure(error) =>
-        throw new ClassNotFoundException(s"Failed to find NetFlow interface for ${provider}",
+        throw new ClassNotFoundException(s"Failed to find NetFlow interface for $provider",
           error)
     }
   }
@@ -48,7 +48,7 @@ object NetFlowRegistry {
     val provider = lookupInterface(providerName).newInstance() match {
       case versionProvider: NetFlowProvider => versionProvider
       case _ => throw new UnsupportedOperationException(
-        s"Provider ${providerName} does not support NetFlowProvider interface")
+        s"Provider $providerName does not support NetFlowProvider interface")
     }
 
     // Create and check consistency of the interface

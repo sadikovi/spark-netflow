@@ -60,7 +60,7 @@ private[spark] abstract class PartitionMode {
 final case class DefaultPartitionMode(numPartitions: Option[Int]) extends PartitionMode {
   override def resolveNumPartitions(maxSlices: Int): Int = numPartitions match {
     case Some(possibleSlices) =>
-      require(possibleSlices >= 1, s"Expected at least one partition, got ${possibleSlices}")
+      require(possibleSlices >= 1, s"Expected at least one partition, got $possibleSlices")
       Math.min(possibleSlices, maxSlices)
     case None =>
       maxSlices
@@ -73,11 +73,11 @@ final case class DefaultPartitionMode(numPartitions: Option[Int]) extends Partit
 
   override def toString(): String = {
     val msg = if (numPartitions.isEmpty) {
-      "None, will apply trivial partitioning"
+      "Trivial partitioning"
     } else {
       s"${numPartitions.get} partitions"
     }
-    s"${getClass().getSimpleName()}[${msg}]"
+    s"${getClass().getSimpleName()}[$msg]"
   }
 }
 
@@ -201,6 +201,6 @@ final case class AutoPartitionMode(
   }
 
   override def toString(): String = {
-    s"${getClass().getSimpleName()}[${partitionSize} bytes, ${minNumPartitions} partitions]"
+    s"${getClass().getSimpleName()}[$partitionSize bytes, $minNumPartitions partitions]"
   }
 }

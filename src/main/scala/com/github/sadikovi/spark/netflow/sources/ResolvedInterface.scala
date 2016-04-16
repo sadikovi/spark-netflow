@@ -83,7 +83,7 @@ abstract class ResolvedInterface {
   /** Get [[MappedColumn]] for a specified column name. Fail, if column name is not present. */
   def getColumn(columnName: String): MappedColumn = {
     columnsMap.getOrElse(columnName,
-      sys.error(s"Interface does not have information about column ${columnName}"))
+      sys.error(s"Interface does not have information about column $columnName"))
   }
 
   /** Get size in bytes for a particular SQL data type. */
@@ -92,7 +92,7 @@ abstract class ResolvedInterface {
       case short: ShortType => 2
       case int: IntegerType => 4
       case long: LongType => 8
-      case other => throw new UnsupportedOperationException(s"Cannot get size for ${other} type")
+      case other => throw new UnsupportedOperationException(s"Cannot get size for $other type")
   }
 
   /** Resolve internal type into SQL type */
@@ -101,7 +101,7 @@ abstract class ResolvedInterface {
     case InternalType.SHORT => ShortType
     case InternalType.INT => IntegerType
     case InternalType.LONG => LongType
-    case otherType => throw new UnsupportedOperationException(s"Unsupported type ${otherType}")
+    case otherType => throw new UnsupportedOperationException(s"Unsupported type $otherType")
   }
 
   private[sources] def ensureColumnConsistency(): Unit = {

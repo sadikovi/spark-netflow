@@ -93,7 +93,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
       // Compression flag
       val isCompressed = header.isCompressed()
 
-      logInfo(s"""
+      logDebug(s"""
           > NetFlow: {
           >   File: ${elem.path},
           >   File length: ${fileLength} bytes,

@@ -25,16 +25,15 @@ import org.apache.hadoop.conf.Configuration
  * since it cannot be reused outside `spark` package.
  */
 private[spark] class SerializableConfiguration(
-    @transient var value: Configuration
-  ) extends Serializable {
+    @transient var value: Configuration) extends Serializable {
 
-    private def writeObject(out: ObjectOutputStream): Unit = {
-      out.defaultWriteObject()
-      value.write(out)
-    }
+  private def writeObject(out: ObjectOutputStream): Unit = {
+    out.defaultWriteObject()
+    value.write(out)
+  }
 
-    private def readObject(in: ObjectInputStream): Unit = {
-      value = new Configuration(false)
-      value.readFields(in)
-    }
+  private def readObject(in: ObjectInputStream): Unit = {
+    value = new Configuration(false)
+    value.readFields(in)
+  }
 }

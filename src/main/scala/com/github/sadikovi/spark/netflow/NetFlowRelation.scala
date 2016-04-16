@@ -105,13 +105,13 @@ private[netflow] class NetFlowRelation(
       case Success(numPartitions) =>
         DefaultPartitionMode(Some(numPartitions))
       case Failure(error) =>
-        sys.error(s"Wrong number of partitions ${maybeNumPartitions}")
+        sys.error(s"Wrong number of partitions $maybeNumPartitions")
     }
     case None =>
       DefaultPartitionMode(None)
   }
   // Log partition mode
-  logger.info(s"Selected ${partitionMode}")
+  logger.info(s"Partition mode: $partitionMode")
 
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
@@ -141,7 +141,7 @@ private[netflow] class NetFlowRelation(
     } else {
       // Convert to internal mapped columns
       val resolvedColumns: Array[MappedColumn] = if (requiredColumns.isEmpty) {
-        logger.warn("Required columns are empty, using first column instead")
+        logger.info("Required columns are empty, using first column instead")
         Array(interface.getFirstColumn())
       } else {
         requiredColumns.map(col => interface.getColumn(col))
@@ -149,7 +149,7 @@ private[netflow] class NetFlowRelation(
 
       // Resolve filters into filters we support, also reduce to return only one Filter value
       val reducedFilter: Option[Filter] = NetFlowFilters.reduceFilter(filters)
-      logger.info(s"Reduced filter: ${reducedFilter}")
+      logger.info(s"Reduced filter: $reducedFilter")
 
       // Convert filters into NetFlow filters, we also use `usePredicatePushdown` to disable
       // predicate pushdown (normally it is used for benchmarks), but in some situations when
@@ -163,7 +163,7 @@ private[netflow] class NetFlowRelation(
         case other =>
           None
       }
-      logger.info(s"Resolved NetFlow filter: ${resolvedFilter}")
+      logger.info(s"Resolved NetFlow filter: $resolvedFilter")
 
       // NetFlow file status for each file. We cannot pass `FileStatus` for each partition from
       // file path, it is not serializable and does not behave well with `SerializableWriteable`.
@@ -185,6 +185,11 @@ private[netflow] class NetFlowRelation(
   }
 
   override def toString: String = {
-    s"${getClass.getSimpleName}: version ${interface.version()}"
+    s"${getClass.getSimpleName}(" +
+      s"version ${interface.version()}, " +
+      s"partition mode $partitionMode, " +
+      s"buffer size $bufferSize, " +
+      s"predicate pushdown $usePredicatePushdown, " +
+      s"conversion: $applyConversion)"
   }
 }

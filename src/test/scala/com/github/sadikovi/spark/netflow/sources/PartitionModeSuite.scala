@@ -71,8 +71,10 @@ class PartitionModeSuite extends UnitTestSpec {
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
       Seq(NetFlowFileStatus(5, "", 150, 0)),
-      Seq(NetFlowFileStatus(5, "", 30, 0), NetFlowFileStatus(5, "", 30, 0),
-        NetFlowFileStatus(5, "", 22, 0), NetFlowFileStatus(5, "", 10, 0))
+      Seq(NetFlowFileStatus(5, "", 30, 0),
+        NetFlowFileStatus(5, "", 30, 0),
+        NetFlowFileStatus(5, "", 22, 0),
+        NetFlowFileStatus(5, "", 10, 0))
     ))
   }
 
@@ -107,19 +109,28 @@ class PartitionModeSuite extends UnitTestSpec {
     bins should be (Seq(
       Seq(NetFlowFileStatus(5, "", 200, 0)),
       Seq(NetFlowFileStatus(5, "", 150, 0)),
-      Seq(NetFlowFileStatus(5, "", 90, 0), NetFlowFileStatus(5, "", 1, 0), NetFlowFileStatus(5, "", 4, 0),
+      Seq(NetFlowFileStatus(5, "", 90, 0),
+        NetFlowFileStatus(5, "", 1, 0),
+        NetFlowFileStatus(5, "", 4, 0),
         NetFlowFileStatus(5, "", 4, 0)),
-      Seq(NetFlowFileStatus(5, "", 90, 0), NetFlowFileStatus(5, "", 4, 0),
+      Seq(NetFlowFileStatus(5, "", 90, 0),
+        NetFlowFileStatus(5, "", 4, 0),
         NetFlowFileStatus(5, "", 5, 0)),
-      Seq(NetFlowFileStatus(5, "", 50, 0), NetFlowFileStatus(5, "", 7, 0),
-        NetFlowFileStatus(5, "", 10, 0), NetFlowFileStatus(5, "", 10, 0),
+      Seq(NetFlowFileStatus(5, "", 50, 0),
+        NetFlowFileStatus(5, "", 7, 0),
+        NetFlowFileStatus(5, "", 10, 0),
+        NetFlowFileStatus(5, "", 10, 0),
         NetFlowFileStatus(5, "", 11, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0), NetFlowFileStatus(5, "", 19, 0),
+      Seq(NetFlowFileStatus(5, "", 45, 0),
+        NetFlowFileStatus(5, "", 19, 0),
         NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0), NetFlowFileStatus(5, "", 21, 0),
+      Seq(NetFlowFileStatus(5, "", 45, 0),
+        NetFlowFileStatus(5, "", 21, 0),
         NetFlowFileStatus(5, "", 22, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0), NetFlowFileStatus(5, "", 43, 0)),
-      Seq(NetFlowFileStatus(5, "", 39, 0), NetFlowFileStatus(5, "", 39, 0))
+      Seq(NetFlowFileStatus(5, "", 45, 0),
+        NetFlowFileStatus(5, "", 43, 0)),
+      Seq(NetFlowFileStatus(5, "", 39, 0),
+        NetFlowFileStatus(5, "", 39, 0))
     ))
   }
 
@@ -166,11 +177,16 @@ class PartitionModeSuite extends UnitTestSpec {
       Seq(NetFlowFileStatus(5, "", 120, 0)),
       Seq(NetFlowFileStatus(5, "", 110, 0)),
       Seq(NetFlowFileStatus(5, "", 100, 0)),
-      Seq(NetFlowFileStatus(5, "", 50, 0), NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 4, 0), NetFlowFileStatus(5, "", 4, 0), NetFlowFileStatus(5, "", 10, 0),
+      Seq(NetFlowFileStatus(5, "", 50, 0),
+        NetFlowFileStatus(5, "", 4, 0),
+        NetFlowFileStatus(5, "", 4, 0),
+        NetFlowFileStatus(5, "", 4, 0),
+        NetFlowFileStatus(5, "", 10, 0),
         NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0), NetFlowFileStatus(5, "", 39, 0)),
-      Seq(NetFlowFileStatus(5, "", 39, 0), NetFlowFileStatus(5, "", 22, 0))
+      Seq(NetFlowFileStatus(5, "", 45, 0),
+        NetFlowFileStatus(5, "", 39, 0)),
+      Seq(NetFlowFileStatus(5, "", 39, 0),
+        NetFlowFileStatus(5, "", 22, 0))
     ))
   }
 
@@ -184,8 +200,10 @@ class PartitionModeSuite extends UnitTestSpec {
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 80, 0), NetFlowFileStatus(5, "", 20, 0)),
-      Seq(NetFlowFileStatus(5, "", 40, 0), NetFlowFileStatus(5, "", 40, 0),
+      Seq(NetFlowFileStatus(5, "", 80, 0),
+        NetFlowFileStatus(5, "", 20, 0)),
+      Seq(NetFlowFileStatus(5, "", 40, 0),
+        NetFlowFileStatus(5, "", 40, 0),
         NetFlowFileStatus(5, "", 20, 0))
     ))
   }
@@ -200,8 +218,10 @@ class PartitionModeSuite extends UnitTestSpec {
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 80, 0), NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 10, 0), NetFlowFileStatus(5, "", 5, 0),
+      Seq(NetFlowFileStatus(5, "", 80, 0),
+        NetFlowFileStatus(5, "", 19, 0)),
+      Seq(NetFlowFileStatus(5, "", 10, 0),
+        NetFlowFileStatus(5, "", 5, 0),
         NetFlowFileStatus(5, "", 4, 0))
     ))
   }

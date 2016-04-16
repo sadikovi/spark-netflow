@@ -96,7 +96,7 @@ private[spark] object NetFlowFilters {
       case InternalType.LONG => FilterApi.eq(column.internalColumn.asInstanceOf[LongColumn],
         value.asInstanceOf[java.lang.Long])
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
@@ -111,7 +111,7 @@ private[spark] object NetFlowFilters {
       case InternalType.LONG => FilterApi.gt(column.internalColumn.asInstanceOf[LongColumn],
         value.asInstanceOf[java.lang.Long])
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
@@ -126,7 +126,7 @@ private[spark] object NetFlowFilters {
       case InternalType.LONG => FilterApi.ge(column.internalColumn.asInstanceOf[LongColumn],
         value.asInstanceOf[java.lang.Long])
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
@@ -141,7 +141,7 @@ private[spark] object NetFlowFilters {
       case InternalType.LONG => FilterApi.lt(column.internalColumn.asInstanceOf[LongColumn],
         value.asInstanceOf[java.lang.Long])
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
@@ -156,7 +156,7 @@ private[spark] object NetFlowFilters {
       case InternalType.LONG => FilterApi.le(column.internalColumn.asInstanceOf[LongColumn],
         value.asInstanceOf[java.lang.Long])
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
@@ -187,7 +187,7 @@ private[spark] object NetFlowFilters {
         }
         FilterApi.in(column.internalColumn.asInstanceOf[LongColumn], set)
       case otherInternalType =>
-        throw new UnsupportedOperationException(s"Unsupported internal type ${otherInternalType}")
+        throw new UnsupportedOperationException(s"Unsupported internal type $otherInternalType")
     }
   }
 
