@@ -51,8 +51,8 @@ private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus: ClassTag] (
 }
 
 /**
- * `NetFlowFileRDD` is designed to process NetFlow file of specific version and return iterator of
- * SQL rows back. Used internally solely for the purpose of datasource API. We assume that we
+ * [[NetFlowFileRDD]] is designed to process NetFlow file of specific version and return iterator
+ * of SQL rows back. Used internally solely for the purpose of datasource API. We assume that we
  * process files of the same version, and prune common fields. `NetFlowFileRDD` operates on already
  * resolved columns, the same applies to filters.
  */

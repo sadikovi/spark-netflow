@@ -190,7 +190,7 @@ private[netflow] class NetFlowRelation(
         NetFlowFileStatus(interface.version(), filePath, fileLen, bufferSize, statisticsPath)
       }
 
-      // Return `NetFlowFileRDD`, we store data of each file in individual partition
+      // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode
       new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
         resolvedColumns, resolvedFilter)
     }
@@ -206,6 +206,7 @@ private[netflow] class NetFlowRelation(
       s"partition mode $partitionMode, " +
       s"buffer size $bufferSize, " +
       s"predicate pushdown $usePredicatePushdown, " +
+      s"statistics $pathResolver, " +
       s"conversion: $applyConversion)"
   }
 }
