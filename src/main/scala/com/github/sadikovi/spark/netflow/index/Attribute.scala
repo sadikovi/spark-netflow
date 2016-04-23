@@ -14,56 +14,11 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.netflow.sources
+package com.github.sadikovi.spark.netflow.index
 
 import java.util.{HashSet => JHashSet}
 
 import scala.reflect.ClassTag
-
-import org.apache.hadoop.fs.{Path => HadoopPath}
-
-/**
- * [[StatisticsPathResolver]] is a simple class to find the statistics path based on a file path.
- * Also takes into account possible root to store/read statistics. Note that root may not
- * necessarily exist.
- */
-case class StatisticsPathResolver(maybeRoot: Option[String]) {
-  if (maybeRoot.isDefined) {
-    require(maybeRoot.get != null && maybeRoot.get.nonEmpty,
-      s"Root path is expected to be non-empty, got $maybeRoot")
-  }
-
-  /**
-   * Return statistics path based on root and file path.
-   * If root is not specified statistics file is stored side-by-side with the original file,
-   * otherwise, directory structure is replicated starting with root:
-   * {{{
-   *    val path = "/a/b/c/file"
-   *    val root = "/x/y/z"
-   *    // then statistics file will stored:
-   *    val stats = "/x/y/z/a/b/c/.statistics-file"
-   * }}}
-   */
-  def getStatisticsPath(filePath: String): String = {
-    // Return updated path with suffix appended
-    def withSuffix(path: HadoopPath, suffix: String): HadoopPath = {
-      path.suffix(s"${HadoopPath.SEPARATOR}${suffix}")
-    }
-
-    val path = new HadoopPath(filePath)
-    maybeRoot match {
-      case Some(root) =>
-        val rootPath = new HadoopPath(root)
-        withSuffix(HadoopPath.mergePaths(rootPath, path).getParent(),
-          getStatisticsName(path.getName)).toString
-      case None =>
-        withSuffix(path.getParent(), getStatisticsName(path.getName)).toString
-    }
-  }
-
-  /** Return statistics name based on original file name */
-  private def getStatisticsName(fileName: String): String = s".statistics-$fileName"
-}
 
 /**
  * [[Attribute]] interface to collect and check statistics. Included support of different
@@ -73,8 +28,8 @@ case class StatisticsPathResolver(maybeRoot: Option[String]) {
  * `sortWith` method. Name must unique to the attribute.
  */
 case class Attribute[T](
-    name: String,
-    lt: (T, T) => Boolean, flags: Byte)(implicit tag: ClassTag[T]) {
+    name: String, lt: (T, T) => Boolean, flags: Byte)(implicit tag: ClassTag[T]) {
+  private val klass = tag.runtimeClass
   private var count: Long = if (isCountEnabled) 0 else Long.MinValue
   private var min: T = _
   private var max: T = _
@@ -82,6 +37,8 @@ case class Attribute[T](
 
   /** Add value to the attribute, it automatically checks all available modes */
   def addValue(value: T): Unit = {
+    require(value != null, "Cannot add null value")
+
     if (isCountEnabled) {
       count += 1
     }
@@ -119,6 +76,16 @@ case class Attribute[T](
     if (isCountEnabled) Some(count) else None
   }
 
+  /** Get min/max, internal operation to write min/max */
+  def getMinMax(): Option[(T, T)] = {
+    if (isMinMaxEnabled) Some((min, max)) else None
+  }
+
+  /** Get set, internal operation to write set */
+  def getSet(): Option[JHashSet[T]] = {
+    if (isSetEnabled) Some(set) else None
+  }
+
   /** Check if value is in min-max range, if mode is enabled, otherwise None */
   def containsInRange(value: T): Option[Boolean] = {
     if (isMinMaxEnabled) Some(!lt(value, min) && !lt(max, value)) else None
@@ -130,25 +97,28 @@ case class Attribute[T](
   }
 
   /** Update count with value */
-  private[sources] def setCount(value: Long): Unit = {
+  private[index] def setCount(value: Long): Unit = {
     require(isCountEnabled, s"Count mode is disabled, bit flags: $flags")
     count = value
   }
 
   /** Update min/max directly with values */
-  private[sources] def setMinMax(minValue: T, maxValue: T): Unit = {
+  private[index] def setMinMax(minValue: T, maxValue: T): Unit = {
     require(isMinMaxEnabled, s"Min-max mode is disabled, bit flags: $flags")
     min = minValue
     max = maxValue
   }
 
   /** Update set directly with value */
-  private[sources] def setSet(setValue: JHashSet[T]): Unit = {
+  private[index] def setSet(setValue: JHashSet[T]): Unit = {
     require(isSetEnabled, s"Set mode is disabled, bit flags: $flags")
     set = setValue
   }
 
+  /** Get actual generic runtime class */
+  def getClassTag(): Class[_] = klass
+
   override def toString(): String = {
-    s"${getClass().getCanonicalName}, name: $name, bit flags: $flags"
+    s"${getClass().getCanonicalName}[name: $name, bit flags: $flags, tag: $tag]"
   }
 }

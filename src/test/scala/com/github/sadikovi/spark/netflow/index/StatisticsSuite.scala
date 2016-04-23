@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.sadikovi.spark.netflow.sources
+package com.github.sadikovi.spark.netflow.index
 
 import java.util.{HashSet => JHashSet}
 import com.github.sadikovi.testutil.UnitTestSpec
@@ -90,6 +90,13 @@ class StatisticsSuite extends UnitTestSpec {
     attr.containsInSet(6) should be (Some(false))
   }
 
+  test("check value using empty attribute") {
+    val attr = Attribute[Int]("a", _ < _, 7)
+    attr.getCount() should be (Some(0))
+    attr.containsInRange(5) should be (Some(false))
+    attr.containsInSet(5) should be (Some(false))
+  }
+
   test("get value from attribute for count mode") {
     val attr = Attribute[Int]("a", _ < _, 1)
     attr.getCount() should be (Some(0))
@@ -132,5 +139,28 @@ class StatisticsSuite extends UnitTestSpec {
     intercept[IllegalArgumentException] {
       attr.setSet(new JHashSet[Int]())
     }
+  }
+
+  test("get internal count, min/max, set for attribute") {
+    val attr = Attribute[Int]("a", _ < _, 7)
+    attr.getCount() should be (Some(0))
+    attr.getMinMax() should be (Some(null, null))
+    attr.getSet() should be (Some(new JHashSet[Int]()))
+  }
+
+  test("get internal count for attribute") {
+    val attr = Attribute[Int]("a", _ < _, 1)
+    attr.getCount() should be (Some(0))
+    attr.getMinMax() should be (None)
+    attr.getSet() should be (None)
+  }
+
+  test("get runtime class") {
+    val a = Attribute[Short]("a", _ < _, 7)
+    val b = Attribute[Int]("b", _ < _, 7)
+    val c = Attribute[Long]("c", _ < _, 7)
+    a.getClassTag() should be (classOf[Short])
+    b.getClassTag() should be (classOf[Int])
+    c.getClassTag() should be (classOf[Long])
   }
 }

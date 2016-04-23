@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory
 
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
+import com.github.sadikovi.spark.netflow.index.StatisticsPathResolver
 import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.rdd.NetFlowFileRDD
 import com.github.sadikovi.spark.util.Utils
