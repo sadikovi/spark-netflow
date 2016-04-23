@@ -17,6 +17,7 @@
 package com.github.sadikovi.spark.netflow.index
 
 import java.nio.ByteOrder
+import java.nio.charset.Charset
 
 import io.netty.buffer.ByteBuf
 
@@ -32,6 +33,9 @@ object StatisticsUtils {
   val TYPE_COUNT: Byte = 1
   val TYPE_MINMAX: Byte = 2
   val TYPE_SET: Byte = 4
+
+  // Default charset for string conversion
+  val DEFAULT_CHARSET: String = "UTF-8"
 
   /** Convert endianness into byte */
   def getEndiannessIndex(endianness: ByteOrder): Byte = {
@@ -52,7 +56,7 @@ object StatisticsUtils {
       s"Written ${end - begin} bytes does not equal to $numBytes bytes")
   }
 
-  /** Get number of bytes for class, only supports numeric classes for now */
+  /** Get number of bytes for class, only supports numeric classes and strings for now */
   def getBytes(klass: Class[_]): Byte = {
     if (klass == classOf[Byte]) {
       return 1
@@ -62,6 +66,8 @@ object StatisticsUtils {
       return 4
     } else if (klass == classOf[Long]) {
       return 8
+    } else if (klass == classOf[String]) {
+      return 32
     } else {
       sys.error(s"Unsuppored type $klass")
     }
@@ -73,6 +79,7 @@ object StatisticsUtils {
     case 2 => classOf[Short]
     case 4 => classOf[Int]
     case 8 => classOf[Long]
+    case 32 => classOf[String]
     case other => sys.error(s"Unsupported number of bytes $numBytes")
   }
 
@@ -86,6 +93,10 @@ object StatisticsUtils {
       buffer.writeInt(value.asInstanceOf[Int])
     } else if (klass == classOf[Long]) {
       buffer.writeLong(value.asInstanceOf[Long])
+    } else if (klass == classOf[String]) {
+      val chars = value.asInstanceOf[String].getBytes(Charset.forName(DEFAULT_CHARSET))
+      buffer.writeInt(chars.length)
+      buffer.writeBytes(chars)
     } else {
       sys.error(s"Unsupported field type $klass")
     }
@@ -101,6 +112,11 @@ object StatisticsUtils {
       buffer.readInt()
     } else if (klass == classOf[Long]) {
       buffer.readLong()
+    } else if (klass == classOf[String]) {
+      val length = buffer.readInt()
+      val chars = new Array[Byte](length)
+      buffer.readBytes(chars)
+      new String(chars, Charset.forName(DEFAULT_CHARSET))
     } else {
       sys.error(s"Unsupported field type $klass")
     }

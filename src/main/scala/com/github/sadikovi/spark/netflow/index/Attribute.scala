@@ -34,29 +34,9 @@ case class Attribute[T](
   private var min: T = _
   private var max: T = _
   private var set: JHashSet[T] = if (isSetEnabled) new JHashSet() else null
+  private var hasNull: Boolean = false
 
-  /** Add value to the attribute, it automatically checks all available modes */
-  def addValue(value: T): Unit = {
-    require(value != null, "Cannot add null value")
-
-    if (isCountEnabled) {
-      count += 1
-    }
-
-    if (isMinMaxEnabled) {
-      if (min == null || !lt(min, value)) {
-        min = value
-      }
-
-      if (max == null || lt(max, value)) {
-        max = value
-      }
-    }
-
-    if (isSetEnabled) {
-      set.add(value)
-    }
-  }
+  require(name != null && name.nonEmpty, "Attribute name is empty")
 
   private def isEnabled(flag: Byte): Boolean = {
     (flags & flag) == flag
@@ -70,6 +50,32 @@ case class Attribute[T](
 
   /** Check if set is collected by this attribute */
   def isSetEnabled(): Boolean = isEnabled(4)
+
+  /** Add value to the attribute, it automatically checks all available modes */
+  def addValue(value: T): Unit = {
+    if (!hasNull && value == null) {
+      hasNull = true
+    }
+
+    if (isCountEnabled) {
+      count += 1
+    }
+
+    // Min/max statistics are kept only for non-null values
+    if (isMinMaxEnabled && value != null) {
+      if (min == null || !lt(min, value)) {
+        min = value
+      }
+
+      if (max == null || lt(max, value)) {
+        max = value
+      }
+    }
+
+    if (isSetEnabled) {
+      set.add(value)
+    }
+  }
 
   /** Get count, if mode is enabled, otherwise None */
   def getCount(): Option[Long] = {
@@ -88,7 +94,12 @@ case class Attribute[T](
 
   /** Check if value is in min-max range, if mode is enabled, otherwise None */
   def containsInRange(value: T): Option[Boolean] = {
-    if (isMinMaxEnabled) Some(!lt(value, min) && !lt(max, value)) else None
+    if (isMinMaxEnabled) {
+      // null value is always out of range, false is returned
+      if (value != null) Some(!lt(value, min) && !lt(max, value)) else Some(false)
+    } else {
+      None
+    }
   }
 
   /** Check if value is in set, if mode is enabled, otherwise None */
@@ -102,21 +113,31 @@ case class Attribute[T](
     count = value
   }
 
-  /** Update min/max directly with values */
+  /** Update min/max directly with values, lazily update `hasNull` */
   private[index] def setMinMax(minValue: T, maxValue: T): Unit = {
     require(isMinMaxEnabled, s"Min-max mode is disabled, bit flags: $flags")
+    hasNull = hasNull || minValue == null || maxValue == null
     min = minValue
     max = maxValue
   }
 
-  /** Update set directly with value */
+  /** Update set directly with value, lazily update `hasNull` */
   private[index] def setSet(setValue: JHashSet[T]): Unit = {
     require(isSetEnabled, s"Set mode is disabled, bit flags: $flags")
+    hasNull = hasNull || setValue == null || setValue.contains(null)
     set = setValue
   }
 
   /** Get actual generic runtime class */
   def getClassTag(): Class[_] = klass
+
+  /**
+   * Whether or not attribute has null values.
+   * It checks initial state of min, max and set, and tracks values being added, thus overall
+   * nullability is cumulative effect of states.
+   */
+  def containsNull(): Boolean = hasNull || (isSetEnabled && (set == null || set.contains(null))) ||
+    (isMinMaxEnabled && (min == null || max == null))
 
   override def toString(): String = {
     s"${getClass().getCanonicalName}[name: $name, bit flags: $flags, tag: $tag]"

@@ -18,7 +18,6 @@ package com.github.sadikovi.spark.netflow.index
 
 import java.io.OutputStream
 import java.nio.ByteOrder
-import java.nio.charset.Charset
 
 import scala.collection.GenTraversableOnce
 import scala.collection.JavaConverters._
@@ -47,55 +46,65 @@ class StatisticsWriter(private val endianness: ByteOrder, private val attrs: Seq
   }
 
   /** Write attribute header (flags, name, etc). Exposed to a package for testing purposes */
-  private[index] def writeAttributeHeader(flags: Byte, key: String, charset: Charset): Unit = {
+  private[index] def writeAttributeHeader(flags: Byte, key: String, hasNull: Boolean): Unit = {
     buffer.writeByte(StatisticsUtils.MAGIC_1)
     buffer.writeByte(StatisticsUtils.MAGIC_2)
     buffer.writeByte(flags)
-    // Bytes of the key based on charset
-    val charBytes = key.getBytes(charset)
-    buffer.writeInt(charBytes.length)
-    buffer.writeBytes(charBytes)
+    buffer.writeBoolean(hasNull)
+    // Bytes of the key based on charset, this will write length as integer and array of bytes
+    StatisticsUtils.writeValue(buffer, key, classOf[String])
   }
 
   /** Generic write method for arbitrary sequence of elements */
   private def writeElements(
-      tpe: Byte, klass: Class[_], size: Int, elems: GenTraversableOnce[_]): Unit = {
+      tpe: Byte,
+      klass: Class[_],
+      size: Int,
+      elems: GenTraversableOnce[_],
+      hasNull: Boolean): Unit = {
     buffer.writeByte(tpe)
     buffer.writeByte(StatisticsUtils.getBytes(klass))
     buffer.writeInt(size)
     val iter = elems.toIterator
     while (iter.hasNext) {
       val elem = iter.next
-      require(elem != null, s"Cannot write value $elem")
-      StatisticsUtils.writeValue(buffer, elem, klass)
+      if (hasNull) {
+        buffer.writeBoolean(elem == null)
+      }
+
+      if (!hasNull || elem != null) {
+        StatisticsUtils.writeValue(buffer, elem, klass)
+      }
     }
   }
 
-  private def writeElements(tpe: Byte, klass: Class[_], elems: GenTraversableOnce[_]): Unit = {
-    writeElements(tpe, klass, elems.size, elems)
+  private def writeElements(
+      tpe: Byte, klass: Class[_], elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
+    writeElements(tpe, klass, elems.size, elems, hasNull)
   }
 
   /** Internal method to write single attribute. Exposed to a package for testing purposes */
-  private[index] def writeAttribute(attr: Attribute[_]): Unit = {
+  def writeAttribute(attr: Attribute[_]): Unit = {
+    val hasNull = attr.containsNull()
     // Currently we force ASCII encoding for an attribute name
-    writeAttributeHeader(attr.flags, attr.name, Charset.forName("ASCII"))
+    writeAttributeHeader(attr.flags, attr.name, hasNull)
     // Attribute "count" parameter is always of long type regardless of runtime class
     attr.getCount() match {
       case Some(count) =>
-        writeElements(StatisticsUtils.TYPE_COUNT, classOf[Long], Seq[Long](count))
+        writeElements(StatisticsUtils.TYPE_COUNT, classOf[Long], Seq[Long](count), hasNull)
       case None => // do nothing
     }
 
     attr.getMinMax() match {
       case Some((min, max)) =>
-        writeElements(StatisticsUtils.TYPE_MINMAX, attr.getClassTag(), Seq(min, max))
+        writeElements(StatisticsUtils.TYPE_MINMAX, attr.getClassTag(), Seq(min, max), hasNull)
       case None => // do nothing
     }
 
     attr.getSet() match {
       case Some(set) =>
         writeElements(StatisticsUtils.TYPE_SET, attr.getClassTag(), set.size(),
-          set.iterator.asScala)
+          set.iterator.asScala, hasNull)
       case None => // do nothing
     }
   }

@@ -163,4 +163,66 @@ class StatisticsSuite extends UnitTestSpec {
     b.getClassTag() should be (classOf[Int])
     c.getClassTag() should be (classOf[Long])
   }
+
+  test("check null on empty attribute") {
+    val attr = Attribute[Int]("a", _ < _, 7)
+    attr.containsNull() should be (true)
+  }
+
+  test("check null on non-null attribute") {
+    val attr = Attribute[Int]("a", _ < _, 7)
+    attr.addValue(1)
+    attr.addValue(2)
+    attr.containsNull() should be (false)
+  }
+
+  test("check null on null attribute") {
+    val attr = Attribute[String]("a", _ < _, 7)
+    attr.addValue("a")
+    attr.addValue("b")
+    attr.addValue(null)
+    attr.containsNull() should be (true)
+  }
+
+  test("check null on manually set attribute 1") {
+    val attr = Attribute[String]("a", _ < _, 7)
+    attr.setCount(10)
+    attr.setMinMax("a", null)
+    attr.containsNull() should be (true)
+  }
+
+  test("check null on manually set attribute 2") {
+    val attr = Attribute[String]("a", _ < _, 7)
+    attr.setMinMax("a", "b")
+    attr.containsNull() should be (false)
+  }
+
+  test("check null on manually set attribute 3") {
+    val attr = Attribute[String]("a", _ < _, 7)
+    val set = new JHashSet[String]()
+    set.add(null)
+    attr.setMinMax("a", "b")
+    attr.setSet(set)
+    attr.containsNull() should be (true)
+  }
+
+  test("attribute contains null in range") {
+    var attr = Attribute[String]("a", _ < _, 7)
+    attr.addValue("a")
+    attr.containsInRange(null) should be (Some(false))
+
+    attr = Attribute[String]("a", _ < _, 1)
+    attr.addValue("a")
+    attr.containsInRange(null) should be (None)
+  }
+
+  test("attribute contains null in set") {
+    var attr = Attribute[String]("a", _ < _, 4)
+    attr.addValue("a")
+    attr.containsInSet(null) should be (Some(false))
+
+    attr = Attribute[String]("a", _ < _, 4)
+    attr.addValue(null)
+    attr.containsInSet(null) should be (Some(true))
+  }
 }
