@@ -16,7 +16,12 @@
 
 package com.github.sadikovi.spark.netflow.index
 
+import java.nio.ByteOrder
 import java.util.{HashSet => JHashSet}
+
+import io.netty.buffer.{ByteBuf, Unpooled}
+
+import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.UnitTestSpec
 
 class StatisticsSuite extends UnitTestSpec {
@@ -66,6 +71,14 @@ class StatisticsSuite extends UnitTestSpec {
     attr.getCount() should be (Some(3))
     attr.containsInRange(2) should be (Some(true))
     attr.containsInSet(2) should be (Some(true))
+  }
+
+  test("get number of statistics") {
+    Attribute[Int]("a", 1).numStatistics() should be (1)
+    Attribute[Int]("a", 3).numStatistics() should be (2)
+    Attribute[Int]("a", 5).numStatistics() should be (2)
+    Attribute[Int]("a", 6).numStatistics() should be (2)
+    Attribute[Int]("a", 7).numStatistics() should be (3)
   }
 
   test("get value from attribute for range mode") {
@@ -224,5 +237,146 @@ class StatisticsSuite extends UnitTestSpec {
     attr = Attribute[String]("a", 4)
     attr.addValue(null)
     attr.containsInSet(null) should be (Some(true))
+  }
+
+  test("statistics utils - getBytes") {
+    StatisticsUtils.getBytes(classOf[Byte]) should be (1)
+    StatisticsUtils.getBytes(classOf[Short]) should be (2)
+    StatisticsUtils.getBytes(classOf[Int]) should be (4)
+    StatisticsUtils.getBytes(classOf[Long]) should be (8)
+    StatisticsUtils.getBytes(classOf[String]) should be (32)
+
+    intercept[RuntimeException] {
+      StatisticsUtils.getBytes(classOf[Char])
+    }
+  }
+
+  test("statistics-utils - getClassTag") {
+    StatisticsUtils.getClassTag(1) should be (classOf[Byte])
+    StatisticsUtils.getClassTag(2) should be (classOf[Short])
+    StatisticsUtils.getClassTag(4) should be (classOf[Int])
+    StatisticsUtils.getClassTag(8) should be (classOf[Long])
+    StatisticsUtils.getClassTag(32) should be (classOf[String])
+
+    intercept[RuntimeException] {
+      StatisticsUtils.getClassTag(16)
+    }
+  }
+
+  test("statistics-utils - withBytes") {
+    val buffer: ByteBuf = Unpooled.buffer()
+    StatisticsUtils.withBytes(buffer, 4) { buf =>
+      buf.writeInt(123)
+    }
+
+    // This should fail since we request 4 bytes, but write 8 bytes
+    intercept[IllegalArgumentException] {
+      StatisticsUtils.withBytes(buffer, 4) { buf =>
+        buf.writeLong(123L)
+      }
+    }
+  }
+
+  test("statistics-utils - getEndianness") {
+    StatisticsUtils.getEndianness(2) should be (ByteOrder.BIG_ENDIAN)
+    StatisticsUtils.getEndianness(0) should be (ByteOrder.BIG_ENDIAN)
+    StatisticsUtils.getEndianness(-1) should be (ByteOrder.BIG_ENDIAN)
+    StatisticsUtils.getEndianness(1) should be (ByteOrder.LITTLE_ENDIAN)
+  }
+
+  test("statistics-utils - getEndiannessIndex") {
+    StatisticsUtils.getEndiannessIndex(ByteOrder.BIG_ENDIAN) should be (2)
+    StatisticsUtils.getEndiannessIndex(ByteOrder.LITTLE_ENDIAN) should be (1)
+  }
+
+  test("statistics-utils - getEndianness 2") {
+    StatisticsUtils.getEndianness(StatisticsUtils.getEndiannessIndex(
+      ByteOrder.BIG_ENDIAN)) should be (ByteOrder.BIG_ENDIAN)
+    StatisticsUtils.getEndianness(StatisticsUtils.getEndiannessIndex(
+      ByteOrder.LITTLE_ENDIAN)) should be (ByteOrder.LITTLE_ENDIAN)
+  }
+
+  test("statistics-utils - writeValue/readValue") {
+    val buffer: ByteBuf = Unpooled.buffer()
+    StatisticsUtils.writeValue(buffer, Byte.MaxValue, classOf[Byte])
+    StatisticsUtils.readValue(buffer, classOf[Byte]) should be (Byte.MaxValue)
+
+    StatisticsUtils.writeValue(buffer, Short.MaxValue, classOf[Short])
+    StatisticsUtils.readValue(buffer, classOf[Short]) should be (Short.MaxValue)
+
+    StatisticsUtils.writeValue(buffer, Int.MaxValue, classOf[Int])
+    StatisticsUtils.readValue(buffer, classOf[Int]) should be (Int.MaxValue)
+
+    StatisticsUtils.writeValue(buffer, Long.MaxValue, classOf[Long])
+    StatisticsUtils.readValue(buffer, classOf[Long]) should be (Long.MaxValue)
+
+    StatisticsUtils.writeValue(buffer, "!QAZ1qaz", classOf[String])
+    StatisticsUtils.readValue(buffer, classOf[String]) should be ("!QAZ1qaz")
+  }
+
+  test("write and read empty statistics") {
+    Utils.withTempFile { file =>
+      val writer = new StatisticsWriter(ByteOrder.LITTLE_ENDIAN, Seq.empty)
+      writer.save(file.toString)
+      val reader = new StatisticsReader()
+      reader.load(file.toString).length should be (0)
+    }
+  }
+
+  test("write and read empty attribute") {
+    val empty = Attribute[Long]("empty", 7)
+
+    Utils.withTempFile { file =>
+      val writer = new StatisticsWriter(ByteOrder.LITTLE_ENDIAN, Seq(empty))
+      writer.save(file.toString)
+      val reader = new StatisticsReader()
+      val maybeEmpty = reader.load(file.toString).head
+
+      empty.equals(maybeEmpty) should be (true)
+    }
+  }
+
+  test("write and read non-null attributes") {
+    val a = Attribute[Int]("a", 3)
+    a.addValue(-1)
+    a.addValue(0)
+    a.addValue(2)
+    val b = Attribute[Short]("b", 6)
+    b.addValue(-2)
+    b.addValue(-2)
+    b.addValue(-1)
+
+    Utils.withTempFile { file =>
+      val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, Seq(a, b))
+      writer.save(file.toString)
+      val reader = new StatisticsReader()
+      val attrs = reader.load(file.toString)
+
+      attrs.length should be (2)
+      a.equals(attrs.head) should be (true)
+      b.equals(attrs.last) should be (true)
+    }
+  }
+
+  test("write and read mixed attributes") {
+    val a = Attribute[String]("a", 3)
+    a.addValue("a")
+    a.addValue("b")
+    a.addValue(null)
+    a.addValue("c")
+    val b = Attribute[Short]("b", 6)
+    b.addValue(1)
+    b.addValue(0)
+
+    Utils.withTempFile { file =>
+      val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, Seq(a, b))
+      writer.save(file.toString)
+      val reader = new StatisticsReader()
+      val attrs = reader.load(file.toString)
+
+      attrs.length should be (2)
+      a.equals(attrs.head) should be (true)
+      b.equals(attrs.last) should be (true)
+    }
   }
 }

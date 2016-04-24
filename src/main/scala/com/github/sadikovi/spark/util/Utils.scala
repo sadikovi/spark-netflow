@@ -18,6 +18,9 @@ package com.github.sadikovi.spark.util
 
 import java.util.UUID
 
+import org.apache.hadoop.conf.{Configuration => HadoopConf}
+import org.apache.hadoop.fs.{Path => HadoopPath}
+
 import org.apache.spark.network.util.JavaUtils
 
 private[spark] object Utils {
@@ -46,6 +49,11 @@ private[spark] object Utils {
    */
   def getContextClassLoader(): ClassLoader = {
     Option(Thread.currentThread().getContextClassLoader).getOrElse(getClass.getClassLoader)
+  }
+
+  /** Return updated path with suffix appended */
+  def withSuffix(path: HadoopPath, suffix: String*): HadoopPath = {
+    path.suffix(s"${HadoopPath.SEPARATOR}${suffix.mkString(HadoopPath.SEPARATOR)}")
   }
 
   /**
@@ -118,5 +126,36 @@ private[spark] object Utils {
 
       Math.ceil(sum / n / sample).toLong
     }
+  }
+
+  /** Create temporary directory on local file system */
+  def createTempDir(
+      root: String = System.getProperty("java.io.tmpdir"),
+      namePrefix: String = "netflow"): HadoopPath = {
+    val dir = Utils.withSuffix(new HadoopPath(root), namePrefix, UUID.randomUUID().toString)
+    val fs = dir.getFileSystem(new HadoopConf(false))
+    fs.mkdirs(dir)
+    dir
+  }
+
+  /** Execute block of code with temporary hadoop path */
+  private def withTempHadoopPath(path: HadoopPath)(func: HadoopPath => Unit): Unit = {
+    try {
+      func(path)
+    } finally {
+      val fs = path.getFileSystem(new HadoopConf(false))
+      fs.delete(path, true)
+    }
+  }
+
+  /** Execute code block with created temporary directory */
+  def withTempDir(func: HadoopPath => Unit): Unit = {
+    withTempHadoopPath(Utils.createTempDir())(func)
+  }
+
+  /** Execute code block with created temporary file */
+  def withTempFile(func: HadoopPath => Unit): Unit = {
+    val file = Utils.withSuffix(Utils.createTempDir(), UUID.randomUUID().toString)
+    withTempHadoopPath(file)(func)
   }
 }

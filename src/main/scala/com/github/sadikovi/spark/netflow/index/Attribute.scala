@@ -140,23 +140,24 @@ class Attribute[T](
 
   /** Internal method to add arbitrary statistics for a specific type */
   private[index] def setStatistics(statsType: Int, iter: Iterator[_]): Unit = {
-    require(iter.hasNext, "Empty iterator for statistics")
-    if (statsType == StatisticsUtils.TYPE_COUNT) {
-      val count = iter.next.asInstanceOf[Long]
-      setCount(count)
-    } else if (statsType == StatisticsUtils.TYPE_MINMAX) {
-      // This will infer type from runtime classtag of attribute
-      val min = iter.next.asInstanceOf[T]
-      val max = iter.next.asInstanceOf[T]
-      setMinMax(min, max)
-    } else if (statsType == StatisticsUtils.TYPE_SET) {
-      val internalSet = new JHashSet[T]()
-      while (iter.hasNext) {
-        internalSet.add(iter.next.asInstanceOf[T])
+    if (iter.hasNext) {
+      if (statsType == StatisticsUtils.TYPE_COUNT) {
+        val count = iter.next.asInstanceOf[Long]
+        setCount(count)
+      } else if (statsType == StatisticsUtils.TYPE_MINMAX) {
+        // This will infer type from runtime classtag of attribute
+        val min = iter.next.asInstanceOf[T]
+        val max = iter.next.asInstanceOf[T]
+        setMinMax(min, max)
+      } else if (statsType == StatisticsUtils.TYPE_SET) {
+        val internalSet = new JHashSet[T]()
+        while (iter.hasNext) {
+          internalSet.add(iter.next.asInstanceOf[T])
+        }
+        setSet(internalSet)
+      } else {
+        sys.error(s"Unknown statistics type $statsType")
       }
-      setSet(internalSet)
-    } else {
-      sys.error(s"Unknown statistics type $statsType")
     }
   }
 
@@ -170,6 +171,17 @@ class Attribute[T](
    */
   def containsNull(): Boolean = hasNull || (isSetEnabled && (set == null || set.contains(null))) ||
     (isMinMaxEnabled && (min == null || max == null))
+
+  override def equals(other: Any): Boolean = other match {
+    case castMatch: Attribute[T] =>
+      name == castMatch.name &&
+      flags == castMatch.flags &&
+      containsNull() == castMatch.containsNull() &&
+      getCount() == castMatch.getCount() &&
+      getMinMax() == castMatch.getMinMax() &&
+      getSet() == castMatch.getSet()
+    case nonMatch => false
+  }
 
   override def toString(): String = {
     s"${getClass().getCanonicalName}[name: $name, bit flags: $flags, tag: $tag]"

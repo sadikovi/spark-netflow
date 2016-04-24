@@ -18,6 +18,8 @@ package com.github.sadikovi.spark.netflow.index
 
 import org.apache.hadoop.fs.{Path => HadoopPath}
 
+import com.github.sadikovi.spark.util.Utils
+
 /**
  * [[StatisticsPathResolver]] is a simple class to find the statistics path based on a file path.
  * Also takes into account possible root to store/read statistics. Note that root may not
@@ -41,19 +43,14 @@ case class StatisticsPathResolver(maybeRoot: Option[String]) {
    * }}}
    */
   def getStatisticsPath(filePath: String): String = {
-    // Return updated path with suffix appended
-    def withSuffix(path: HadoopPath, suffix: String): HadoopPath = {
-      path.suffix(s"${HadoopPath.SEPARATOR}${suffix}")
-    }
-
     val path = new HadoopPath(filePath)
     maybeRoot match {
       case Some(root) =>
         val rootPath = new HadoopPath(root)
-        withSuffix(HadoopPath.mergePaths(rootPath, path).getParent(),
+        Utils.withSuffix(HadoopPath.mergePaths(rootPath, path).getParent(),
           getStatisticsName(path.getName)).toString
       case None =>
-        withSuffix(path.getParent(), getStatisticsName(path.getName)).toString
+        Utils.withSuffix(path.getParent(), getStatisticsName(path.getName)).toString
     }
   }
 
