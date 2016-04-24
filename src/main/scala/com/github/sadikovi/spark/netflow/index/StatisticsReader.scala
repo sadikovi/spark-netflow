@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.{Path => HadoopPath}
  * parsed attributes. Note that type inference does not apply, so sequence of arbitrary attributes
  * is returned.
  */
-class StatisticsReader {
+private[spark] class StatisticsReader {
   var buffer: ByteBuf = null
 
   private def checkMagicNumbers(magic1: Short, magic2: Short): Unit = {

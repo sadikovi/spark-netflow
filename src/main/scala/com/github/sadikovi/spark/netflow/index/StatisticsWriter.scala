@@ -32,7 +32,9 @@ import org.apache.hadoop.fs.{Path => HadoopPath}
  * types of attributes are supported. `OutputStream` is handled and closed automatically, with
  * underlying byte buffer.
  */
-class StatisticsWriter(private val endianness: ByteOrder, private val attrs: Seq[Attribute[_]]) {
+private[spark] class StatisticsWriter(
+    private val endianness: ByteOrder,
+    private val attrs: Seq[Attribute[_]]) {
   var buffer: ByteBuf = Unpooled.buffer().order(endianness)
   init()
 

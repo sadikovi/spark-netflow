@@ -28,7 +28,10 @@ import scala.reflect.ClassTag
  * `sortWith` method. Name must unique to the attribute.
  */
 class Attribute[T](
-    val name: String, val lt: (T, T) => Boolean, val flags: Byte)(implicit tag: ClassTag[T]) {
+    val name: String,
+    val lt: (T, T) => Boolean,
+    val flags: Byte,
+    val isNullable: Boolean)(implicit tag: ClassTag[T]) {
   private val klass = tag.runtimeClass
   private var count: Long = if (isCountEnabled) 0 else Long.MinValue
   private var min: T = _
@@ -56,7 +59,20 @@ class Attribute[T](
   }
 
   /** Add value to the attribute, it automatically checks all available modes */
-  def addValue(value: T): Unit = {
+  def addValue(unresolvedValue: Any): Unit = {
+    if (unresolvedValue != null) {
+      require(StatisticsUtils.softCompare(unresolvedValue.getClass(), getClassTag()),
+        s"Value '$unresolvedValue' does not match runtime class '${getClassTag()}'")
+    }
+
+    val value = unresolvedValue.asInstanceOf[T]
+
+    // If nullability is false and value is null, no-op
+    if (!isNullable && value == null) {
+      return
+    }
+
+    // Update `hasNull` flag, if required
     if (!hasNull && value == null) {
       hasNull = true
     }
@@ -189,10 +205,6 @@ class Attribute[T](
 }
 
 object Attribute {
-  private def apply[T: ClassTag](name: String, lt: (T, T) => Boolean, flags: Byte): Attribute[T] = {
-    new Attribute[T](name, lt, flags)
-  }
-
   def apply[T](name: String, flags: Int)(implicit tag: ClassTag[T]): Attribute[T] = {
     apply(name, flags.toByte, tag.runtimeClass.asInstanceOf[Class[T]])
   }
@@ -200,15 +212,15 @@ object Attribute {
   def apply[T: ClassTag](name: String, flags: Int, klass: Class[T]): Attribute[T] = {
     val byteFlags = flags.toByte
     if (klass == classOf[Byte]) {
-      new Attribute[Byte](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+      new Attribute[Byte](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
     } else if (klass == classOf[Short]) {
-      new Attribute[Short](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+      new Attribute[Short](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
     } else if (klass == classOf[Int]) {
-      new Attribute[Int](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+      new Attribute[Int](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
     } else if (klass == classOf[Long]) {
-      new Attribute[Long](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+      new Attribute[Long](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
     } else if (klass == classOf[String]) {
-      new Attribute[String](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+      new Attribute[String](name, _ < _, byteFlags, true).asInstanceOf[Attribute[T]]
     } else {
       sys.error(s"Unsupported attribute class $klass")
     }

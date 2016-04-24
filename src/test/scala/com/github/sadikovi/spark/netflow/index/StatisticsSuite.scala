@@ -73,6 +73,38 @@ class StatisticsSuite extends UnitTestSpec {
     attr.containsInSet(2) should be (Some(true))
   }
 
+  test("fail when adding value of invalid type") {
+    intercept[IllegalArgumentException] {
+      Attribute[Int]("int", 7).addValue("abc")
+    }
+
+    intercept[IllegalArgumentException] {
+      Attribute[String]("str", 7).addValue(1)
+    }
+  }
+
+  test("add value for convertible type") {
+    val attr = Attribute[Int]("a", 7)
+    val value: java.lang.Integer = 11
+    attr.addValue(value)
+    attr.getCount() should be (Some(1))
+    attr.getMinMax() should be (Some((11, 11)))
+    attr.containsInSet(11) should be (Some(true))
+  }
+
+  test("no-op when adding null for non-nullable type") {
+    val attr = Attribute[Int]("a", 7)
+    attr.addValue(null)
+    attr.getCount() should be (Some(0))
+  }
+
+  test("add null for nullable type") {
+    val attr = Attribute[String]("a", 7)
+    attr.addValue(null)
+    attr.getCount() should be (Some(1))
+    attr.containsInSet(null) should be (Some(true))
+  }
+
   test("get number of statistics") {
     Attribute[Int]("a", 1).numStatistics() should be (1)
     Attribute[Int]("a", 3).numStatistics() should be (2)
@@ -314,6 +346,22 @@ class StatisticsSuite extends UnitTestSpec {
     StatisticsUtils.readValue(buffer, classOf[String]) should be ("!QAZ1qaz")
   }
 
+  test("statistics-utils - javaToScala") {
+    StatisticsUtils.javaToScala(classOf[java.lang.Integer]) should be (classOf[Int])
+    StatisticsUtils.javaToScala(classOf[java.lang.Short]) should be (classOf[Short])
+    StatisticsUtils.javaToScala(classOf[java.lang.Object]) should be (classOf[java.lang.Object])
+    StatisticsUtils.javaToScala(classOf[Any]) should be (classOf[Any])
+  }
+
+  test("statistics-utils - softCompare") {
+    StatisticsUtils.softCompare(classOf[Int], classOf[Int]) should be (true)
+    StatisticsUtils.softCompare(classOf[Int], classOf[Short]) should be (false)
+    StatisticsUtils.softCompare(classOf[Int], classOf[java.lang.Integer]) should be (true)
+    StatisticsUtils.softCompare(classOf[Int], classOf[java.lang.Long]) should be (false)
+    StatisticsUtils.softCompare(classOf[java.lang.Object],
+      classOf[java.lang.Object]) should be (true)
+  }
+
   test("write and read empty statistics") {
     Utils.withTempFile { file =>
       val writer = new StatisticsWriter(ByteOrder.LITTLE_ENDIAN, Seq.empty)
@@ -342,9 +390,9 @@ class StatisticsSuite extends UnitTestSpec {
     a.addValue(0)
     a.addValue(2)
     val b = Attribute[Short]("b", 6)
-    b.addValue(-2)
-    b.addValue(-2)
-    b.addValue(-1)
+    b.addValue(-2.toShort)
+    b.addValue(-2.toShort)
+    b.addValue(-1.toShort)
 
     Utils.withTempFile { file =>
       val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, Seq(a, b))
@@ -365,8 +413,8 @@ class StatisticsSuite extends UnitTestSpec {
     a.addValue(null)
     a.addValue("c")
     val b = Attribute[Short]("b", 6)
-    b.addValue(1)
-    b.addValue(0)
+    b.addValue(1.toShort)
+    b.addValue(0.toShort)
 
     Utils.withTempFile { file =>
       val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, Seq(a, b))
@@ -377,6 +425,63 @@ class StatisticsSuite extends UnitTestSpec {
       attrs.length should be (2)
       a.equals(attrs.head) should be (true)
       b.equals(attrs.last) should be (true)
+    }
+  }
+
+  test("attribute map - register attribute") {
+    val map = new AttributeMap().
+      registerAttribute(Attribute[Int]("int", 6)).
+      registerAttribute(Attribute[String]("str", 3))
+    map.getMap().size should be (2)
+    map.getMap().contains("int") should be (true)
+    map.getMap().contains("str") should be (true)
+  }
+
+  test("attribute map - register sequence") {
+    val map = new AttributeMap().registerAttributes(
+      Attribute[Int]("int", 6) :: Attribute[String]("str", 3) :: Nil)
+    map.getMap().size should be (2)
+    map.getMap().contains("int") should be (true)
+    map.getMap().contains("str") should be (true)
+  }
+
+  test("attribute map - update statistics") {
+    val str = Attribute[String]("str", 7)
+    val map = new AttributeMap().registerAttribute(str)
+    map.updateStatistics("str", "abc")
+    map.updateStatistics("str", "bcd")
+    map.updateStatistics("str", null)
+
+    str.getCount() should be (Some(3))
+    str.getMinMax() should be (Some(("abc", "bcd")))
+    str.containsInSet("abc") should be (Some(true))
+    str.containsInSet("bcd") should be (Some(true))
+    str.containsInSet(null) should be (Some(true))
+  }
+
+  test("attribute map - write/read statistics") {
+    Utils.withTempFile { file =>
+      val int = Attribute[Int]("int", 6)
+      val str = Attribute[String]("str", 3)
+      var map = new AttributeMap().registerAttributes(Seq(int, str))
+      // Update statistics
+      map.updateStatistics("int", 3)
+      map.updateStatistics("int", 5)
+      map.updateStatistics("str", null)
+      map.updateStatistics("str", "a")
+      map.updateStatistics("str", "b")
+      // Check update result
+      int.getCount() should be (None)
+      int.getMinMax() should be (Some((3, 5)))
+      str.getCount() should be (Some(3))
+      str.getMinMax() should be (Some(("a", "b")))
+
+      // Write into temporary file
+      map.write(file.toString)
+      // Read it back and compare result
+      map = AttributeMap.read(file.toString)
+      int.equals(map.getMap().apply("int")) should be (true)
+      str.equals(map.getMap().apply("str")) should be (true)
     }
   }
 }

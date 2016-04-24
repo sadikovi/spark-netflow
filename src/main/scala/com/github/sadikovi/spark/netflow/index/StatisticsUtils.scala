@@ -121,4 +121,27 @@ object StatisticsUtils {
       sys.error(s"Unsupported field type $klass")
     }
   }
+
+  /** Convert java class to closely matched scala class, otherwise return itself */
+  def javaToScala(klass: Class[_]): Class[_] = {
+    if (klass == classOf[java.lang.Byte]) {
+      classOf[Byte]
+    } else if (klass == classOf[java.lang.Short]) {
+      classOf[Short]
+    } else if (klass == classOf[java.lang.Integer]) {
+      classOf[Int]
+    } else if (klass == classOf[java.lang.Long]) {
+      classOf[Long]
+    } else {
+      klass
+    }
+  }
+
+  /**
+   * Compare classes and return true, if both classes match either directly or with conversion,
+   * otherwise false
+   */
+  def softCompare(klass1: Class[_], klass2: Class[_]): Boolean = {
+    klass1 == klass2 || javaToScala(klass1) == javaToScala(klass2)
+  }
 }
