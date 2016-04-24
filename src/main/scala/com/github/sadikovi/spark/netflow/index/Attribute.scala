@@ -27,8 +27,8 @@ import scala.reflect.ClassTag
  * In order to create attribute comparison function is required similar the `lt` function used in
  * `sortWith` method. Name must unique to the attribute.
  */
-case class Attribute[T](
-    name: String, lt: (T, T) => Boolean, flags: Byte)(implicit tag: ClassTag[T]) {
+class Attribute[T](
+    val name: String, val lt: (T, T) => Boolean, val flags: Byte)(implicit tag: ClassTag[T]) {
   private val klass = tag.runtimeClass
   private var count: Long = if (isCountEnabled) 0 else Long.MinValue
   private var min: T = _
@@ -50,6 +50,10 @@ case class Attribute[T](
 
   /** Check if set is collected by this attribute */
   def isSetEnabled(): Boolean = isEnabled(4)
+
+  def numStatistics(): Int = {
+    Array(isCountEnabled, isMinMaxEnabled, isSetEnabled).filter(_ & true).length
+  }
 
   /** Add value to the attribute, it automatically checks all available modes */
   def addValue(value: T): Unit = {
@@ -93,18 +97,24 @@ case class Attribute[T](
   }
 
   /** Check if value is in min-max range, if mode is enabled, otherwise None */
-  def containsInRange(value: T): Option[Boolean] = {
+  def containsInRange(value: Any): Option[Boolean] = {
     if (isMinMaxEnabled) {
+      val updatedValue = value.asInstanceOf[T]
       // null value is always out of range, false is returned
-      if (value != null) Some(!lt(value, min) && !lt(max, value)) else Some(false)
+      if (value != null) Some(!lt(updatedValue, min) && !lt(max, updatedValue)) else Some(false)
     } else {
       None
     }
   }
 
   /** Check if value is in set, if mode is enabled, otherwise None */
-  def containsInSet(value: T): Option[Boolean] = {
+  def containsInSet(value: Any): Option[Boolean] = {
     if (isSetEnabled) Some(set.contains(value)) else None
+  }
+
+  /** Update nullability of the attribute */
+  def setNull(isNull: Boolean): Unit = {
+    hasNull = isNull
   }
 
   /** Update count with value */
@@ -116,7 +126,7 @@ case class Attribute[T](
   /** Update min/max directly with values, lazily update `hasNull` */
   private[index] def setMinMax(minValue: T, maxValue: T): Unit = {
     require(isMinMaxEnabled, s"Min-max mode is disabled, bit flags: $flags")
-    hasNull = hasNull || minValue == null || maxValue == null
+    setNull(hasNull || minValue == null || maxValue == null)
     min = minValue
     max = maxValue
   }
@@ -124,8 +134,30 @@ case class Attribute[T](
   /** Update set directly with value, lazily update `hasNull` */
   private[index] def setSet(setValue: JHashSet[T]): Unit = {
     require(isSetEnabled, s"Set mode is disabled, bit flags: $flags")
-    hasNull = hasNull || setValue == null || setValue.contains(null)
+    setNull(hasNull || setValue == null || setValue.contains(null))
     set = setValue
+  }
+
+  /** Internal method to add arbitrary statistics for a specific type */
+  private[index] def setStatistics(statsType: Int, iter: Iterator[_]): Unit = {
+    require(iter.hasNext, "Empty iterator for statistics")
+    if (statsType == StatisticsUtils.TYPE_COUNT) {
+      val count = iter.next.asInstanceOf[Long]
+      setCount(count)
+    } else if (statsType == StatisticsUtils.TYPE_MINMAX) {
+      // This will infer type from runtime classtag of attribute
+      val min = iter.next.asInstanceOf[T]
+      val max = iter.next.asInstanceOf[T]
+      setMinMax(min, max)
+    } else if (statsType == StatisticsUtils.TYPE_SET) {
+      val internalSet = new JHashSet[T]()
+      while (iter.hasNext) {
+        internalSet.add(iter.next.asInstanceOf[T])
+      }
+      setSet(internalSet)
+    } else {
+      sys.error(s"Unknown statistics type $statsType")
+    }
   }
 
   /** Get actual generic runtime class */
@@ -141,5 +173,32 @@ case class Attribute[T](
 
   override def toString(): String = {
     s"${getClass().getCanonicalName}[name: $name, bit flags: $flags, tag: $tag]"
+  }
+}
+
+object Attribute {
+  private def apply[T: ClassTag](name: String, lt: (T, T) => Boolean, flags: Byte): Attribute[T] = {
+    new Attribute[T](name, lt, flags)
+  }
+
+  def apply[T](name: String, flags: Int)(implicit tag: ClassTag[T]): Attribute[T] = {
+    apply(name, flags.toByte, tag.runtimeClass.asInstanceOf[Class[T]])
+  }
+
+  def apply[T: ClassTag](name: String, flags: Int, klass: Class[T]): Attribute[T] = {
+    val byteFlags = flags.toByte
+    if (klass == classOf[Byte]) {
+      new Attribute[Byte](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+    } else if (klass == classOf[Short]) {
+      new Attribute[Short](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+    } else if (klass == classOf[Int]) {
+      new Attribute[Int](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+    } else if (klass == classOf[Long]) {
+      new Attribute[Long](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+    } else if (klass == classOf[String]) {
+      new Attribute[String](name, _ < _, byteFlags).asInstanceOf[Attribute[T]]
+    } else {
+      sys.error(s"Unsupported attribute class $klass")
+    }
   }
 }

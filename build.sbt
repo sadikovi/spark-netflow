@@ -38,7 +38,7 @@ libraryDependencies ++= Seq(
 )
 
 // check deprecation without manual restart
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
 // Display full-length stacktraces from ScalaTest:
 testOptions in Test += Tests.Argument("-oF")

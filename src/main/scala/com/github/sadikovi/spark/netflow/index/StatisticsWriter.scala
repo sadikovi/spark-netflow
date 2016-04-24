@@ -46,10 +46,12 @@ class StatisticsWriter(private val endianness: ByteOrder, private val attrs: Seq
   }
 
   /** Write attribute header (flags, name, etc). Exposed to a package for testing purposes */
-  private[index] def writeAttributeHeader(flags: Byte, key: String, hasNull: Boolean): Unit = {
+  private[index] def writeAttributeHeader(
+      klass: Class[_], flags: Byte, key: String, hasNull: Boolean): Unit = {
     buffer.writeByte(StatisticsUtils.MAGIC_1)
     buffer.writeByte(StatisticsUtils.MAGIC_2)
     buffer.writeByte(flags)
+    buffer.writeByte(StatisticsUtils.getBytes(klass))
     buffer.writeBoolean(hasNull)
     // Bytes of the key based on charset, this will write length as integer and array of bytes
     StatisticsUtils.writeValue(buffer, key, classOf[String])
@@ -58,10 +60,7 @@ class StatisticsWriter(private val endianness: ByteOrder, private val attrs: Seq
   /** Generic write method for arbitrary sequence of elements */
   private def writeElements(
       tpe: Byte,
-      klass: Class[_],
-      size: Int,
-      elems: GenTraversableOnce[_],
-      hasNull: Boolean): Unit = {
+      klass: Class[_], size: Int, elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
     buffer.writeByte(tpe)
     buffer.writeByte(StatisticsUtils.getBytes(klass))
     buffer.writeInt(size)
@@ -84,10 +83,9 @@ class StatisticsWriter(private val endianness: ByteOrder, private val attrs: Seq
   }
 
   /** Internal method to write single attribute. Exposed to a package for testing purposes */
-  def writeAttribute(attr: Attribute[_]): Unit = {
+  private[index] def writeAttribute(attr: Attribute[_]): Unit = {
     val hasNull = attr.containsNull()
-    // Currently we force ASCII encoding for an attribute name
-    writeAttributeHeader(attr.flags, attr.name, hasNull)
+    writeAttributeHeader(attr.getClassTag(), attr.flags, attr.name, hasNull)
     // Attribute "count" parameter is always of long type regardless of runtime class
     attr.getCount() match {
       case Some(count) =>

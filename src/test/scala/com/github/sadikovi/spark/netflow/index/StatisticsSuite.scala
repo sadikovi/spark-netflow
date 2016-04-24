@@ -59,7 +59,7 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("create and update attribute") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     for (i <- 1 to 3) {
       attr.addValue(i)
     }
@@ -69,7 +69,7 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("get value from attribute for range mode") {
-    val attr = Attribute[Int]("a", _ < _, 2)
+    val attr = Attribute[Int]("a", 2)
     attr.addValue(3)
     attr.addValue(5)
     attr.containsInRange(2) should be (Some(false))
@@ -80,7 +80,7 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("get value from attribute for set mode") {
-    val attr = Attribute[Int]("a", _ < _, 4)
+    val attr = Attribute[Int]("a", 4)
     attr.addValue(3)
     attr.addValue(5)
     attr.containsInSet(2) should be (Some(false))
@@ -91,14 +91,14 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("check value using empty attribute") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     attr.getCount() should be (Some(0))
     attr.containsInRange(5) should be (Some(false))
     attr.containsInSet(5) should be (Some(false))
   }
 
   test("get value from attribute for count mode") {
-    val attr = Attribute[Int]("a", _ < _, 1)
+    val attr = Attribute[Int]("a", 1)
     attr.getCount() should be (Some(0))
     attr.addValue(3)
     attr.addValue(3)
@@ -106,14 +106,14 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("get value from attribute for incorrect mode") {
-    val attr = Attribute[Int]("a", _ < _, 8)
+    val attr = Attribute[Int]("a", 8)
     attr.getCount() should be (None)
     attr.containsInRange(1) should be (None)
     attr.containsInSet(1) should be (None)
   }
 
   test("update values of attribute directly") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     attr.setCount(10)
     attr.setMinMax(2, 5)
     val set = new JHashSet[Int]()
@@ -127,7 +127,7 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("fail when updating attribute for unset mode") {
-    val attr = Attribute[Int]("a", _ < _, 8)
+    val attr = Attribute[Int]("a", 8)
     intercept[IllegalArgumentException] {
       attr.setCount(1)
     }
@@ -142,42 +142,42 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("get internal count, min/max, set for attribute") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     attr.getCount() should be (Some(0))
     attr.getMinMax() should be (Some(null, null))
     attr.getSet() should be (Some(new JHashSet[Int]()))
   }
 
   test("get internal count for attribute") {
-    val attr = Attribute[Int]("a", _ < _, 1)
+    val attr = Attribute[Int]("a", 1)
     attr.getCount() should be (Some(0))
     attr.getMinMax() should be (None)
     attr.getSet() should be (None)
   }
 
   test("get runtime class") {
-    val a = Attribute[Short]("a", _ < _, 7)
-    val b = Attribute[Int]("b", _ < _, 7)
-    val c = Attribute[Long]("c", _ < _, 7)
+    val a = Attribute[Short]("a", 7)
+    val b = Attribute[Int]("b", 7)
+    val c = Attribute[Long]("c", 7)
     a.getClassTag() should be (classOf[Short])
     b.getClassTag() should be (classOf[Int])
     c.getClassTag() should be (classOf[Long])
   }
 
   test("check null on empty attribute") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     attr.containsNull() should be (true)
   }
 
   test("check null on non-null attribute") {
-    val attr = Attribute[Int]("a", _ < _, 7)
+    val attr = Attribute[Int]("a", 7)
     attr.addValue(1)
     attr.addValue(2)
     attr.containsNull() should be (false)
   }
 
   test("check null on null attribute") {
-    val attr = Attribute[String]("a", _ < _, 7)
+    val attr = Attribute[String]("a", 7)
     attr.addValue("a")
     attr.addValue("b")
     attr.addValue(null)
@@ -185,20 +185,20 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("check null on manually set attribute 1") {
-    val attr = Attribute[String]("a", _ < _, 7)
+    val attr = Attribute[String]("a", 7)
     attr.setCount(10)
     attr.setMinMax("a", null)
     attr.containsNull() should be (true)
   }
 
   test("check null on manually set attribute 2") {
-    val attr = Attribute[String]("a", _ < _, 7)
+    val attr = Attribute[String]("a", 7)
     attr.setMinMax("a", "b")
     attr.containsNull() should be (false)
   }
 
   test("check null on manually set attribute 3") {
-    val attr = Attribute[String]("a", _ < _, 7)
+    val attr = Attribute[String]("a", 7)
     val set = new JHashSet[String]()
     set.add(null)
     attr.setMinMax("a", "b")
@@ -207,21 +207,21 @@ class StatisticsSuite extends UnitTestSpec {
   }
 
   test("attribute contains null in range") {
-    var attr = Attribute[String]("a", _ < _, 7)
+    var attr = Attribute[String]("a", 7)
     attr.addValue("a")
     attr.containsInRange(null) should be (Some(false))
 
-    attr = Attribute[String]("a", _ < _, 1)
+    attr = Attribute[String]("a", 1)
     attr.addValue("a")
     attr.containsInRange(null) should be (None)
   }
 
   test("attribute contains null in set") {
-    var attr = Attribute[String]("a", _ < _, 4)
+    var attr = Attribute[String]("a", 4)
     attr.addValue("a")
     attr.containsInSet(null) should be (Some(false))
 
-    attr = Attribute[String]("a", _ < _, 4)
+    attr = Attribute[String]("a", 4)
     attr.addValue(null)
     attr.containsInSet(null) should be (Some(true))
   }
