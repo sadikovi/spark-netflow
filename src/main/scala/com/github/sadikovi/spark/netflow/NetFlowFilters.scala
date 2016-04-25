@@ -88,7 +88,7 @@ private[spark] object NetFlowFilters {
 
   /**
    * Update filter predicate based on attribute map. Column name of filter predicate is used as a
-   * Key of the attribute map to extract relevant attribute. For different predicate different
+   * key of the attribute map to extract relevant attribute. For different predicate different
    * statistics data is used. No-op when attribute is not found, or filter is trivial.
    */
   def updateFilter(filter: FilterPredicate, attributes: AttributeMap): FilterPredicate = {

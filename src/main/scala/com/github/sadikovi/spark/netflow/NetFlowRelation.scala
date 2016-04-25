@@ -116,13 +116,13 @@ private[netflow] class NetFlowRelation(
   // Usage of statistics, this will trigger either writing statistics or reading them and adding
   // more information to resolving predicate when filter pushdown is specified, otherwise it will
   // not collect or use statistics
-  private val pathResolver = parameters.get("statistics") match {
+  private val statisticsStatus = parameters.get("statistics") match {
     case Some("true") if usePredicatePushdown => Some(StatisticsPathResolver(None))
     case Some("false") => None
     case Some(path) if usePredicatePushdown => Some(StatisticsPathResolver(Option(path)))
     case otherValue => None
   }
-  logger.info(s"Statistics: $pathResolver")
+  logger.info(s"Statistics: $statisticsStatus")
 
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
@@ -150,10 +150,23 @@ private[netflow] class NetFlowRelation(
       logger.warn("Could not resolve input files, potentially files do not exist")
       sqlContext.sparkContext.emptyRDD[Row]
     } else {
-      // Convert to internal mapped columns
+      // Convert SQL columns to internal mapped columns, also check if statistics are enabled, so
+      // schema is adjusted to include statistics columns
       val resolvedColumns: Array[MappedColumn] = if (requiredColumns.isEmpty) {
-        logger.info("Required columns are empty, using first column instead")
-        Array(interface.getFirstColumn())
+        if (statisticsStatus.isDefined) {
+          val maybeStatisticsColumns = interface.getStatisticsColumns().toArray
+          if (maybeStatisticsColumns.nonEmpty) {
+            logger.info("Required columns are empty, using statistics columns instead")
+            maybeStatisticsColumns
+          } else {
+            logger.info("Required columns are empty, statistics columns are not provided, using " +
+              "first column instead")
+            Array(interface.getFirstColumn())
+          }
+        } else {
+          logger.info("Required columns are empty, using first column instead")
+          Array(interface.getFirstColumn())
+        }
       } else {
         requiredColumns.map(col => interface.getColumn(col))
       }
@@ -183,7 +196,7 @@ private[netflow] class NetFlowRelation(
       val fileStatuses = inputFiles.map { status =>
         val filePath = status.getPath().toString()
         val fileLen = status.getLen()
-        val statisticsPathStatus = pathResolver match {
+        val statisticsPathStatus = statisticsStatus match {
           case Some(statsResolver) =>
             val statStatus = statsResolver.getStatisticsPathStatus(filePath,
               sqlContext.sparkContext.hadoopConfiguration)
@@ -194,9 +207,31 @@ private[netflow] class NetFlowRelation(
         NetFlowFileStatus(interface.version(), filePath, fileLen, bufferSize, statisticsPathStatus)
       }
 
+      // Build statistics columns map of index -> key, where key is a column name and index is an
+      // index of the column in the sequence. This is used to identify columns during writing
+      // statistics file. Note that all statistics columns must exist in resolved columns, otherwise
+      // collecting statistics is discarded.
+      val statisticsIndex: Map[Int, MappedColumn] = statisticsStatus match {
+        case Some(_) =>
+          val statColumns = interface.getStatisticsColumns()
+          val possColumns = resolvedColumns.zipWithIndex.flatMap { pair =>
+            val (value, index) = pair
+            if (statColumns.contains(value)) Some((index, value)) else None
+          }
+
+          if (statColumns.nonEmpty &&
+              statColumns.forall(value => possColumns.exists(_._2 == value))) {
+            possColumns.toMap
+          } else {
+            Map.empty
+          }
+        case None => Map.empty
+      }
+      logger.info(s"Resolved statistics index: $statisticsIndex")
+
       // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode
       new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
-        resolvedColumns, resolvedFilter)
+        resolvedColumns, resolvedFilter, statisticsIndex)
     }
   }
 
@@ -210,7 +245,7 @@ private[netflow] class NetFlowRelation(
       s"partition mode $partitionMode, " +
       s"buffer size $bufferSize, " +
       s"predicate pushdown $usePredicatePushdown, " +
-      s"statistics $pathResolver, " +
+      s"statistics $statisticsStatus, " +
       s"conversion: $applyConversion)"
   }
 }

@@ -104,6 +104,9 @@ private[spark] class AttributeMap {
 /**
  * Interface to create or load attribute map.
  * When creating new attribute map returns map with predefined set of statistics.
+ * Note that number, name and type of attributes should be in sync with resolved interface columns,
+ * meaning that columns with attribute names should have statistics enabled, otherwise it will not
+ * collect anything, resulting in incorrect filtering.
  */
 object AttributeMap {
   def create(): AttributeMap =
