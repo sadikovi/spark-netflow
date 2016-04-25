@@ -91,13 +91,13 @@ private[spark] class AttributeMap {
   }
 
   /** Return writer for this attribute map */
-  def write(path: String, conf: HadoopConf): Unit = {
+  def write(path: String, conf: HadoopConf, overwrite: Boolean = false): Unit = {
     val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, map.values.toSeq)
-    writer.save(path, conf)
+    writer.save(path, conf, overwrite)
   }
 
   def write(path: String): Unit = {
-    write(path, new HadoopConf(true))
+    write(path, new HadoopConf(true), overwrite = false)
   }
 }
 

@@ -154,9 +154,12 @@ private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
             override def hasNext: Boolean = {
               // If raw iterator does not have any elements we assume that it is EOF and write
               // statistics into a file
+              // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
+              // then continue to extract records. For empty files, Spark will try to write
+              // statistics twice, because of double invocation of `hasNext`, we overwrite old file
               if (!rawIterator.hasNext) {
                 logWarning(s"Ready to write statistics for path: ${statStatus.path}")
-                attributes.write(statStatus.path, conf)
+                attributes.write(statStatus.path, conf, overwrite = true)
               }
               rawIterator.hasNext
             }

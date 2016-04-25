@@ -125,10 +125,13 @@ private[spark] class StatisticsWriter(
   }
 
   /** Save provided attributes into a file */
-  def save(path: String, conf: HadoopConf = new HadoopConf(true)): Unit = {
+  def save(
+      path: String,
+      conf: HadoopConf = new HadoopConf(true),
+      overwrite: Boolean = false): Unit = {
     val pt = new HadoopPath(path)
     val fs = pt.getFileSystem(conf)
-    val out = fs.create(pt, false)
+    val out = fs.create(pt, overwrite)
     internalSave(out)
     out.close()
     close()
