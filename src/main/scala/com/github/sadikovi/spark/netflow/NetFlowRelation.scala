@@ -20,7 +20,7 @@ import java.io.IOException
 
 import scala.util.{Failure, Success, Try}
 
-import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
+import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.RDD
@@ -183,12 +183,15 @@ private[netflow] class NetFlowRelation(
       val fileStatuses = inputFiles.map { status =>
         val filePath = status.getPath().toString()
         val fileLen = status.getLen()
-        val statisticsPath = pathResolver match {
-          case Some(statsResolver) => Option(statsResolver.getStatisticsPath(filePath))
+        val statisticsPathStatus = pathResolver match {
+          case Some(statsResolver) =>
+            val statStatus = statsResolver.getStatisticsPathStatus(filePath,
+              sqlContext.sparkContext.hadoopConfiguration)
+            Some(statStatus)
           case None => None
         }
 
-        NetFlowFileStatus(interface.version(), filePath, fileLen, bufferSize, statisticsPath)
+        NetFlowFileStatus(interface.version(), filePath, fileLen, bufferSize, statisticsPathStatus)
       }
 
       // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode

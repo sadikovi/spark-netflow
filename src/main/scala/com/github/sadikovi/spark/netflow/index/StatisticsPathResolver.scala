@@ -16,9 +16,17 @@
 
 package com.github.sadikovi.spark.netflow.index
 
+import org.apache.hadoop.conf.{Configuration => HadoopConf}
 import org.apache.hadoop.fs.{Path => HadoopPath}
 
 import com.github.sadikovi.spark.util.Utils
+
+/**
+ * [[StatisticsPathStatus]] is a holder of the parameters for statistics file. `path` is a
+ * fully-qualified file path, either HDFS or local file system, and `exists` indicates if file for
+ * that path exists.
+ */
+case class StatisticsPathStatus(path: String, exists: Boolean)
 
 /**
  * [[StatisticsPathResolver]] is a simple class to find the statistics path based on a file path.
@@ -52,6 +60,15 @@ case class StatisticsPathResolver(maybeRoot: Option[String]) {
       case None =>
         Utils.withSuffix(path.getParent(), getStatisticsName(path.getName)).toString
     }
+  }
+
+  /** Return statistics path status for a provided root file path */
+  def getStatisticsPathStatus(
+      filePath: String,
+      conf: HadoopConf = new HadoopConf(true)): StatisticsPathStatus = {
+    val path = new HadoopPath(getStatisticsPath(filePath))
+    val fs = path.getFileSystem(conf)
+    StatisticsPathStatus(path.toString, fs.exists(path))
   }
 
   /** Return statistics name based on original file name */

@@ -20,6 +20,8 @@ import java.nio.ByteOrder
 
 import scala.collection.mutable.HashMap
 
+import org.apache.hadoop.conf.{Configuration => HadoopConf}
+
 /**
  * [[AttributeMap]] is a statistics container for attributes. Provides API to register attributes,
  * update statistics for individual attribute and write all attributes into a file.
@@ -89,9 +91,13 @@ private[spark] class AttributeMap {
   }
 
   /** Return writer for this attribute map */
-  def write(path: String): Unit = {
+  def write(path: String, conf: HadoopConf): Unit = {
     val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, map.values.toSeq)
-    writer.save(path)
+    writer.save(path, conf)
+  }
+
+  def write(path: String): Unit = {
+    write(path, new HadoopConf(true))
   }
 }
 
@@ -102,7 +108,7 @@ private[spark] class AttributeMap {
 object AttributeMap {
   def create(): AttributeMap =
     new AttributeMap().registerAttributes(
-      Attribute[Long]("unix_secs", 3) ::
+      Attribute[Long]("unix_secs", 1) ::
       Attribute[Long]("srcip", 6) ::
       Attribute[Long]("dstip", 6) ::
       Attribute[Int]("srcport", 6) ::
@@ -112,8 +118,12 @@ object AttributeMap {
 
   def empty(): AttributeMap = new AttributeMap()
 
-  def read(path: String): AttributeMap = {
+  def read(path: String, conf: HadoopConf): AttributeMap = {
     val reader = new StatisticsReader()
-    new AttributeMap().registerAttributes(reader.load(path))
+    new AttributeMap().registerAttributes(reader.load(path, conf))
+  }
+
+  def read(path: String): AttributeMap = {
+    read(path, new HadoopConf(true))
   }
 }

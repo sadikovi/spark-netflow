@@ -140,9 +140,9 @@ private[spark] class StatisticsReader {
   }
 
   /** Load provided path and return sequence of attributes */
-  def load(path: String): Seq[Attribute[_]] = {
+  def load(path: String, conf: HadoopConf = new HadoopConf(true)): Seq[Attribute[_]] = {
     val pt = new HadoopPath(path)
-    val fs = pt.getFileSystem(new HadoopConf(true))
+    val fs = pt.getFileSystem(conf)
     val in = fs.open(pt)
     val attributes = try {
       internalLoad(in)
