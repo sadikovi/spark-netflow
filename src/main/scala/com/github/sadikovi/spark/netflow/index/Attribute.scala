@@ -112,15 +112,43 @@ class Attribute[T](
     if (isSetEnabled) Some(set) else None
   }
 
-  /** Check if value is in min-max range, if mode is enabled, otherwise None */
-  def containsInRange(value: Any): Option[Boolean] = {
+  /**
+   * Generic method to check boundaries for min/max statistics.
+   * Function parameters are min, value, max.
+   */
+  private def boundaryQuery(value: Any)(func: (T, T, T) => Boolean): Option[Boolean] = {
     if (isMinMaxEnabled) {
       val updatedValue = value.asInstanceOf[T]
-      // null value is always out of range, false is returned
-      if (value != null) Some(!lt(updatedValue, min) && !lt(max, updatedValue)) else Some(false)
+      // null value is always out of range and does not confirm to predicate, false is returned
+      if (value != null) Some(func(min, updatedValue, max)) else Some(false)
     } else {
       None
     }
+  }
+
+  /** Check if value is in min-max range, if mode is enabled, otherwise None */
+  def containsInRange(value: Any): Option[Boolean] = {
+    boundaryQuery(value) { (min, v, max) => !lt(v, min) && !lt(max, v) }
+  }
+
+  /** Check if value is greater than max */
+  def lessThanMax(value: Any): Option[Boolean] = {
+    boundaryQuery(value) { (min, v, max) => lt(v, max) }
+  }
+
+  /** Check if value is greater than or equal to max */
+  def lessOrEqualMax(value: Any): Option[Boolean] = {
+    boundaryQuery(value) { (min, v, max) => !lt(max, v) }
+  }
+
+  /** Check if value is less than min */
+  def greaterThanMin(value: Any): Option[Boolean] = {
+    boundaryQuery(value) { (min, v, max) => lt(min, v) }
+  }
+
+  /** Check if value is less than or equal to min */
+  def greaterOrEqualMin(value: Any): Option[Boolean] = {
+    boundaryQuery(value) { (min, v, max) => !lt(v, min) }
   }
 
   /** Check if value is in set, if mode is enabled, otherwise None */

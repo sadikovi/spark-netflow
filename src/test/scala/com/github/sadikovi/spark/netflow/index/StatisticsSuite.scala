@@ -124,6 +124,50 @@ class StatisticsSuite extends UnitTestSpec {
     attr.containsInRange(6) should be (Some(false))
   }
 
+  test("boundary query - lessThanMax") {
+    val attr = Attribute[Int]("a", 2)
+    attr.addValue(3)
+    attr.addValue(10)
+    attr.lessThanMax(4) should be (Some(true))
+    attr.lessThanMax(10) should be (Some(false))
+    attr.lessThanMax(12) should be (Some(false))
+    attr.lessThanMax(3) should be (Some(true))
+    attr.lessThanMax(-1) should be (Some(true))
+  }
+
+  test("boundary query - lessOrEqualMax") {
+    val attr = Attribute[Int]("a", 2)
+    attr.addValue(3)
+    attr.addValue(10)
+    attr.lessOrEqualMax(4) should be (Some(true))
+    attr.lessOrEqualMax(10) should be (Some(true))
+    attr.lessOrEqualMax(12) should be (Some(false))
+    attr.lessOrEqualMax(3) should be (Some(true))
+    attr.lessOrEqualMax(-1) should be (Some(true))
+  }
+
+  test("boundary query - greaterThanMin") {
+    val attr = Attribute[Int]("a", 2)
+    attr.addValue(3)
+    attr.addValue(10)
+    attr.greaterThanMin(4) should be (Some(true))
+    attr.greaterThanMin(10) should be (Some(true))
+    attr.greaterThanMin(12) should be (Some(true))
+    attr.greaterThanMin(3) should be (Some(false))
+    attr.greaterThanMin(-1) should be (Some(false))
+  }
+
+  test("boundary query - greaterOrEqualMin") {
+    val attr = Attribute[Int]("a", 2)
+    attr.addValue(3)
+    attr.addValue(10)
+    attr.greaterOrEqualMin(4) should be (Some(true))
+    attr.greaterOrEqualMin(10) should be (Some(true))
+    attr.greaterOrEqualMin(12) should be (Some(true))
+    attr.greaterOrEqualMin(3) should be (Some(true))
+    attr.greaterOrEqualMin(-1) should be (Some(false))
+  }
+
   test("get value from attribute for set mode") {
     val attr = Attribute[Int]("a", 4)
     attr.addValue(3)

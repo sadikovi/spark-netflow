@@ -51,6 +51,43 @@ private[spark] class AttributeMap {
     }
   }
 
+  /** Query attribute for unresolved value */
+  private def query(
+      key: String, value: Any)(func: (Attribute[_], Any) => Option[Boolean]): Option[Boolean] = {
+    val attribute = map.get(key)
+    if (attribute.isEmpty) None else func(attribute.get, value)
+  }
+
+  /** Check if value is in attribute range for a specified key */
+  def between(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.containsInRange(v) }
+  }
+
+  /** Check if value is less than attribute max for a specified key */
+  def ltMax(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.lessThanMax(v) }
+  }
+
+  /** Check if value is less than or equal to attribute max for a specified key */
+  def leMax(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.lessOrEqualMax(v) }
+  }
+
+  /** Check if value is greater than attribute min for a specified key */
+  def gtMin(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.greaterThanMin(v) }
+  }
+
+  /** Check if value is greater than or equal to attribute min for a specified key */
+  def geMin(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.greaterOrEqualMin(v) }
+  }
+
+  /** Check if value is in attribute set for a specified key */
+  def in(key: String, value: Any): Option[Boolean] = {
+    query(key, value) { (attr, v) => attr.containsInSet(v) }
+  }
+
   /** Return writer for this attribute map */
   def write(path: String): Unit = {
     val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, map.values.toSeq)
@@ -72,6 +109,8 @@ object AttributeMap {
       Attribute[Int]("dstport", 6) ::
       Attribute[Short]("protocol", 6) ::
       Nil)
+
+  def empty(): AttributeMap = new AttributeMap()
 
   def read(path: String): AttributeMap = {
     val reader = new StatisticsReader()
