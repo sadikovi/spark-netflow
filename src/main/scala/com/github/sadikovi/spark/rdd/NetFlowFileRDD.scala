@@ -180,12 +180,12 @@ private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
           rawIterator
         }
       } else {
-        logDebug(s"Conditions are not met for storing statistics, skip writing")
+        logDebug(s"Statistics are disabled, skip writing")
         rawIterator
       }
 
       // Conversion iterator, applies defined modification for convertable fields
-      val conversionsIterator = if (applyConversion) {
+      val withConversionsIterator = if (applyConversion) {
         // For each field we check if possible conversion is available. If it is we apply direct
         // conversion, otherwise return unchanged value. Note that this should be in sync with
         // `applyConversion` and updated schema from `ResolvedInterface`.
@@ -202,7 +202,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
         writableIterator
       }
 
-      buffer = buffer ++ conversionsIterator
+      buffer = buffer ++ withConversionsIterator
     }
 
     new Iterator[SQLRow] {
