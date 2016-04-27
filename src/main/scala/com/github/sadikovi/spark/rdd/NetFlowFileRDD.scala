@@ -158,7 +158,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
               // then continue to extract records. For empty files, Spark will try to write
               // statistics twice, because of double invocation of `hasNext`, we overwrite old file
               if (!rawIterator.hasNext) {
-                logWarning(s"Ready to write statistics for path: ${statStatus.path}")
+                logInfo(s"Ready to write statistics for path: ${statStatus.path}")
                 attributes.write(statStatus.path, conf, overwrite = true)
               }
               rawIterator.hasNext
@@ -180,7 +180,7 @@ private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
           rawIterator
         }
       } else {
-        logDebug(s"Statistics are disabled, skip writing")
+        logDebug("Statistics are disabled, skip writing")
         rawIterator
       }
 
