@@ -1,0 +1,10 @@
+comment:
+  layout: header, changes, diff
+coverage:
+  status:
+    project:
+      enabled: true
+    patch:
+      enabled: true
+    changes:
+      enabled: false

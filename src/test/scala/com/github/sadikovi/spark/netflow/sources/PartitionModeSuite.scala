@@ -34,16 +34,16 @@ class PartitionModeSuite extends UnitTestSpec {
   }
 
   test("auto partition mode - single element") {
-    val seq = Seq(NetFlowFileStatus(5, "", 10, 0))
+    val seq = Seq(NetFlowFileStatus(5, "", 10, 0, None))
     val bins = autoMode.tryToPartition(seq)
-    bins should be (Seq(Seq(NetFlowFileStatus(5, "", 10, 0))))
+    bins should be (Seq(Seq(NetFlowFileStatus(5, "", 10, 0, None))))
   }
 
   test("auto partition mode - split file per partition, when <= best size") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 22, 0),
-      NetFlowFileStatus(5, "", 150, 0)
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 22, 0, None),
+      NetFlowFileStatus(5, "", 150, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(Seq(seq(0)), Seq(seq(1)), Seq(seq(2))))
@@ -51,10 +51,10 @@ class PartitionModeSuite extends UnitTestSpec {
 
   test("auto partition mode 2 - split file per partition, when <= best size") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 122, 0),
-      NetFlowFileStatus(5, "", 150, 0),
-      NetFlowFileStatus(5, "", 130, 0)
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 122, 0, None),
+      NetFlowFileStatus(5, "", 150, 0, None),
+      NetFlowFileStatus(5, "", 130, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(Seq(seq(0)), Seq(seq(1)), Seq(seq(2)), Seq(seq(3))))
@@ -62,202 +62,202 @@ class PartitionModeSuite extends UnitTestSpec {
 
   test("auto partition mode - simple split") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 22, 0),
-      NetFlowFileStatus(5, "", 150, 0),
-      NetFlowFileStatus(5, "", 30, 0),
-      NetFlowFileStatus(5, "", 30, 0)
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 22, 0, None),
+      NetFlowFileStatus(5, "", 150, 0, None),
+      NetFlowFileStatus(5, "", 30, 0, None),
+      NetFlowFileStatus(5, "", 30, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 150, 0)),
-      Seq(NetFlowFileStatus(5, "", 30, 0),
-        NetFlowFileStatus(5, "", 30, 0),
-        NetFlowFileStatus(5, "", 22, 0),
-        NetFlowFileStatus(5, "", 10, 0))
+      Seq(NetFlowFileStatus(5, "", 150, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 30, 0, None),
+        NetFlowFileStatus(5, "", 30, 0, None),
+        NetFlowFileStatus(5, "", 22, 0, None),
+        NetFlowFileStatus(5, "", 10, 0, None))
     ))
   }
 
   test("auto partition mode - complex split 1") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 22, 0),
-      NetFlowFileStatus(5, "", 150, 0),
-      NetFlowFileStatus(5, "", 200, 0),
-      NetFlowFileStatus(5, "", 1, 0),
-      NetFlowFileStatus(5, "", 5, 0),
-      NetFlowFileStatus(5, "", 7, 0),
-      NetFlowFileStatus(5, "", 19, 0),
-      NetFlowFileStatus(5, "", 90, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 19, 0),
-      NetFlowFileStatus(5, "", 50, 0),
-      NetFlowFileStatus(5, "", 45, 0),
-      NetFlowFileStatus(5, "", 39, 0),
-      NetFlowFileStatus(5, "", 39, 0),
-      NetFlowFileStatus(5, "", 43, 0),
-      NetFlowFileStatus(5, "", 21, 0),
-      NetFlowFileStatus(5, "", 45, 0),
-      NetFlowFileStatus(5, "", 45, 0),
-      NetFlowFileStatus(5, "", 90, 0),
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 11, 0)
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 22, 0, None),
+      NetFlowFileStatus(5, "", 150, 0, None),
+      NetFlowFileStatus(5, "", 200, 0, None),
+      NetFlowFileStatus(5, "", 1, 0, None),
+      NetFlowFileStatus(5, "", 5, 0, None),
+      NetFlowFileStatus(5, "", 7, 0, None),
+      NetFlowFileStatus(5, "", 19, 0, None),
+      NetFlowFileStatus(5, "", 90, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 19, 0, None),
+      NetFlowFileStatus(5, "", 50, 0, None),
+      NetFlowFileStatus(5, "", 45, 0, None),
+      NetFlowFileStatus(5, "", 39, 0, None),
+      NetFlowFileStatus(5, "", 39, 0, None),
+      NetFlowFileStatus(5, "", 43, 0, None),
+      NetFlowFileStatus(5, "", 21, 0, None),
+      NetFlowFileStatus(5, "", 45, 0, None),
+      NetFlowFileStatus(5, "", 45, 0, None),
+      NetFlowFileStatus(5, "", 90, 0, None),
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 11, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 200, 0)),
-      Seq(NetFlowFileStatus(5, "", 150, 0)),
-      Seq(NetFlowFileStatus(5, "", 90, 0),
-        NetFlowFileStatus(5, "", 1, 0),
-        NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 4, 0)),
-      Seq(NetFlowFileStatus(5, "", 90, 0),
-        NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 5, 0)),
-      Seq(NetFlowFileStatus(5, "", 50, 0),
-        NetFlowFileStatus(5, "", 7, 0),
-        NetFlowFileStatus(5, "", 10, 0),
-        NetFlowFileStatus(5, "", 10, 0),
-        NetFlowFileStatus(5, "", 11, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0),
-        NetFlowFileStatus(5, "", 19, 0),
-        NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0),
-        NetFlowFileStatus(5, "", 21, 0),
-        NetFlowFileStatus(5, "", 22, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0),
-        NetFlowFileStatus(5, "", 43, 0)),
-      Seq(NetFlowFileStatus(5, "", 39, 0),
-        NetFlowFileStatus(5, "", 39, 0))
+      Seq(NetFlowFileStatus(5, "", 200, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 150, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 90, 0, None),
+        NetFlowFileStatus(5, "", 1, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 90, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None),
+        NetFlowFileStatus(5, "", 5, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 50, 0, None),
+        NetFlowFileStatus(5, "", 7, 0, None),
+        NetFlowFileStatus(5, "", 10, 0, None),
+        NetFlowFileStatus(5, "", 10, 0, None),
+        NetFlowFileStatus(5, "", 11, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 45, 0, None),
+        NetFlowFileStatus(5, "", 19, 0, None),
+        NetFlowFileStatus(5, "", 19, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 45, 0, None),
+        NetFlowFileStatus(5, "", 21, 0, None),
+        NetFlowFileStatus(5, "", 22, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 45, 0, None),
+        NetFlowFileStatus(5, "", 43, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 39, 0, None),
+        NetFlowFileStatus(5, "", 39, 0, None))
     ))
   }
 
   test("auto partition mode - complex split 2") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 22, 0),
-      NetFlowFileStatus(5, "", 150, 0),
-      NetFlowFileStatus(5, "", 200, 0),
-      NetFlowFileStatus(5, "", 120, 0),
-      NetFlowFileStatus(5, "", 500, 0),
-      NetFlowFileStatus(5, "", 170, 0),
-      NetFlowFileStatus(5, "", 190, 0),
-      NetFlowFileStatus(5, "", 190, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 19, 0),
-      NetFlowFileStatus(5, "", 50, 0),
-      NetFlowFileStatus(5, "", 45, 0),
-      NetFlowFileStatus(5, "", 39, 0),
-      NetFlowFileStatus(5, "", 39, 0),
-      NetFlowFileStatus(5, "", 430, 0),
-      NetFlowFileStatus(5, "", 210, 0),
-      NetFlowFileStatus(5, "", 240, 0),
-      NetFlowFileStatus(5, "", 145, 0),
-      NetFlowFileStatus(5, "", 190, 0),
-      NetFlowFileStatus(5, "", 100, 0),
-      NetFlowFileStatus(5, "", 110, 0)
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 22, 0, None),
+      NetFlowFileStatus(5, "", 150, 0, None),
+      NetFlowFileStatus(5, "", 200, 0, None),
+      NetFlowFileStatus(5, "", 120, 0, None),
+      NetFlowFileStatus(5, "", 500, 0, None),
+      NetFlowFileStatus(5, "", 170, 0, None),
+      NetFlowFileStatus(5, "", 190, 0, None),
+      NetFlowFileStatus(5, "", 190, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 19, 0, None),
+      NetFlowFileStatus(5, "", 50, 0, None),
+      NetFlowFileStatus(5, "", 45, 0, None),
+      NetFlowFileStatus(5, "", 39, 0, None),
+      NetFlowFileStatus(5, "", 39, 0, None),
+      NetFlowFileStatus(5, "", 430, 0, None),
+      NetFlowFileStatus(5, "", 210, 0, None),
+      NetFlowFileStatus(5, "", 240, 0, None),
+      NetFlowFileStatus(5, "", 145, 0, None),
+      NetFlowFileStatus(5, "", 190, 0, None),
+      NetFlowFileStatus(5, "", 100, 0, None),
+      NetFlowFileStatus(5, "", 110, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 500, 0)),
-      Seq(NetFlowFileStatus(5, "", 430, 0)),
-      Seq(NetFlowFileStatus(5, "", 240, 0)),
-      Seq(NetFlowFileStatus(5, "", 210, 0)),
-      Seq(NetFlowFileStatus(5, "", 200, 0)),
-      Seq(NetFlowFileStatus(5, "", 190, 0)),
-      Seq(NetFlowFileStatus(5, "", 190, 0)),
-      Seq(NetFlowFileStatus(5, "", 190, 0)),
-      Seq(NetFlowFileStatus(5, "", 170, 0)),
-      Seq(NetFlowFileStatus(5, "", 150, 0)),
-      Seq(NetFlowFileStatus(5, "", 145, 0)),
-      Seq(NetFlowFileStatus(5, "", 120, 0)),
-      Seq(NetFlowFileStatus(5, "", 110, 0)),
-      Seq(NetFlowFileStatus(5, "", 100, 0)),
-      Seq(NetFlowFileStatus(5, "", 50, 0),
-        NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 4, 0),
-        NetFlowFileStatus(5, "", 10, 0),
-        NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 45, 0),
-        NetFlowFileStatus(5, "", 39, 0)),
-      Seq(NetFlowFileStatus(5, "", 39, 0),
-        NetFlowFileStatus(5, "", 22, 0))
+      Seq(NetFlowFileStatus(5, "", 500, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 430, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 240, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 210, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 200, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 190, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 190, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 190, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 170, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 150, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 145, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 120, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 110, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 100, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 50, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None),
+        NetFlowFileStatus(5, "", 10, 0, None),
+        NetFlowFileStatus(5, "", 19, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 45, 0, None),
+        NetFlowFileStatus(5, "", 39, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 39, 0, None),
+        NetFlowFileStatus(5, "", 22, 0, None))
     ))
   }
 
   test("auto partition mode - 2 buckets split") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 80, 0),
-      NetFlowFileStatus(5, "", 40, 0),
-      NetFlowFileStatus(5, "", 40, 0),
-      NetFlowFileStatus(5, "", 20, 0),
-      NetFlowFileStatus(5, "", 20, 0)
+      NetFlowFileStatus(5, "", 80, 0, None),
+      NetFlowFileStatus(5, "", 40, 0, None),
+      NetFlowFileStatus(5, "", 40, 0, None),
+      NetFlowFileStatus(5, "", 20, 0, None),
+      NetFlowFileStatus(5, "", 20, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 80, 0),
-        NetFlowFileStatus(5, "", 20, 0)),
-      Seq(NetFlowFileStatus(5, "", 40, 0),
-        NetFlowFileStatus(5, "", 40, 0),
-        NetFlowFileStatus(5, "", 20, 0))
+      Seq(NetFlowFileStatus(5, "", 80, 0, None),
+        NetFlowFileStatus(5, "", 20, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 40, 0, None),
+        NetFlowFileStatus(5, "", 40, 0, None),
+        NetFlowFileStatus(5, "", 20, 0, None))
     ))
   }
 
   test("auto partition mode - 2 buckets unequal split") {
     val seq = Seq(
-      NetFlowFileStatus(5, "", 80, 0),
-      NetFlowFileStatus(5, "", 19, 0),
-      NetFlowFileStatus(5, "", 10, 0),
-      NetFlowFileStatus(5, "", 4, 0),
-      NetFlowFileStatus(5, "", 5, 0)
+      NetFlowFileStatus(5, "", 80, 0, None),
+      NetFlowFileStatus(5, "", 19, 0, None),
+      NetFlowFileStatus(5, "", 10, 0, None),
+      NetFlowFileStatus(5, "", 4, 0, None),
+      NetFlowFileStatus(5, "", 5, 0, None)
     )
     val bins = autoMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 80, 0),
-        NetFlowFileStatus(5, "", 19, 0)),
-      Seq(NetFlowFileStatus(5, "", 10, 0),
-        NetFlowFileStatus(5, "", 5, 0),
-        NetFlowFileStatus(5, "", 4, 0))
+      Seq(NetFlowFileStatus(5, "", 80, 0, None),
+        NetFlowFileStatus(5, "", 19, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 10, 0, None),
+        NetFlowFileStatus(5, "", 5, 0, None),
+        NetFlowFileStatus(5, "", 4, 0, None))
     ))
   }
 
   test("default partition mode - None as number of slices") {
     val defaultMode = DefaultPartitionMode(None)
     val seq = Seq(
-      NetFlowFileStatus(5, "", 84, 0),
-      NetFlowFileStatus(5, "", 12, 0),
-      NetFlowFileStatus(5, "", 15, 0),
-      NetFlowFileStatus(5, "", 3, 0)
+      NetFlowFileStatus(5, "", 84, 0, None),
+      NetFlowFileStatus(5, "", 12, 0, None),
+      NetFlowFileStatus(5, "", 15, 0, None),
+      NetFlowFileStatus(5, "", 3, 0, None)
     )
     val bins = defaultMode.tryToPartition(seq)
     bins should be (Seq(
-      Seq(NetFlowFileStatus(5, "", 84, 0)),
-      Seq(NetFlowFileStatus(5, "", 12, 0)),
-      Seq(NetFlowFileStatus(5, "", 15, 0)),
-      Seq(NetFlowFileStatus(5, "", 3, 0))
+      Seq(NetFlowFileStatus(5, "", 84, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 12, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 15, 0, None)),
+      Seq(NetFlowFileStatus(5, "", 3, 0, None))
     ))
   }
 
   test("default partition mode - 1 partition") {
     val defaultMode = DefaultPartitionMode(Option(1))
     val seq = Seq(
-      NetFlowFileStatus(5, "", 84, 0),
-      NetFlowFileStatus(5, "", 12, 0),
-      NetFlowFileStatus(5, "", 15, 0),
-      NetFlowFileStatus(5, "", 3, 0)
+      NetFlowFileStatus(5, "", 84, 0, None),
+      NetFlowFileStatus(5, "", 12, 0, None),
+      NetFlowFileStatus(5, "", 15, 0, None),
+      NetFlowFileStatus(5, "", 3, 0, None)
     )
     val bins = defaultMode.tryToPartition(seq)
     bins should be (Seq(
       Seq(
-        NetFlowFileStatus(5, "", 84, 0),
-        NetFlowFileStatus(5, "", 12, 0),
-        NetFlowFileStatus(5, "", 15, 0),
-        NetFlowFileStatus(5, "", 3, 0)
+        NetFlowFileStatus(5, "", 84, 0, None),
+        NetFlowFileStatus(5, "", 12, 0, None),
+        NetFlowFileStatus(5, "", 15, 0, None),
+        NetFlowFileStatus(5, "", 3, 0, None)
       )
     ))
   }

@@ -30,7 +30,7 @@ import com.github.sadikovi.spark.util.SerializableConfiguration
  * configuration as `SparkContext.hadoopConfiguration` that will be serialized to send to all
  * workers.
  */
-private[spark] abstract class FileRDD[T: ClassTag](
+private[spark] abstract class FileRDD[T : ClassTag](
     @transient sc: SparkContext,
     @transient deps: Seq[Dependency[_]])
     (implicit _conf: Configuration = sc.hadoopConfiguration) extends RDD[T](sc, deps) {

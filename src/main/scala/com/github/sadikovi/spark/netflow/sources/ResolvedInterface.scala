@@ -42,10 +42,7 @@ private[spark] object InternalType {
   val LONG = classOf[java.lang.Long]
 }
 
-/**
- * Abstract interface for NetFlow version.
- *
- */
+/** Abstract interface for NetFlow version */
 abstract class ResolvedInterface {
 
   /** Interface columns, sequence has to contain at least one column */
@@ -79,6 +76,9 @@ abstract class ResolvedInterface {
 
   /** Get first [[MappedColumn]] as `Option`. */
   def getFirstColumnOption(): Option[MappedColumn] = columns.headOption
+
+  /** Get columns with enabled statistics */
+  def getStatisticsColumns(): Seq[MappedColumn] = columns.filter { _.collectStatistics }
 
   /** Get [[MappedColumn]] for a specified column name. Fail, if column name is not present. */
   def getColumn(columnName: String): MappedColumn = {

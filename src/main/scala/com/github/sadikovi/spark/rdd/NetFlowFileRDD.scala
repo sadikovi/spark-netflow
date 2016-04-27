@@ -31,10 +31,12 @@ import org.apache.spark.sql.sources._
 
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
+import com.github.sadikovi.spark.netflow.NetFlowFilters
+import com.github.sadikovi.spark.netflow.index.AttributeMap
 import com.github.sadikovi.spark.netflow.sources._
 
 /** NetFlowFilePartition to hold sequence of file paths */
-private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus: ClassTag] (
+private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus : ClassTag] (
     var rddId: Long,
     var slice: Int,
     var values: Seq[T]) extends Partition with Serializable {
@@ -51,18 +53,19 @@ private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus: ClassTag] (
 }
 
 /**
- * `NetFlowFileRDD` is designed to process NetFlow file of specific version and return iterator of
- * SQL rows back. Used internally solely for the purpose of datasource API. We assume that we
+ * [[NetFlowFileRDD]] is designed to process NetFlow file of specific version and return iterator
+ * of SQL rows back. Used internally solely for the purpose of datasource API. We assume that we
  * process files of the same version, and prune common fields. `NetFlowFileRDD` operates on already
  * resolved columns, the same applies to filters.
  */
-private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
+private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
     @transient sc: SparkContext,
     @transient data: Seq[NetFlowFileStatus],
     val partitionMode: PartitionMode,
     val applyConversion: Boolean,
     val resolvedColumns: Array[MappedColumn],
-    val resolvedFilter: Option[FilterPredicate]) extends FileRDD[SQLRow](sc, Nil) {
+    val resolvedFilter: Option[FilterPredicate],
+    val statisticsIndex: Map[Int, MappedColumn]) extends FileRDD[SQLRow](sc, Nil) {
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)
     slices.indices.map(i => new NetFlowFilePartition[NetFlowFileStatus](id, i, slices(i))).toArray
@@ -79,6 +82,22 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
     var buffer: Iterator[Array[Object]] = Iterator.empty
 
     for (elem <- s.asInstanceOf[NetFlowFilePartition[NetFlowFileStatus]].iterator) {
+      // Check if statistics file status is available. Only read statistics, if filter is provided
+      val updatedFilter = if (resolvedFilter.nonEmpty && elem.statisticsPathStatus.nonEmpty) {
+        val statStatus = elem.statisticsPathStatus.get
+        if (statStatus.exists) {
+          logDebug("Applying statistics to update filter")
+          val attributes = AttributeMap.read(statStatus.path, conf)
+          Some(NetFlowFilters.updateFilter(resolvedFilter.get, attributes))
+        } else {
+          resolvedFilter
+        }
+      } else {
+        resolvedFilter
+      }
+
+      logDebug(s"Updated filter: $updatedFilter")
+
       // Reconstruct file status: file path, length in bytes
       val path = new Path(elem.path)
       val fs = path.getFileSystem(conf)
@@ -115,20 +134,62 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
 
       // Build record buffer based on resolved filter, if filter is not defined use default scan
       // with trivial predicate
-      val recordBuffer = if (resolvedFilter.nonEmpty) {
-        reader.prepareRecordBuffer(internalColumns, resolvedFilter.get)
+      val recordBuffer = if (updatedFilter.nonEmpty) {
+        reader.prepareRecordBuffer(internalColumns, updatedFilter.get)
       } else {
         reader.prepareRecordBuffer(internalColumns)
       }
 
       val rawIterator = recordBuffer.iterator().asScala
 
+      // Try collecting statistics before any other mode, because attributes collect raw data. If
+      // file exists, it is assumed that statistics are already written
+      val writableIterator = if (updatedFilter.isEmpty && elem.statisticsPathStatus.nonEmpty &&
+          statisticsIndex.nonEmpty) {
+        val statStatus = elem.statisticsPathStatus.get
+        if (!statStatus.exists) {
+          logDebug(s"Prepare statistics for a path ${statStatus.path}")
+          val attributes = AttributeMap.create()
+          new Iterator[Array[Object]] {
+            override def hasNext: Boolean = {
+              // If raw iterator does not have any elements we assume that it is EOF and write
+              // statistics into a file
+              // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
+              // then continue to extract records. For empty files, Spark will try to write
+              // statistics twice, because of double invocation of `hasNext`, we overwrite old file
+              if (!rawIterator.hasNext) {
+                logInfo(s"Ready to write statistics for path: ${statStatus.path}")
+                attributes.write(statStatus.path, conf, overwrite = true)
+              }
+              rawIterator.hasNext
+            }
+
+            override def next(): Array[Object] = {
+              val arr = rawIterator.next
+              for (i <- 0 until numColumns) {
+                if (statisticsIndex.contains(i)) {
+                  val key = statisticsIndex(i).internalColumn.getColumnName
+                  attributes.updateStatistics(key, arr(i))
+                }
+              }
+              arr
+            }
+          }
+        } else {
+          logDebug(s"Statistics file ${statStatus.path} already exists, skip writing")
+          rawIterator
+        }
+      } else {
+        logDebug("Statistics are disabled, skip writing")
+        rawIterator
+      }
+
       // Conversion iterator, applies defined modification for convertable fields
-      val conversionsIterator = if (applyConversion) {
+      val withConversionsIterator = if (applyConversion) {
         // For each field we check if possible conversion is available. If it is we apply direct
         // conversion, otherwise return unchanged value. Note that this should be in sync with
         // `applyConversion` and updated schema from `ResolvedInterface`.
-        rawIterator.map(arr => {
+        writableIterator.map(arr => {
           for (i <- 0 until numColumns) {
             resolvedColumns(i).convertFunction match {
               case Some(func) => arr(i) = func.direct(arr(i))
@@ -138,10 +199,10 @@ private[spark] class NetFlowFileRDD[T<:SQLRow: ClassTag] (
           arr
         })
       } else {
-        rawIterator
+        writableIterator
       }
 
-      buffer = buffer ++ conversionsIterator
+      buffer = buffer ++ withConversionsIterator
     }
 
     new Iterator[SQLRow] {

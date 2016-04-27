@@ -514,7 +514,7 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     df.rdd.partitions.length should be (2)
     df.count() should be (2000)
 
-    // since Spark 1.6+ resolves number of partitions when building plan, this fails with
+    // Since Spark 1.6+ resolves number of partitions when building plan, this fails with
     // TreeNodeException with a cause of wrong number of partitions, though in Spark 1.5 and before
     // it actually throws IllegalArgumentException, so we need to check for both.
     try {
@@ -527,12 +527,75 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
           "Target exception mismatch")
       case other: Throwable =>
         var cause = other
-        // find the actual cause of the tree node exception
+        // Find the actual cause of the tree node exception
         while (cause.getCause() != null) {
           cause = cause.getCause()
         }
         assert(cause.getMessage().contains("Expected at least one partition, got"),
           "Target exception mismatch")
+    }
+  }
+
+  test("prepare statistics - true") {
+    val sqlContext = new SQLContext(sc)
+    val path = new Path(path1)
+    val fileStatus = path.getFileSystem(new Configuration(false)).getFileStatus(path)
+    val options = Map("version" -> "5", "statistics" -> "true")
+    val relation = new NetFlowRelation(Array(path1), None, None, options)(sqlContext)
+    val rdd = relation.buildScan(Array.empty, Array(fileStatus)).asInstanceOf[NetFlowFileRDD[Row]]
+    rdd.statisticsIndex.nonEmpty should be (true)
+    rdd.statisticsIndex.values.forall(_.collectStatistics) should be (true)
+  }
+
+  test("prepare statistics - false") {
+    val sqlContext = new SQLContext(sc)
+    val path = new Path(path1)
+    val fileStatus = path.getFileSystem(new Configuration(false)).getFileStatus(path)
+    val options = Map("version" -> "5", "statistics" -> "false")
+    val relation = new NetFlowRelation(Array(path1), None, None, options)(sqlContext)
+    val rdd = relation.buildScan(Array.empty, Array(fileStatus)).asInstanceOf[NetFlowFileRDD[Row]]
+    rdd.statisticsIndex.isEmpty should be (true)
+    rdd.resolvedColumns.length should be (1)
+  }
+
+  test("write statistics - filter provided") {
+    val sqlContext = new SQLContext(sc)
+    Utils.withTempDir { dir =>
+      val df = sqlContext.read.option("statistics", dir.toString).netflow5(s"file:${path2}").
+        filter("srcip = '1.1.1.1'")
+      df.count()
+      // Get statistics folder, this is the folder that contains ".statistics-" file
+      val statDir = Utils.withSuffix(dir, path2).getParent()
+      val fs = statDir.getFileSystem(new Configuration(false))
+      fs.exists(statDir) should be (false)
+    }
+  }
+
+  test("write statistics - check written file exists") {
+    val sqlContext = new SQLContext(sc)
+    Utils.withTempDir { dir =>
+      val df = sqlContext.read.option("statistics", dir.toString).netflow5(s"file:${path2}")
+      df.count()
+      // Get statistics folder, this is the folder that contains ".statistics-" file
+      val statPath = Utils.withSuffix(dir, path2)
+      val parentDir = statPath.getParent()
+      val fileName = statPath.getName()
+      val fs = parentDir.getFileSystem(new Configuration(false))
+      val files = fs.listStatus(parentDir)
+      assert(files != null && files.length == 1)
+      assert(files.head.getPath.getName.contains(fileName))
+    }
+  }
+
+  test("read statistics") {
+    val sqlContext = new SQLContext(sc)
+    Utils.withTempDir { dir =>
+      // write statistics
+      val df = sqlContext.read.option("statistics", dir.toString).netflow5(s"file:${path2}")
+      df.count()
+      // read statistics and apply filter
+      df.filter(col("srcip") === "0.0.0.1").count() should be (1)
+      df.filter(col("srcip") === "100.100.100.100").count() should be (0)
     }
   }
 }

@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import com.github.sadikovi.spark.netflow.index.StatisticsPathStatus
+
 /**
  * NetFlow file status that describes file to process. Contains expected version of a file,
  * absolute resolved path to the file, and it's length, buffer size for a particular file
@@ -24,10 +26,12 @@ package com.github.sadikovi.spark.netflow.sources
  * @param path absolute file path, in case of HDFS includes host and port
  * @param length file size in bytes
  * @param bufferSize buffer size (when file stream is compressed) in bytes
+ * @param statisticsPathStatus statistics path status, includes file path and exists flag
  */
 private[spark] case class NetFlowFileStatus(
   version: Short,
   path: String,
   length: Long,
-  bufferSize: Int
+  bufferSize: Int,
+  statisticsPathStatus: Option[StatisticsPathStatus]
 )

@@ -19,7 +19,8 @@ example, run this to include it when starting the spark shell:
 ## Features
 - Column pruning
 - Predicate pushdown to the NetFlow file
-- Statistics on `unix_secs` (read only files that pass predicate on that column)
+- Auto statistics on `unix_secs` (filter files that based on predicate on the column)
+- Manual statistics on certain columns depending on version (when option provided)
 - Fields conversion (IP addresses, protocol, etc.)
 - NetFlow version 5 support ([list of columns](./docs/NETFLOW_V5.md))
 - NetFlow version 7 support ([list of columns](./docs/NETFLOW_V7.md))
@@ -36,6 +37,7 @@ Currently supported options:
 | `stringify` | `0.0.2` | _true, false_ | convert certain fields (e.g. IP, protocol) into human-readable format, though it is recommended to turn it off when performance matters (default: `true`)
 | `predicate-pushdown` | `0.2.0` | _true, false_ | use predicate pushdown at NetFlow library level (default: `true`)
 | `partitions` | `0.2.1` | _default, auto, 1, 2, 100, 1024, etc_ | partition mode to use, can be `default`, `auto`, or any number of partitions (default: `default`)
+| `statistics` | `1.0.0` | _true, false, file:/.../, hdfs://.../_ | use manual statistics for certain columns, see details for more information (default: `false`)
 
 ### Details on partition mode
 **spark-netflow** supports three different partition modes:
@@ -60,6 +62,28 @@ sqlContext.setConf("spark.sql.netflow.partition.size", "144Mb")
 // small batches
 sqlContext.setConf("spark.sql.netflow.partition.num", s"${sc.defaultParallelism * 2}")
 ```
+
+### Details on statistics
+**spark-netflow** supports collecting statistics for NetFlow files when option `statistics` is used.
+Currently there are several values supported:
+- `false` statistics are disabled, this is default value.
+- `true` statistics are enabled, generated file is stored in the same directory as original file.
+- `file:/.../` or `hdfs://.../` statistics are enabled, directory provided (can be local file
+  system or HDFS) is considered to be a root of where statistics are stored. Package saves
+  statistics files by reconstructing original file directory from the root provided, e.g. file
+  location is `file:/tmp/netflow/ft-v5`, option value is `hdfs://.../dir`, then statistics file is
+  stored as `hdfs://.../dir/tmp/netflow/.statistics-ft-v5`.
+
+Columns that are used to collect statistics are version dependent. For version 5 and 7 `srcip`,
+`dstip`, `srcport`, `dstport`, and `protocol` are used. Note that **statistics/filtering on time are
+always enabled** since they are provided by original file.
+
+Statistics are either written lazily or read, if available. Package automatically figures out which
+files have and do not have statistics, and will perform writes or reads accordingly. Collecting
+statistics is lazy, package will only collect them when conditions are met, such as no filters
+specified when selecting data, columns that are selected contain all statistics columns, and
+all data is scanned/requested. The easiest way to trigger that is running `count()` on DataFrame.
+Using statistics does not require any special conditions apart from enabling option.
 
 ## Example
 

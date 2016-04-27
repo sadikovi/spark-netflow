@@ -28,12 +28,12 @@ class DefaultProvider extends NetFlowProvider {
 /** NetFlow interface for version 5. */
 private class InterfaceV5 extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("unix_secs", NetFlowV5.FIELD_UNIX_SECS, false, None),
+    MappedColumn("unix_secs", NetFlowV5.FIELD_UNIX_SECS, true, None),
     MappedColumn("unix_nsecs", NetFlowV5.FIELD_UNIX_NSECS, false, None),
     MappedColumn("sysuptime", NetFlowV5.FIELD_SYSUPTIME, false, None),
     MappedColumn("exaddr", NetFlowV5.FIELD_EXADDR, false, Some(IPv4ConvertFunction())),
-    MappedColumn("srcip", NetFlowV5.FIELD_SRCADDR, false, Some(IPv4ConvertFunction())),
-    MappedColumn("dstip", NetFlowV5.FIELD_DSTADDR, false, Some(IPv4ConvertFunction())),
+    MappedColumn("srcip", NetFlowV5.FIELD_SRCADDR, true, Some(IPv4ConvertFunction())),
+    MappedColumn("dstip", NetFlowV5.FIELD_DSTADDR, true, Some(IPv4ConvertFunction())),
     MappedColumn("nexthop", NetFlowV5.FIELD_NEXTHOP, false, Some(IPv4ConvertFunction())),
     MappedColumn("input", NetFlowV5.FIELD_INPUT, false, None),
     MappedColumn("output", NetFlowV5.FIELD_OUTPUT, false, None),
@@ -41,9 +41,9 @@ private class InterfaceV5 extends ResolvedInterface {
     MappedColumn("octets", NetFlowV5.FIELD_DOCTETS, false, None),
     MappedColumn("first_flow", NetFlowV5.FIELD_FIRST, false, None),
     MappedColumn("last_flow", NetFlowV5.FIELD_LAST, false, None),
-    MappedColumn("srcport", NetFlowV5.FIELD_SRCPORT, false, None),
-    MappedColumn("dstport", NetFlowV5.FIELD_DSTPORT, false, None),
-    MappedColumn("protocol", NetFlowV5.FIELD_PROT, false, Some(ProtocolConvertFunction())),
+    MappedColumn("srcport", NetFlowV5.FIELD_SRCPORT, true, None),
+    MappedColumn("dstport", NetFlowV5.FIELD_DSTPORT, true, None),
+    MappedColumn("protocol", NetFlowV5.FIELD_PROT, true, Some(ProtocolConvertFunction())),
     MappedColumn("tos", NetFlowV5.FIELD_TOS, false, None),
     MappedColumn("tcp_flags", NetFlowV5.FIELD_TCP_FLAGS, false, None),
     MappedColumn("engine_type", NetFlowV5.FIELD_ENGINE_TYPE, false, None),

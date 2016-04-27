@@ -28,12 +28,12 @@ class DefaultProvider extends NetFlowProvider {
 /** NetFlow interface for version 7. */
 private class InterfaceV7 extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("unix_secs", NetFlowV7.FIELD_UNIX_SECS, false, None),
+    MappedColumn("unix_secs", NetFlowV7.FIELD_UNIX_SECS, true, None),
     MappedColumn("unix_nsecs", NetFlowV7.FIELD_UNIX_NSECS, false, None),
     MappedColumn("sysuptime", NetFlowV7.FIELD_SYSUPTIME, false, None),
     MappedColumn("exaddr", NetFlowV7.FIELD_EXADDR, false, Some(IPv4ConvertFunction())),
-    MappedColumn("srcip", NetFlowV7.FIELD_SRCADDR, false, Some(IPv4ConvertFunction())),
-    MappedColumn("dstip", NetFlowV7.FIELD_DSTADDR, false, Some(IPv4ConvertFunction())),
+    MappedColumn("srcip", NetFlowV7.FIELD_SRCADDR, true, Some(IPv4ConvertFunction())),
+    MappedColumn("dstip", NetFlowV7.FIELD_DSTADDR, true, Some(IPv4ConvertFunction())),
     MappedColumn("nexthop", NetFlowV7.FIELD_NEXTHOP, false, Some(IPv4ConvertFunction())),
     MappedColumn("input", NetFlowV7.FIELD_INPUT, false, None),
     MappedColumn("output", NetFlowV7.FIELD_OUTPUT, false, None),
@@ -41,9 +41,9 @@ private class InterfaceV7 extends ResolvedInterface {
     MappedColumn("octets", NetFlowV7.FIELD_DOCTETS, false, None),
     MappedColumn("first_flow", NetFlowV7.FIELD_FIRST, false, None),
     MappedColumn("last_flow", NetFlowV7.FIELD_LAST, false, None),
-    MappedColumn("srcport", NetFlowV7.FIELD_SRCPORT, false, None),
-    MappedColumn("dstport", NetFlowV7.FIELD_DSTPORT, false, None),
-    MappedColumn("protocol", NetFlowV7.FIELD_PROT, false, Some(ProtocolConvertFunction())),
+    MappedColumn("srcport", NetFlowV7.FIELD_SRCPORT, true, None),
+    MappedColumn("dstport", NetFlowV7.FIELD_DSTPORT, true, None),
+    MappedColumn("protocol", NetFlowV7.FIELD_PROT, true, Some(ProtocolConvertFunction())),
     MappedColumn("tos", NetFlowV7.FIELD_TOS, false, None),
     MappedColumn("tcp_flags", NetFlowV7.FIELD_TCP_FLAGS, false, None),
     MappedColumn("flags", NetFlowV7.FIELD_FLAGS, false, None),
