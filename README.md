@@ -15,11 +15,12 @@ example, run this to include it when starting the spark shell:
 ```shell
  $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:0.2.2-s_2.10
 ```
+Change to `sadikovi:spark-netflow:0.2.2-s_2.11` for Scala 2.11.x
 
 ## Features
 - Column pruning
 - Predicate pushdown to the NetFlow file
-- Auto statistics on `unix_secs` (filter files that based on predicate on the column)
+- Auto statistics on `unix_secs` (filter records and entire files based on predicate)
 - Manual statistics on certain columns depending on version (when option provided)
 - Fields conversion (IP addresses, protocol, etc.)
 - NetFlow version 5 support ([list of columns](./docs/NETFLOW_V5.md))
@@ -139,40 +140,40 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.10/spark-netflow_2.10-0.2.2-SNAPSHOT.jar \
-  --iterations 3 \
-  --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*' \
+  target/scala-2.10/spark-netflow_2.10-1.0.0-SNAPSHOT.jar \
+  --iterations 5 \
+  --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*' \
   --version 5
 ```
 
-Output will be similar to this:
+Latest benchmarks:
 ```
-- Iterations: 3
-- Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/*/ft*
+- Iterations: 5
+- Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*
 - Version: 5
 Running benchmark: NetFlow full scan
-  Running case: Scan w/o stringify, buffer: 10Kb
-  Running case: Scan w/o stringify, buffer: 50Mb                                
-  Running case: Scan w/ stringify, buffer: 10Kb                                 
-  Running case: Scan w/ stringify, buffer: 50Mb                                 
+  Running case: Scan, stringify = F
+  Running case: Scan, stringify = T                                             
 
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Scan w/o stringify, buffer: 10Kb         2033 / 2227          0.0      203281.6       1.0X
-Scan w/o stringify, buffer: 50Mb         2069 / 2103          0.0      206884.9       1.0X
-Scan w/ stringify, buffer: 10Kb          2553 / 2602          0.0      255300.5       0.8X
-Scan w/ stringify, buffer: 50Mb          2836 / 2953          0.0      283586.6       0.7X
+Scan, stringify = F                       593 /  671       1686.2       59303.3       1.0X
+Scan, stringify = T                      1264 / 1280        790.9      126431.2       0.5X
 
 Running benchmark: NetFlow predicate scan
-  Running case: Filter scan w/ predicate pushdown
-  Running case: Filter scan w/o predicate pushdown                              
+  Running case: Predicate pushdown = F, high
+  Running case: Predicate pushdown = T, high                                    
+  Running case: Predicate pushdown = F, low                                     
+  Running case: Predicate pushdown = T, low                                     
 
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Filter scan w/ predicate pushdown        1174 / 1231          0.0      117373.4       1.0X
-Filter scan w/o predicate pushdown       1040 / 1135          0.0      104024.8       1.1X
+Predicate pushdown = F, high             1294 / 1305        773.0      129361.1       1.0X
+Predicate pushdown = T, high             1306 / 1330        765.5      130628.6       1.0X
+Predicate pushdown = F, low              1081 / 1127        924.8      108129.1       1.2X
+Predicate pushdown = T, low               272 /  275       3673.6       27221.0       4.8X
 
 Running benchmark: NetFlow aggregated report
   Running case: Aggregated report
@@ -180,5 +181,5 @@ Running benchmark: NetFlow aggregated report
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Aggregated report                        1448 / 1492          0.0      144783.1       1.0X
+Aggregated report                        1551 / 1690        644.6      155143.4       1.0X
 ```
