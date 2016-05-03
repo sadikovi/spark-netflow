@@ -20,7 +20,7 @@ hadoopVersion := sys.props.getOrElse("hadoop.testVersion", defaultHadoopVersion)
 
 spAppendScalaVersion := true
 
-spIncludeMaven := false
+spIncludeMaven := true
 
 spIgnoreProvided := true
 
@@ -74,7 +74,17 @@ testScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Test).toTask
  * Release settings *
  ********************/
 
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (version.value.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
 publishMavenStyle := true
+
+publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
@@ -118,4 +128,7 @@ releaseProcess := Seq[ReleaseStep](
   releaseStepTask(spPublish)
 )
 
+// Credentials for sbt-spark-package
 credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
+// Credentials for publishing to sonatype
+credentials += Credentials(Path.userHome / ".ivy2" / ".sonatype.sbt")

@@ -68,19 +68,19 @@ abstract class ResolvedInterface {
     StructType(sqlColumns)
   }
 
-  /** Get all [[MappedColumn]] instances. */
+  /** Get all `MappedColumn` instances. */
   def getColumns(): Seq[MappedColumn] = columns
 
-  /** Get first [[MappedColumn]] (mostly used for count to avoid reading entire record). */
+  /** Get first `MappedColumn` (mostly used for count to avoid reading entire record). */
   def getFirstColumn(): MappedColumn = columns.head
 
-  /** Get first [[MappedColumn]] as `Option`. */
+  /** Get first `MappedColumn` as `Option`. */
   def getFirstColumnOption(): Option[MappedColumn] = columns.headOption
 
   /** Get columns with enabled statistics */
   def getStatisticsColumns(): Seq[MappedColumn] = columns.filter { _.collectStatistics }
 
-  /** Get [[MappedColumn]] for a specified column name. Fail, if column name is not present. */
+  /** Get `MappedColumn` for a specified column name. Fail, if column name is not present. */
   def getColumn(columnName: String): MappedColumn = {
     columnsMap.getOrElse(columnName,
       sys.error(s"Interface does not have information about column $columnName"))

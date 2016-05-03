@@ -60,6 +60,6 @@ object NetFlowRegistry {
 }
 
 trait NetFlowProvider {
-  /** Return new [[ResolvedInterface]] instance. */
+  /** Return new `ResolvedInterface` instance. */
   def createInterface(): ResolvedInterface
 }
