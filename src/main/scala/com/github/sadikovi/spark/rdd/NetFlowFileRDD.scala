@@ -36,7 +36,7 @@ import com.github.sadikovi.spark.netflow.index.AttributeMap
 import com.github.sadikovi.spark.netflow.sources._
 
 /** NetFlowFilePartition to hold sequence of file paths */
-private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus : ClassTag] (
+private[spark] class NetFlowFilePartition[T <: NetFlowFileStatus : ClassTag] (
     var rddId: Long,
     var slice: Int,
     var values: Seq[T]) extends Partition with Serializable {
@@ -58,7 +58,7 @@ private[spark] class NetFlowFilePartition[T<:NetFlowFileStatus : ClassTag] (
  * process files of the same version, and prune common fields. `NetFlowFileRDD` operates on already
  * resolved columns, the same applies to filters.
  */
-private[spark] class NetFlowFileRDD[T<:SQLRow : ClassTag] (
+private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     @transient sc: SparkContext,
     @transient data: Seq[NetFlowFileStatus],
     val partitionMode: PartitionMode,

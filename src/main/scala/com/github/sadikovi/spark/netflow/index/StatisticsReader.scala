@@ -82,7 +82,7 @@ private[spark] class StatisticsReader {
     (tpe, temp.toIterator)
   }
 
-  private[index] def getAttribute(buffer: ByteBuf): Attribute[_<:Any] = {
+  private[index] def getAttribute(buffer: ByteBuf): Attribute[_ <: Any] = {
     val params = getAttributeParams(buffer)
     val flags = params._1
     val klass = params._2
