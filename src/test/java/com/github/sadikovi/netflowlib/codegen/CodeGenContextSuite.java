@@ -22,6 +22,24 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class CodeGenContextSuite {
+  // Dummy test node
+  private CodeGenNode dummyNode = new CodeGenNode() {
+    @Override
+    public String nodeName(CodeGenContext ctx) {
+      return "test";
+    }
+
+    @Override
+    public String nodeType(CodeGenContext ctx) {
+      return "java.lang.Object";
+    }
+
+    @Override
+    public Class<?> nodeClass(CodeGenContext ctx) {
+      return java.lang.Object.class;
+    }
+  };
+
   @Test
   public void testSingletonInstance() {
     CodeGenContext.reset();
@@ -170,6 +188,76 @@ public class CodeGenContextSuite {
     try {
       instance.normalizeJavaValue("abc");
     } catch (UnsupportedOperationException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
+  }
+
+  @Test
+  public void testReset() {
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    // reset of non-null instance
+    CodeGenContext.reset();
+    // reset of null instance
+    CodeGenContext.reset();
+  }
+
+  @Test
+  public void testRegisterNode1() {
+    CodeGenContext.reset();
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    boolean fetchedException = false;
+    try {
+      instance.registerNode(null, dummyNode);
+    } catch (IllegalArgumentException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
+  }
+
+  @Test
+  public void testRegisterNode2() {
+    CodeGenContext.reset();
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    boolean fetchedException = false;
+    try {
+      instance.registerNode("", dummyNode);
+    } catch (IllegalArgumentException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
+  }
+
+  @Test
+  public void testRegisterNode3() {
+    CodeGenContext.reset();
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    instance.registerNode("col", dummyNode);
+    boolean fetchedException = false;
+    try {
+      instance.registerNode("col", dummyNode);
+    } catch (IllegalStateException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
+  }
+
+  @Test
+  public void testGetNode1() {
+    CodeGenContext.reset();
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    instance.registerNode("col", dummyNode);
+    assertSame(instance.getNode("col"), dummyNode);
+  }
+
+  @Test
+  public void testGetNode2() {
+    CodeGenContext.reset();
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    boolean fetchedException = false;
+    try {
+      instance.getNode("col");
+    } catch (IllegalStateException uoe) {
       fetchedException = true;
     }
     assertTrue(fetchedException);

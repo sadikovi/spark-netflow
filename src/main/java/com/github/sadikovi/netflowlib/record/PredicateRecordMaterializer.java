@@ -21,20 +21,25 @@ import java.util.HashMap;
 
 import io.netty.buffer.ByteBuf;
 
+import com.github.sadikovi.netflowlib.codegen.CodeGenContext;
+import com.github.sadikovi.netflowlib.codegen.CodeGenNode;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.AndInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.OrInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.NotInspector;
+import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.predicate.Visitor;
 
 public final class PredicateRecordMaterializer extends RecordMaterializer implements Visitor {
   public PredicateRecordMaterializer(
       Column[] columns,
       Inspector tree,
+      FilterPredicate predicateTree,
       HashMap<Column, ArrayList<ValueInspector>> columnInspectors) {
     this.tree = tree;
+    this.predicateTree = predicateTree;
     this.columns = columns;
     this.numColumns = this.columns.length;
     this.filterColumns = columnInspectors.keySet().toArray(new Column[columnInspectors.size()]);
@@ -103,7 +108,38 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
     return !inspector.getChild().accept(this);
   }
 
+  @Override
+  protected String generateProcessRecord(CodeGenContext ctx, CodeGenNode buffer) {
+    // Because we need to read filter columns and use them as variables in predicate condition,
+    // we need to list unique column names and then read fields for each. Filter columns are unique,
+    // as they are extracted from key set of value inspectors.
+    StringBuilder code = new StringBuilder();
+    // Read filter columns and resolve predicate
+    for (int i=0; i<numFilterColumns; i++) {
+      Column fcol = filterColumns[i];
+      code.append(fcol.nodeType(ctx) + " " + fcol.nodeName(ctx) + " = " +
+        generateReadField(ctx, fcol, buffer) +  ";\n");
+    }
+    // Create conditional record evaluation
+    String condition = predicateTree.generate(ctx);
+    code.append("if (" + condition + ") {\n");
+    // Condition is true, create new record and fill it up with values
+    CodeGenNode newRecord = generateNewRecordNode(ctx);
+    code.append(newRecord.nodeType(ctx) + " " + newRecord.nodeName(ctx) +
+      " = new java.lang.Object[" + numColumns + "];\n");
+    for (int i=0; i<numColumns; i++) {
+      code.append(newRecord.nodeName(ctx) + "[" + i + "] = " +
+        generateReadField(ctx, columns[i], buffer) +  ";\n");
+    }
+    code.append("return " + newRecord.nodeName(ctx) + ";\n");
+    code.append("} else {\n");
+    code.append("return null;\n");
+    code.append("}\n");
+    return code.toString();
+  }
+
   private final Inspector tree;
+  private final FilterPredicate predicateTree;
   private final Column[] columns;
   private final int numColumns;
   private final Column[] filterColumns;

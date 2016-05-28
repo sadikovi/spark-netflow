@@ -26,4 +26,7 @@ public interface CodeGenNode {
 
   /** Get Java type of the node */
   public String nodeType(CodeGenContext ctx);
+
+  /** Get Java class of the node */
+  public Class<?> nodeClass(CodeGenContext ctx);
 }

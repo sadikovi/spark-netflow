@@ -35,13 +35,18 @@ public class CodeGenContext {
 
   /** Reset current context, so next call to get context will return new instance */
   public static void reset() {
-    instance = null;
+    if (instance != null) {
+      instance.cleanup();
+      instance = null;
+    }
   }
 
   private CodeGenContext() {
+    // Keep track of name states to assign unique names
     nameState = new HashMap<String, Integer>();
-    // Also register default name "attr"
     registerNameState(DEFAULT_ATTRIBUTE);
+    // Keep track of transient nodes
+    nodes = new HashMap<String, CodeGenNode>();
   }
 
   /** Whether or not character is supported */
@@ -133,6 +138,34 @@ public class CodeGenContext {
     }
   }
 
+  /** Register transient node for a key */
+  public void registerNode(String key, CodeGenNode node) {
+    if (key == null || key == "") {
+      throw new IllegalArgumentException("Illegal key " + key + "to register");
+    }
+
+    if (nodes.containsKey(key)) {
+      throw new IllegalStateException("Node is already registered for key " + key);
+    }
+
+    nodes.put(key, node);
+  }
+
+  /** Get transient node for a key. Key must exist */
+  public CodeGenNode getNode(String key) {
+    if (!nodes.containsKey(key)) {
+      throw new IllegalStateException("Node could not be found for key " + key);
+    }
+    return nodes.get(key);
+  }
+
+  /** Cleanup internal state, all registered name states, and nodes */
+  public void cleanup() {
+    nameState.clear();
+    nodes.clear();
+  }
+
   // Internal name state registry
   private final HashMap<String, Integer> nameState;
+  private final HashMap<String, CodeGenNode> nodes;
 }

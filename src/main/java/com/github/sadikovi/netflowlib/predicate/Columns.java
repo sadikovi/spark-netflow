@@ -110,6 +110,11 @@ public final class Columns {
       }
     }
 
+    @Override
+    public Class<?> nodeClass(CodeGenContext ctx) {
+      return getColumnType();
+    }
+
     private String columnName = null;
     private Class<?> columnType = null;
     private int columnOffset = -1;
