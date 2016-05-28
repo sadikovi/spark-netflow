@@ -20,7 +20,4 @@ package com.github.sadikovi.netflowlib.codegen;
 public interface CodeGenExpression {
   /** Generate source code */
   public String generate(CodeGenContext ctx);
-
-  /** Return list of nodes used to construct expression */
-  public CodeGenNode[] expressionNodes();
 }

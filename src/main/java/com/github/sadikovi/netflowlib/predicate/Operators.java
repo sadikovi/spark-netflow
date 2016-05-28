@@ -124,11 +124,6 @@ public final class Operators {
     /** Generate code for numeric boolean expression */
     protected abstract String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType);
 
-    @Override
-    public CodeGenNode[] expressionNodes() {
-      return new CodeGenNode[]{getColumn()};
-    }
-
     private final Column column;
     private final Serializable value;
     private final ValueInspector inspector;
@@ -577,22 +572,6 @@ public final class Operators {
     protected abstract String generateBinaryExpression(
       CodeGenContext ctx, String code1, String code2);
 
-    @Override
-    public CodeGenNode[] expressionNodes() {
-      CodeGenNode[] leftNodes = getLeft().expressionNodes();
-      CodeGenNode[] rightNodes = getRight().expressionNodes();
-      CodeGenNode[] allNodes = new CodeGenNode[leftNodes.length + rightNodes.length];
-      int index = 0;
-      for (CodeGenNode node: leftNodes) {
-        allNodes[index++] = node;
-      }
-      for (CodeGenNode node: rightNodes) {
-        allNodes[index++] = node;
-      }
-
-      return allNodes;
-    }
-
     private final FilterPredicate left;
     private final FilterPredicate right;
   }
@@ -693,11 +672,6 @@ public final class Operators {
     @Override
     public abstract String generate(CodeGenContext ctx);
 
-    @Override
-    public CodeGenNode[] expressionNodes() {
-      return getChild().expressionNodes();
-    }
-
     private final FilterPredicate child;
   }
 
@@ -779,11 +753,6 @@ public final class Operators {
     @Override
     public String generate(CodeGenContext ctx) {
       return "" + getResult();
-    }
-
-    @Override
-    public CodeGenNode[] expressionNodes() {
-      return new CodeGenNode[]{};
     }
 
     private boolean result;

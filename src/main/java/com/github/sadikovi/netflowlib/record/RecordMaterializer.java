@@ -127,9 +127,4 @@ public abstract class RecordMaterializer implements CodeGenExpression {
     CodeGenNode buffer = generateByteBufferNode(ctx);
     return generateProcessRecord(ctx, buffer);
   }
-
-  @Override
-  public CodeGenNode[] expressionNodes() {
-    throw new UnsupportedOperationException();
-  }
 }
