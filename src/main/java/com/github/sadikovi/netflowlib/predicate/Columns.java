@@ -18,6 +18,8 @@ package com.github.sadikovi.netflowlib.predicate;
 
 import java.io.Serializable;
 
+import com.github.sadikovi.netflowlib.codegen.CodeGenContext;
+import com.github.sadikovi.netflowlib.codegen.CodeGenNode;
 import com.github.sadikovi.netflowlib.statistics.Statistics;
 
 /**
@@ -28,7 +30,7 @@ import com.github.sadikovi.netflowlib.statistics.Statistics;
 public final class Columns {
   private Columns() { }
 
-  public static abstract class Column implements Serializable, Statistics {
+  public static abstract class Column implements Serializable, Statistics, CodeGenNode {
     Column() { }
 
     Column(String name, Class<?> type, int offset) {
@@ -83,9 +85,35 @@ public final class Columns {
       return result;
     }
 
+    @Override
+    public String nodeName(CodeGenContext ctx) {
+      if (currentNodeName == null) {
+        ctx.registerNameState(getColumnName());
+        currentNodeName = ctx.getAttributeName(getColumnName());
+      }
+      return currentNodeName;
+    }
+
+    @Override
+    public String nodeType(CodeGenContext ctx) {
+      Class<?> type = getColumnType();
+      if (type.equals(Byte.class)) {
+        return "byte";
+      } else if (type.equals(Short.class)) {
+        return "short";
+      } else if (type.equals(Integer.class)) {
+        return "int";
+      } else if (type.equals(Long.class)) {
+        return "long";
+      } else {
+        throw new UnsupportedOperationException("Unsupported type " + type);
+      }
+    }
+
     private String columnName = null;
     private Class<?> columnType = null;
     private int columnOffset = -1;
+    private String currentNodeName = null;
   }
 
   /** Column for byte values */

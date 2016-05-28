@@ -22,7 +22,7 @@ import java.util.HashMap;
 public class CodeGenContext {
   // Global instance of `CodeGenContext`
   private static CodeGenContext instance = null;
-  public static final String DEFAULT_ATTRIBUTE_NAME = "attr";
+  public static final String DEFAULT_ATTRIBUTE = "attr";
 
   /** Singleton method to reuse the same instance of context */
   public static CodeGenContext getOrCreate() {
@@ -41,7 +41,7 @@ public class CodeGenContext {
   private CodeGenContext() {
     nameState = new HashMap<String, Integer>();
     // Also register default name "attr"
-    registerNameState(DEFAULT_ATTRIBUTE_NAME);
+    registerNameState(DEFAULT_ATTRIBUTE);
   }
 
   /** Whether or not character is supported */
@@ -77,7 +77,7 @@ public class CodeGenContext {
     }
 
     if (buffer.length() == 0) {
-      return DEFAULT_ATTRIBUTE_NAME;
+      return DEFAULT_ATTRIBUTE;
     } else {
       return buffer.toString();
     }
@@ -111,8 +111,26 @@ public class CodeGenContext {
     return nextName;
   }
 
+  /** Get name for default attribute */
   public String getAttributeName() {
-    return getAttributeName(DEFAULT_ATTRIBUTE_NAME);
+    return getAttributeName(DEFAULT_ATTRIBUTE);
+  }
+
+  /**
+   * Normalize Java value of any type supported, e.g. value of `(long) 10` is converted into `10L`.
+   */
+  public String normalizeJavaValue(Object value) {
+    if (value instanceof Byte) {
+      return "(byte) " + value;
+    } else if (value instanceof Short) {
+      return "(short) " + value;
+    } else if (value instanceof Integer) {
+      return "" + value;
+    } else if (value instanceof Long) {
+      return "" + value + "L";
+    } else {
+      throw new UnsupportedOperationException("Unsupported value " + value + " to normalize");
+    }
   }
 
   // Internal name state registry

@@ -19,6 +19,7 @@ package com.github.sadikovi.netflowlib.codegen;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class CodeGenContextSuite {
   @Test
@@ -38,7 +39,7 @@ public class CodeGenContextSuite {
     } catch (IllegalArgumentException iae) {
       fetchedException = true;
     }
-    assertEquals(fetchedException, true);
+    assertTrue(fetchedException);
   }
 
   @Test
@@ -50,7 +51,7 @@ public class CodeGenContextSuite {
     } catch (IllegalArgumentException iae) {
       fetchedException = true;
     }
-    assertEquals(fetchedException, true);
+    assertTrue(fetchedException);
   }
 
   @Test
@@ -66,14 +67,14 @@ public class CodeGenContextSuite {
     assertEquals(instance.canonicalize("_foo123"), "foo123");
     assertEquals(instance.canonicalize("foo-123"), "foo123");
     assertEquals(instance.canonicalize("123-foo"), "123Foo");
-    assertEquals(instance.canonicalize("???"), CodeGenContext.DEFAULT_ATTRIBUTE_NAME);
+    assertEquals(instance.canonicalize("???"), CodeGenContext.DEFAULT_ATTRIBUTE);
   }
 
   @Test
   public void testInitRegisterNameState() {
     CodeGenContext.reset();
     CodeGenContext instance = CodeGenContext.getOrCreate();
-    boolean done = instance.registerNameState(CodeGenContext.DEFAULT_ATTRIBUTE_NAME);
+    boolean done = instance.registerNameState(CodeGenContext.DEFAULT_ATTRIBUTE);
     assertEquals(done, false);
   }
 
@@ -97,7 +98,7 @@ public class CodeGenContextSuite {
     } catch (IllegalArgumentException iae) {
       fetchedException = true;
     }
-    assertEquals(fetchedException, true);
+    assertTrue(fetchedException);
   }
 
   @Test
@@ -111,7 +112,7 @@ public class CodeGenContextSuite {
     } catch (IllegalArgumentException iae) {
       fetchedException = true;
     }
-    assertEquals(fetchedException, true);
+    assertTrue(fetchedException);
   }
 
   @Test
@@ -133,5 +134,44 @@ public class CodeGenContextSuite {
     assertEquals(instance.getAttributeName("foo-bar"), "fooBar0");
     assertEquals(instance.getAttributeName("fooBar"), "fooBar1");
     assertEquals(instance.getAttributeName("foo-bar"), "fooBar2");
+  }
+
+  @Test
+  public void testNormalizeJavaValues1() {
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    // check integer
+    assertEquals(instance.normalizeJavaValue(10), "10");
+    // check long
+    assertEquals(instance.normalizeJavaValue(10L), "10L");
+    // check byte
+    assertEquals(instance.normalizeJavaValue((byte)10), "(byte) 10");
+    // check short
+    assertEquals(instance.normalizeJavaValue((short)10), "(short) 10");
+  }
+
+  // Do not support null references
+  @Test
+  public void testNormalizeJavaValues2() {
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    boolean fetchedException = false;
+    try {
+      instance.normalizeJavaValue(null);
+    } catch (UnsupportedOperationException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
+  }
+
+  // Do not support String values
+  @Test
+  public void testNormalizeJavaValues3() {
+    CodeGenContext instance = CodeGenContext.getOrCreate();
+    boolean fetchedException = false;
+    try {
+      instance.normalizeJavaValue("abc");
+    } catch (UnsupportedOperationException uoe) {
+      fetchedException = true;
+    }
+    assertTrue(fetchedException);
   }
 }

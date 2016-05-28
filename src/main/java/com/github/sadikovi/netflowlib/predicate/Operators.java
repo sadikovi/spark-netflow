@@ -20,6 +20,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import com.github.sadikovi.netflowlib.codegen.CodeGenContext;
+import com.github.sadikovi.netflowlib.codegen.CodeGenExpression;
+import com.github.sadikovi.netflowlib.codegen.CodeGenNode;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.AndInspector;
@@ -36,7 +39,7 @@ public final class Operators {
    * transformed into another predicate or converted into [[ValueInspector]]. This class represents
    * original user-defined predicate tree.
    */
-  public static abstract interface FilterPredicate {
+  public static abstract interface FilterPredicate extends CodeGenExpression {
 
     public FilterPredicate update(PredicateTransform transformer,
       HashMap<String, Statistics> statistics);
@@ -104,6 +107,28 @@ public final class Operators {
       return result;
     }
 
+    @Override
+    public String generate(CodeGenContext ctx) {
+      Class<?> type = getColumn().getColumnType();
+      String nodeName = getColumn().nodeName(ctx);
+      String nodeType = getColumn().nodeType(ctx);
+      if (type.equals(Byte.class) || type.equals(Short.class) || type.equals(Integer.class) ||
+          type.equals(Long.class)) {
+        return generateNumeric(ctx, nodeName, nodeType);
+      } else {
+        throw new UnsupportedOperationException("Unsupported column " + getColumn() +
+          " for code generation");
+      }
+    }
+
+    /** Generate code for numeric boolean expression */
+    protected abstract String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType);
+
+    @Override
+    public CodeGenNode[] expressionNodes() {
+      return new CodeGenNode[]{getColumn()};
+    }
+
     private final Column column;
     private final Serializable value;
     private final ValueInspector inspector;
@@ -159,6 +184,11 @@ public final class Operators {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
     }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      return nodeName + " == " + ctx.normalizeJavaValue(getValue());
+    }
   }
 
   /** "Greater Than" filter */
@@ -207,6 +237,11 @@ public final class Operators {
       } else {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
+    }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      return nodeName + " > " + ctx.normalizeJavaValue(getValue());
     }
   }
 
@@ -257,6 +292,11 @@ public final class Operators {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
     }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      return nodeName + " >= " + ctx.normalizeJavaValue(getValue());
+    }
   }
 
   /** "Less Than" filter */
@@ -305,6 +345,11 @@ public final class Operators {
       } else {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
+    }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      return nodeName + " < " + ctx.normalizeJavaValue(getValue());
     }
   }
 
@@ -355,6 +400,11 @@ public final class Operators {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
     }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      return nodeName + " <= " + ctx.normalizeJavaValue(getValue());
+    }
   }
 
   /**
@@ -402,7 +452,7 @@ public final class Operators {
       return result;
     }
 
-    private HashSet<Object> values = new HashSet<Object>();
+    protected HashSet<Object> values = new HashSet<Object>();
   }
 
   /** "In" filter, should be evaluated to true, if value contains in the set */
@@ -452,6 +502,26 @@ public final class Operators {
         throw new UnsupportedOperationException("Unsupported type for predicate " + toString());
       }
     }
+
+    @Override
+    protected String generateNumeric(CodeGenContext ctx, String nodeName, String nodeType) {
+      StringBuilder buffer = new StringBuilder();
+      if (values.isEmpty()) {
+        return "false";
+      }
+
+      boolean isFirstValue = true;
+      for (Object entry: values) {
+        if (!isFirstValue) {
+          buffer.append(" || ");
+        } else {
+          isFirstValue = false;
+        }
+        buffer.append(nodeName + " == " + ctx.normalizeJavaValue(entry));
+      }
+
+      return buffer.toString();
+    }
   }
 
   /**
@@ -498,6 +568,31 @@ public final class Operators {
       return result;
     }
 
+    public String generate(CodeGenContext ctx) {
+      String code1 = getLeft().generate(ctx);
+      String code2 = getRight().generate(ctx);
+      return generateBinaryExpression(ctx, code1, code2);
+    }
+
+    protected abstract String generateBinaryExpression(
+      CodeGenContext ctx, String code1, String code2);
+
+    @Override
+    public CodeGenNode[] expressionNodes() {
+      CodeGenNode[] leftNodes = getLeft().expressionNodes();
+      CodeGenNode[] rightNodes = getRight().expressionNodes();
+      CodeGenNode[] allNodes = new CodeGenNode[leftNodes.length + rightNodes.length];
+      int index = 0;
+      for (CodeGenNode node: leftNodes) {
+        allNodes[index++] = node;
+      }
+      for (CodeGenNode node: rightNodes) {
+        allNodes[index++] = node;
+      }
+
+      return allNodes;
+    }
+
     private final FilterPredicate left;
     private final FilterPredicate right;
   }
@@ -525,6 +620,11 @@ public final class Operators {
     public Inspector convert() {
       return new AndInspector(getLeft().convert(), getRight().convert());
     }
+
+    @Override
+    protected String generateBinaryExpression(CodeGenContext ctx, String code1, String code2) {
+      return "(" + code1 + ") && (" + code2 + ")";
+    }
   }
 
   /** "And" logical operator */
@@ -545,6 +645,11 @@ public final class Operators {
     @Override
     public Inspector convert() {
       return new OrInspector(getLeft().convert(), getRight().convert());
+    }
+
+    @Override
+    protected String generateBinaryExpression(CodeGenContext ctx, String code1, String code2) {
+      return "(" + code1 + ") || (" + code2 + ")";
     }
   }
 
@@ -585,6 +690,14 @@ public final class Operators {
       return result;
     }
 
+    @Override
+    public abstract String generate(CodeGenContext ctx);
+
+    @Override
+    public CodeGenNode[] expressionNodes() {
+      return getChild().expressionNodes();
+    }
+
     private final FilterPredicate child;
   }
 
@@ -609,6 +722,11 @@ public final class Operators {
     @Override
     public Inspector convert() {
       return new NotInspector(getChild().convert());
+    }
+
+    @Override
+    public String generate(CodeGenContext ctx) {
+      return "!(" + getChild().generate(ctx) + ")";
     }
   }
 
@@ -656,6 +774,16 @@ public final class Operators {
       throw new UnsupportedOperationException("Predicate " + toString() + " does not support " +
         "Inspector interface. You should transform FilterPredicate tree to ensure that there are " +
         "no TrivialPredicate instances");
+    }
+
+    @Override
+    public String generate(CodeGenContext ctx) {
+      return "" + getResult();
+    }
+
+    @Override
+    public CodeGenNode[] expressionNodes() {
+      return new CodeGenNode[]{};
     }
 
     private boolean result;
