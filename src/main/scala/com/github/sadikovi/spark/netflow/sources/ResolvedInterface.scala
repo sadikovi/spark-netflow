@@ -96,7 +96,7 @@ abstract class ResolvedInterface {
   }
 
   /** Resolve internal type into SQL type */
-  private[sources] def javaToSQLType(klass: Class[_]): DataType = klass match {
+  private[sources] def javaToSQLType(clazz: Class[_]): DataType = clazz match {
     case InternalType.BYTE => ByteType
     case InternalType.SHORT => ShortType
     case InternalType.INT => IntegerType

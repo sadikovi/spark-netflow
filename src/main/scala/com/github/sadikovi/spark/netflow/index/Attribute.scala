@@ -32,7 +32,7 @@ class Attribute[T](
     val lt: (T, T) => Boolean,
     val flags: Byte,
     val isNullable: Boolean)(implicit tag: ClassTag[T]) {
-  private val klass = tag.runtimeClass
+  private val clazz = tag.runtimeClass
   private var count: Long = if (isCountEnabled) 0 else Long.MinValue
   private var min: T = _
   private var max: T = _
@@ -206,7 +206,7 @@ class Attribute[T](
   }
 
   /** Get actual generic runtime class */
-  def getClassTag(): Class[_] = klass
+  def getClassTag(): Class[_] = clazz
 
   /**
    * Whether or not attribute has null values.
@@ -237,20 +237,20 @@ object Attribute {
     apply(name, flags.toByte, tag.runtimeClass.asInstanceOf[Class[T]])
   }
 
-  def apply[T: ClassTag](name: String, flags: Int, klass: Class[T]): Attribute[T] = {
+  def apply[T: ClassTag](name: String, flags: Int, clazz: Class[T]): Attribute[T] = {
     val byteFlags = flags.toByte
-    if (klass == classOf[Byte]) {
+    if (clazz == classOf[Byte]) {
       new Attribute[Byte](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
-    } else if (klass == classOf[Short]) {
+    } else if (clazz == classOf[Short]) {
       new Attribute[Short](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
-    } else if (klass == classOf[Int]) {
+    } else if (clazz == classOf[Int]) {
       new Attribute[Int](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
-    } else if (klass == classOf[Long]) {
+    } else if (clazz == classOf[Long]) {
       new Attribute[Long](name, _ < _, byteFlags, false).asInstanceOf[Attribute[T]]
-    } else if (klass == classOf[String]) {
+    } else if (clazz == classOf[String]) {
       new Attribute[String](name, _ < _, byteFlags, true).asInstanceOf[Attribute[T]]
     } else {
-      sys.error(s"Unsupported attribute class $klass")
+      sys.error(s"Unsupported attribute class $clazz")
     }
   }
 }

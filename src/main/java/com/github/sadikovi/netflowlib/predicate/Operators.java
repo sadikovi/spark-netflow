@@ -60,7 +60,7 @@ public final class Operators {
       this.inspector = getValueInspector(column.getColumnType());
     }
 
-    protected abstract ValueInspector getValueInspector(Class<?> klass);
+    protected abstract ValueInspector getValueInspector(Class<?> clazz);
 
     public Column getColumn() {
       return column;
@@ -126,29 +126,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(value == Byte.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(value == Short.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(value == Integer.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {
@@ -175,29 +175,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(value > Byte.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(value > Short.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(value > Integer.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {
@@ -224,29 +224,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(value >= Byte.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(value >= Short.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(value >= Integer.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {
@@ -273,29 +273,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(value < Byte.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(value < Short.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(value < Integer.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {
@@ -322,29 +322,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(value <= Byte.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(value <= Short.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(value <= Integer.class.cast(getValue()));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {
@@ -419,29 +419,29 @@ public final class Operators {
     }
 
     @Override
-    protected ValueInspector getValueInspector(Class<?> klass) {
-      if (klass.equals(Byte.class)) {
+    protected ValueInspector getValueInspector(Class<?> clazz) {
+      if (clazz.equals(Byte.class)) {
         return new ValueInspector() {
           @Override
           public void update(byte value) {
             setResult(getValues().contains(value));
           }
         };
-      } else if (klass.equals(Short.class)) {
+      } else if (clazz.equals(Short.class)) {
         return new ValueInspector() {
           @Override
           public void update(short value) {
             setResult(getValues().contains(value));
           }
         };
-      } else if (klass.equals(Integer.class)) {
+      } else if (clazz.equals(Integer.class)) {
         return new ValueInspector() {
           @Override
           public void update(int value) {
             setResult(getValues().contains(value));
           }
         };
-      } else if (klass.equals(Long.class)) {
+      } else if (clazz.equals(Long.class)) {
         return new ValueInspector() {
           @Override
           public void update(long value) {

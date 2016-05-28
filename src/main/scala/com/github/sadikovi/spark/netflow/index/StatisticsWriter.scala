@@ -49,11 +49,11 @@ private[spark] class StatisticsWriter(
 
   /** Write attribute header (flags, name, etc). Exposed to a package for testing purposes */
   private[index] def writeAttributeHeader(
-      klass: Class[_], flags: Byte, key: String, hasNull: Boolean): Unit = {
+      clazz: Class[_], flags: Byte, key: String, hasNull: Boolean): Unit = {
     buffer.writeByte(StatisticsUtils.MAGIC_1)
     buffer.writeByte(StatisticsUtils.MAGIC_2)
     buffer.writeByte(flags)
-    buffer.writeByte(StatisticsUtils.getBytes(klass))
+    buffer.writeByte(StatisticsUtils.getBytes(clazz))
     buffer.writeBoolean(hasNull)
     // Bytes of the key based on charset, this will write length as integer and array of bytes
     StatisticsUtils.writeValue(buffer, key, classOf[String])
@@ -62,9 +62,9 @@ private[spark] class StatisticsWriter(
   /** Generic write method for arbitrary sequence of elements */
   private def writeElements(
       tpe: Byte,
-      klass: Class[_], size: Int, elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
+      clazz: Class[_], size: Int, elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
     buffer.writeByte(tpe)
-    buffer.writeByte(StatisticsUtils.getBytes(klass))
+    buffer.writeByte(StatisticsUtils.getBytes(clazz))
     buffer.writeInt(size)
     val iter = elems.toIterator
     while (iter.hasNext) {
@@ -74,14 +74,14 @@ private[spark] class StatisticsWriter(
       }
 
       if (!hasNull || elem != null) {
-        StatisticsUtils.writeValue(buffer, elem, klass)
+        StatisticsUtils.writeValue(buffer, elem, clazz)
       }
     }
   }
 
   private def writeElements(
-      tpe: Byte, klass: Class[_], elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
-    writeElements(tpe, klass, elems.size, elems, hasNull)
+      tpe: Byte, clazz: Class[_], elems: GenTraversableOnce[_], hasNull: Boolean): Unit = {
+    writeElements(tpe, clazz, elems.size, elems, hasNull)
   }
 
   /** Internal method to write single attribute. Exposed to a package for testing purposes */
