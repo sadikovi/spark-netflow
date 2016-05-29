@@ -43,10 +43,7 @@ private[spark] object Utils {
     UUID.nameUUIDFromBytes(str.getBytes()).toString()
   }
 
-  /**
-   * Get context class laoder on this thread or, if not present, default class loader for this
-   * class.
-   */
+  /** Get context class loader on this thread or, if not present, default class loader for class */
   def getContextClassLoader(): ClassLoader = {
     Option(Thread.currentThread().getContextClassLoader).getOrElse(getClass.getClassLoader)
   }
@@ -157,5 +154,10 @@ private[spark] object Utils {
   def withTempFile(func: HadoopPath => Unit): Unit = {
     val file = Utils.withSuffix(Utils.createTempDir(), UUID.randomUUID().toString)
     withTempHadoopPath(file)(func)
+  }
+
+  /** Get cleaned class name for logging */
+  def getLogName(clazz: Class[_]): String = {
+    clazz.getName().stripSuffix("$")
   }
 }

@@ -122,7 +122,7 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
       // Predicate scan, convert `internalFilter` into inspector tree, extract columns that are
       // filtered
       Inspector inspectorTree = internalFilter.convert();
-      strategy = new FilterScan(columns, inspectorTree, inspectors);
+      strategy = new FilterScan(columns, inspectorTree, internalFilter, inspectors);
     }
 
     if (strategy == null) {

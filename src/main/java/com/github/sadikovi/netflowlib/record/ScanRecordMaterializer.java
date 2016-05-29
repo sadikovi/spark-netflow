@@ -18,6 +18,8 @@ package com.github.sadikovi.netflowlib.record;
 
 import io.netty.buffer.ByteBuf;
 
+import com.github.sadikovi.netflowlib.codegen.CodeGenContext;
+import com.github.sadikovi.netflowlib.codegen.CodeGenNode;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Columns.ByteColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.ShortColumn;
@@ -45,6 +47,20 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     }
 
     return newRecord;
+  }
+
+  @Override
+  protected String generateProcessRecord(CodeGenContext ctx, CodeGenNode buffer) {
+    CodeGenNode newRecord = generateNewRecordNode(ctx);
+    StringBuilder code = new StringBuilder();
+    code.append(newRecord.nodeType(ctx) + " " + newRecord.nodeName(ctx) +
+      " = new java.lang.Object[" + numColumns + "];\n");
+    for (int i=0; i<numColumns; i++) {
+      code.append(newRecord.nodeName(ctx) + "[" + i + "] = " +
+        generateReadField(ctx, columns[i], buffer) +  ";\n");
+    }
+    code.append("return " + newRecord.nodeName(ctx) + ";\n");
+    return code.toString();
   }
 
   private final Column[] columns;

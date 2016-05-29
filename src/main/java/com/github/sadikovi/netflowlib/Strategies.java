@@ -23,6 +23,7 @@ import java.util.HashMap;
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
+import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.record.ScanRecordMaterializer;
 import com.github.sadikovi.netflowlib.record.PredicateRecordMaterializer;
@@ -102,8 +103,9 @@ public final class Strategies {
     public FilterScan(
         Column[] columns,
         Inspector tree,
+        FilterPredicate predicateTree,
         HashMap<Column, ArrayList<ValueInspector>> inspectors) {
-      rm = new PredicateRecordMaterializer(columns, tree, inspectors);
+      rm = new PredicateRecordMaterializer(columns, tree, predicateTree, inspectors);
     }
 
     @Override
