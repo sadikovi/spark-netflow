@@ -183,3 +183,75 @@ NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)
 -------------------------------------------------------------------------------------------
 Aggregated report                        1551 / 1690        644.6      155143.4       1.0X
 ```
+
+## Using `netflowlib` library separately
+You can use `netflowlib` without using `spark-netflow` package. Here some basic concepts and
+examples:
+- `com.github.sadikovi.netflowlib.predicate.Columns.*` all available column types in the library,
+check out `com.github.sadikovi.netflowlib.version.*` classes to see what columns are already defined
+for a specific NetFlow format.
+- `com.github.sadikovi.netflowlib.predicate.FilterApi` utility class to create predicates for
+NetFlow file
+- `com.github.sadikovi.netflowlib.statistics.StatisticsTypes` statistics that you can use to reduce
+boundaries of filter or allow filter to be evaluated before scanning the file. For example, library
+creates statistics on time, so time filter can be resolved upfront
+- `com.github.sadikovi.netflowlib.NetFlowReader` main entry to work with NetFlow file, gives access
+to file header and iterator of rows, allows to pass additional predicate and statistics
+- `com.github.sadikovi.netflowlib.NetFlowHeader` header information can be accessed using this
+class from `NetFlowReader.getHeader()`, see class for more information on flags available
+
+Note that library has only one external dependency on `io.netty.buffer.ByteBuf` buffers, which
+could be replaced with standard Java buffer functionality, but since it was built for being used as
+part of a spark-package, this dependency comes with Spark.
+
+Here is the general usage pattern:
+```scala
+
+import com.github.sadikovi.netflowlib.NetFlowReader
+import com.github.sadikovi.netflowlib.version.NetFlowV5
+
+// Create input stream by opening NetFlow file, e.g. `fs.open(hadoopFile)`
+val stm: DataInputStream = ...
+// Prepare reader based on input stream and buffer size, you can use
+// overloaded alternative with default buffer size
+val reader = NetFlowReader.prepareReader(stm, 10000)
+// Check out header, optional
+val header = reader.getHeader()
+// Actual NetFlow version of the file
+val actualVersion = header.getFlowVersion()
+// Whether or not file is compressed
+val isCompressed = header.isCompressed()
+
+// This is list of fields that will be returned in iterator as values in
+// array (same order)
+val fields = Array(
+  NetFlowV5.FIELD_UNIX_SECS,
+  NetFlowV5.FIELD_SRCADDR,
+  NetFlowV5.FIELD_DSTADDR,
+  NetFlowV5.FIELD_SRCPORT,
+  NetFlowV5.FIELD_DSTPORT
+)
+
+// Build record buffer and iterator that you can use to get values.
+// Note that you can also use set of filters, if you want to get
+// particular records
+val recordBuffer = reader.prepareRecordBuffer(fields)
+val iter = recordBuffer.iterator()
+
+while (iter.hasNext) {
+  // print every row with values
+  println(iter.next)
+}
+```
+
+Here is an example of using predicate to keep certain records:
+```scala
+import com.github.sadikovi.netflowlib.predicate.FilterApi
+val predicate = FilterApi.and(
+  FilterApi.eq(NetFlowV5.FIELD_SRCPORT, 123),
+  FilterApi.eq(NetFlowV5.FIELD_DSTPORT, 456)
+)
+
+...
+val recordBuffer = reader.prepareRecordBuffer(fields, predicate)
+```
