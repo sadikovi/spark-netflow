@@ -155,25 +155,25 @@ public final class ScanPlanner extends Logging implements PredicateTransform {
 
   // Method to compare two objects based on provided class. Interface is similar to `compareTo`
   // method from `Comparable` interface. Note that only certain types are supported
-  protected int compare(Class<?> klass, Object it, Object that) {
-    if (klass.equals(Byte.class)) {
+  protected int compare(Class<?> clazz, Object it, Object that) {
+    if (clazz.equals(Byte.class)) {
       Byte itValue = Byte.class.cast(it);
       Byte thatValue = Byte.class.cast(that);
       return itValue.compareTo(thatValue);
-    } else if (klass.equals(Short.class)) {
+    } else if (clazz.equals(Short.class)) {
       Short itValue = Short.class.cast(it);
       Short thatValue = Short.class.cast(that);
       return itValue.compareTo(thatValue);
-    } else if (klass.equals(Integer.class)) {
+    } else if (clazz.equals(Integer.class)) {
       Integer itValue = Integer.class.cast(it);
       Integer thatValue = Integer.class.cast(that);
       return itValue.compareTo(thatValue);
-    } else if (klass.equals(Long.class)) {
+    } else if (clazz.equals(Long.class)) {
       Long itValue = Long.class.cast(it);
       Long thatValue = Long.class.cast(that);
       return itValue.compareTo(thatValue);
     } else {
-      throw new UnsupportedOperationException("Unsupported read type " + klass.toString());
+      throw new UnsupportedOperationException("Unsupported read type " + clazz.toString());
     }
   }
 

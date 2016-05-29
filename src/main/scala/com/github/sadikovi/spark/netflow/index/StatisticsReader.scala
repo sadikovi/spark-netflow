@@ -48,11 +48,11 @@ private[spark] class StatisticsReader {
   private[index] def getAttributeParams(buffer: ByteBuf): (Byte, Class[_], Boolean, String) = {
     verify(buffer)
     val flags = buffer.readByte()
-    val klass = StatisticsUtils.getClassTag(buffer.readByte())
+    val clazz = StatisticsUtils.getClassTag(buffer.readByte())
     val hasNull = buffer.readBoolean()
     val name = StatisticsUtils.readValue(buffer, classOf[String]).asInstanceOf[String]
 
-    (flags, klass, hasNull, name)
+    (flags, clazz, hasNull, name)
   }
 
   /** Read property, and return type of property, class of values, and temporary buffer */
@@ -61,7 +61,7 @@ private[spark] class StatisticsReader {
     val tpe = buffer.readByte()
     val classBytes = buffer.readByte()
     var size = buffer.readInt()
-    val klass = StatisticsUtils.getClassTag(classBytes)
+    val clazz = StatisticsUtils.getClassTag(classBytes)
     // Temporary cache for values
     val temp = new ArrayBuffer[Any]()
     // Read values sequentially
@@ -71,10 +71,10 @@ private[spark] class StatisticsReader {
         if (isNullByte) {
           temp.append(null)
         } else {
-          temp.append(StatisticsUtils.readValue(buffer, klass))
+          temp.append(StatisticsUtils.readValue(buffer, clazz))
         }
       } else {
-        temp.append(StatisticsUtils.readValue(buffer, klass))
+        temp.append(StatisticsUtils.readValue(buffer, clazz))
       }
       size -= 1
     }
@@ -85,11 +85,11 @@ private[spark] class StatisticsReader {
   private[index] def getAttribute(buffer: ByteBuf): Attribute[_ <: Any] = {
     val params = getAttributeParams(buffer)
     val flags = params._1
-    val klass = params._2
+    val clazz = params._2
     val hasNull = params._3
     val name = params._4
 
-    val attr = Attribute(name, flags, klass)
+    val attr = Attribute(name, flags, clazz)
     // We cannot use `containsNull` when reading property, because it will account for min/max,
     // which are null for empty attribute
     attr.setNull(hasNull)
