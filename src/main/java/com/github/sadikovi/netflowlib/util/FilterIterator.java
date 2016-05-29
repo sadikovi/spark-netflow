@@ -50,7 +50,7 @@ public final class FilterIterator<E> implements Iterator<E> {
 
     if (foundItem == null) {
       throw new IllegalStateException("Potential out of sync error in " +
-        getClass().getSimpleName());
+        getClass().getName());
     }
 
     found = false;
