@@ -58,7 +58,7 @@ public final class Columns {
 
     @Override
     public String toString() {
-      return "Column(" + columnName + ")[" + columnType.getSimpleName() + "][" + columnOffset + "]";
+      return getClass().getSimpleName() + "(name=" + columnName + ", offset=" + columnOffset + ")";
     }
 
     @Override

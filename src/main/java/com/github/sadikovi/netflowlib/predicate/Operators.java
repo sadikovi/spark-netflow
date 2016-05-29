@@ -53,6 +53,10 @@ public final class Operators {
    */
   static abstract class ColumnPredicate implements FilterPredicate, Serializable {
     ColumnPredicate(Column column, Object value) {
+      if (column == null) {
+        throw new IllegalArgumentException("Column is null for predicate " + getClass().getName());
+      }
+
       this.column = column;
       // Since value can be any object potentially, we store it as Serializable to make sure that
       // any distributed systems can resolve predicate once, and ship it to any node.
@@ -377,8 +381,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName() + "(" + getColumn() + ", <" +
-        values.getClass().getSimpleName() + ">)";
+      return getClass().getSimpleName() + "(" + getColumn() + ", " + values + ")";
     }
 
     @Override
@@ -460,6 +463,15 @@ public final class Operators {
    */
   static abstract class BinaryLogicalPredicate implements FilterPredicate, Serializable {
     BinaryLogicalPredicate(FilterPredicate left, FilterPredicate right) {
+      // Check if left or right nodes are null
+      if (left == null) {
+        throw new IllegalArgumentException("Left predicate is null for " + getClass().getName());
+      }
+
+      if (right == null) {
+        throw new IllegalArgumentException("Right predicate is null for " + getClass().getName());
+      }
+
       this.left = left;
       this.right = right;
     }
@@ -554,6 +566,10 @@ public final class Operators {
    */
   static abstract class UnaryLogicalPredicate implements FilterPredicate, Serializable {
     UnaryLogicalPredicate(FilterPredicate child) {
+      if (child == null) {
+        throw new IllegalArgumentException("Child predicate is null for " + getClass().getName());
+      }
+
       this.child = child;
     }
 
