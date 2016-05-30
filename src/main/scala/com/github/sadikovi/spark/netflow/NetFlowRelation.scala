@@ -34,7 +34,7 @@ import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.index.StatisticsPathResolver
 import com.github.sadikovi.spark.netflow.sources._
-import com.github.sadikovi.spark.rdd.NetFlowFileRDD
+import com.github.sadikovi.spark.rdd.{NetFlowFileRDD, NetFlowFileRDD2}
 import com.github.sadikovi.spark.util.Utils
 
 private[netflow] class NetFlowRelation(
@@ -123,6 +123,14 @@ private[netflow] class NetFlowRelation(
     case otherValue => None
   }
   logger.info(s"Statistics: $statisticsStatus")
+
+  // For testing only, codegen support
+  val codegenSupport = parameters.get("codegen") match {
+    case Some("true") => true
+    case Some("false") => false
+    case other => false
+  }
+  logger.info(s"Codegen support: $codegenSupport")
 
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
@@ -229,9 +237,14 @@ private[netflow] class NetFlowRelation(
       }
       logger.info(s"Resolved statistics index: $statisticsIndex")
 
-      // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode
-      new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
-        resolvedColumns, resolvedFilter, statisticsIndex)
+      if (codegenSupport) {
+        new NetFlowFileRDD2(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
+          resolvedColumns, resolvedFilter, statisticsIndex)
+      } else {
+        // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode
+        new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
+          resolvedColumns, resolvedFilter, statisticsIndex)
+      }
     }
   }
 

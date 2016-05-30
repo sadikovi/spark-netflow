@@ -72,9 +72,10 @@ object NetFlowReadBenchmark {
     // scalastyle:on
 
     // Defined benchmarks
-    fullScanBenchmark(iterations, version, files)
-    predicateScanBenchmark(iterations, version, files)
-    aggregatedScanBenchmark(iterations, version, files)
+    // fullScanBenchmark(iterations, version, files)
+    // predicateScanBenchmark(iterations, version, files)
+    // aggregatedScanBenchmark(iterations, version, files)
+    codegenBenchmark(iterations, version, files)
   }
 
   private def process(args: List[String], conf: Conf): Conf = args match {
@@ -157,6 +158,30 @@ object NetFlowReadBenchmark {
 
       val agg = df.groupBy(col("srcip"), col("dstip"), col("srcport"), col("dstport")).count()
       agg.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.run()
+  }
+
+  def codegenBenchmark(iters: Int, version: String, files: String): Unit = {
+    val sqlBenchmark = new Benchmark("NetFlow codegen report", 10000, iters)
+
+    sqlBenchmark.addCase("Project=7, predicate=2, codegen=F") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", "5").option("codegen", "false").
+        load(files).
+        select("unix_secs", "srcip", "dstip", "srcport", "dstport", "protocol", "octets").
+        filter(col("srcport") === 443 || col("srcip") === "74.125.237.221")
+      df.foreach(_ => Unit)
+    }
+
+    sqlBenchmark.addCase("Project=7, predicate=2, codegen=T") { iter =>
+      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+        option("version", "5").option("codegen", "true").
+        load(files).
+        select("unix_secs", "srcip", "dstip", "srcport", "dstport", "protocol", "octets").
+        filter(col("srcport") === 443 || col("srcip") === "74.125.237.221")
+      df.foreach(_ => Unit)
     }
 
     sqlBenchmark.run()
