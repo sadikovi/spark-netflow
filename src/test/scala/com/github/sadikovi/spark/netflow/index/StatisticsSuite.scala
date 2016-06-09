@@ -472,8 +472,8 @@ class StatisticsSuite extends UnitTestSpec {
     }
   }
 
-  test("attribute map - register attribute") {
-    val map = new AttributeMap().
+  test("attribute batch - register attribute") {
+    val map = new AttributeBatch().
       registerAttribute(Attribute[Int]("int", 6)).
       registerAttribute(Attribute[String]("str", 3))
     map.getMap().size should be (2)
@@ -481,17 +481,17 @@ class StatisticsSuite extends UnitTestSpec {
     map.getMap().contains("str") should be (true)
   }
 
-  test("attribute map - register sequence") {
-    val map = new AttributeMap().registerAttributes(
+  test("attribute batch - register sequence") {
+    val map = new AttributeBatch().registerAttributes(
       Attribute[Int]("int", 6) :: Attribute[String]("str", 3) :: Nil)
     map.getMap().size should be (2)
     map.getMap().contains("int") should be (true)
     map.getMap().contains("str") should be (true)
   }
 
-  test("attribute map - update statistics") {
+  test("attribute batch - update statistics") {
     val str = Attribute[String]("str", 7)
-    val map = new AttributeMap().registerAttribute(str)
+    val map = new AttributeBatch().registerAttribute(str)
     map.updateStatistics("str", "abc")
     map.updateStatistics("str", "bcd")
     map.updateStatistics("str", null)
@@ -503,11 +503,11 @@ class StatisticsSuite extends UnitTestSpec {
     str.containsInSet(null) should be (Some(true))
   }
 
-  test("attribute map - write/read statistics") {
+  test("attribute batch - write/read statistics") {
     Utils.withTempFile { file =>
       val int = Attribute[Int]("int", 6)
       val str = Attribute[String]("str", 3)
-      var map = new AttributeMap().registerAttributes(Seq(int, str))
+      var map = new AttributeBatch().registerAttributes(Seq(int, str))
       // Update statistics
       map.updateStatistics("int", 3)
       map.updateStatistics("int", 5)
@@ -523,7 +523,7 @@ class StatisticsSuite extends UnitTestSpec {
       // Write into temporary file
       map.write(file.toString)
       // Read it back and compare result
-      map = AttributeMap.read(file.toString)
+      map = AttributeBatch.read(file.toString)
       int.equals(map.getMap().apply("int")) should be (true)
       str.equals(map.getMap().apply("str")) should be (true)
     }

@@ -27,7 +27,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.{Eq => JEq, In => JIn}
 import com.github.sadikovi.netflowlib.predicate.Operators.{Gt => JGt, Ge => JGe}
 import com.github.sadikovi.netflowlib.predicate.Operators.{Lt => JLt, Le => JLe}
 import com.github.sadikovi.netflowlib.predicate.Operators.{And => JAnd, Or => JOr, Not => JNot}
-import com.github.sadikovi.spark.netflow.index.AttributeMap
+import com.github.sadikovi.spark.netflow.index.AttributeBatch
 import com.github.sadikovi.spark.netflow.sources._
 
 /**
@@ -87,11 +87,11 @@ private[spark] object NetFlowFilters {
   }
 
   /**
-   * Update filter predicate based on attribute map. Column name of filter predicate is used as a
-   * key of the attribute map to extract relevant attribute. For different predicate different
+   * Update filter predicate based on attribute batch. Column name of filter predicate is used as
+   * a key of the attribute bach to extract relevant attribute. For different predicate different
    * statistics data is used. No-op when attribute is not found, or filter is trivial.
    */
-  def updateFilter(filter: FilterPredicate, attributes: AttributeMap): FilterPredicate = {
+  def updateFilter(filter: FilterPredicate, attributes: AttributeBatch): FilterPredicate = {
     filter match {
       case eq: JEq =>
         val key = eq.getColumn().getColumnName()
