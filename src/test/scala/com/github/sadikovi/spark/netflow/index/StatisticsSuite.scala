@@ -528,4 +528,168 @@ class StatisticsSuite extends UnitTestSpec {
       str.equals(map.getMap().apply("str")) should be (true)
     }
   }
+
+  test("attribute metric - count metric") {
+    val cnt = new CountMetric()
+    cnt.nullable() should be (false)
+    cnt.addValue(1L)
+    cnt.countQuery() should be (Some(1L))
+  }
+
+  test("attribute metric - count metric add value") {
+    val cnt = new CountMetric()
+    cnt.addValue(123L)
+    cnt.countQuery() should be (Some(123L))
+  }
+
+  test("attribute metric - count metric add null") {
+    // adding null results in no-op
+    val cnt = new CountMetric()
+    cnt.addValue(null)
+    cnt.countQuery() should be (Some(0L))
+  }
+
+  test("attribute metric - count metric read/write") {
+    val cnt = new CountMetric()
+    cnt.addValue(Long.MaxValue)
+
+    val upd = new CountMetric()
+    upd.read(cnt.write())
+    upd.countQuery() should be (Some(Long.MaxValue))
+  }
+
+  test("attribute metric - min/max metric nullability") {
+    val metrics: Seq[MinMaxMetric[_]] = Seq(new ByteMinMaxMetric(), new ShortMinMaxMetric(),
+      new IntMinMaxMetric(), new LongMinMaxMetric())
+
+    for (metric <- metrics) {
+      metric.nullable() should be (false)
+      metric.countQuery() should be (None)
+    }
+  }
+
+  test("attribute metric - min/max metric add -> range query (byte)") {
+    val metric = new ByteMinMaxMetric()
+    metric.rangeQuery(null.asInstanceOf[Byte]) { (min, value, max) => true} should be (Some(false))
+
+    metric.addValue(1.toByte)
+    metric.addValue(2.toByte)
+    metric.addValue(-3.toByte)
+
+    metric.rangeQuery(null.asInstanceOf[Byte]) { (min, value, max) => true} should be (Some(false))
+    metric.rangeQuery(2.toByte) { (min, value, max) => value > min} should be (Some(true))
+    metric.rangeQuery(4.toByte) { (min, value, max) => value > max} should be (Some(true))
+  }
+
+  test("attribute metric - min/max metric, add -> range query (short)") {
+    val metric = new ShortMinMaxMetric()
+    metric.rangeQuery(null.asInstanceOf[Short]) { (min, value, max) => true} should be (Some(false))
+
+    metric.addValue(1.toShort)
+    metric.addValue(2.toShort)
+    metric.addValue(-3.toShort)
+
+    metric.rangeQuery(null.asInstanceOf[Short]) { (min, value, max) => true} should be (Some(false))
+    metric.rangeQuery(2.toShort) { (min, value, max) => value > min} should be (Some(true))
+    metric.rangeQuery(4.toShort) { (min, value, max) => value > max} should be (Some(true))
+  }
+
+  test("attribute metric - min/max metric, add -> range query (int)") {
+    val metric = new IntMinMaxMetric()
+    metric.rangeQuery(null.asInstanceOf[Int]) { (min, value, max) => true} should be (Some(false))
+
+    metric.addValue(1)
+    metric.addValue(2)
+    metric.addValue(-3)
+
+    metric.rangeQuery(null.asInstanceOf[Int]) { (min, value, max) => true} should be (Some(false))
+    metric.rangeQuery(2) { (min, value, max) => value > min} should be (Some(true))
+    metric.rangeQuery(4) { (min, value, max) => value > max} should be (Some(true))
+  }
+
+  test("attribute metric - min/max metric, add -> range query (long)") {
+    val metric = new LongMinMaxMetric()
+    metric.rangeQuery(null.asInstanceOf[Long]) { (min, value, max) => true} should be (Some(false))
+
+    metric.addValue(1L)
+    metric.addValue(2L)
+    metric.addValue(-3L)
+
+    metric.rangeQuery(null.asInstanceOf[Long]) { (min, value, max) => true} should be (Some(false))
+    metric.rangeQuery(2L) { (min, value, max) => value > min} should be (Some(true))
+    metric.rangeQuery(4L) { (min, value, max) => value > max} should be (Some(true))
+  }
+
+  test("attribyte metric - min/max metric, read/write") {
+    val m1 = new IntMinMaxMetric()
+    m1.addValue(1)
+    m1.addValue(2)
+    m1.addValue(-3)
+    val m2 = new IntMinMaxMetric()
+    m2.read(m1.write())
+
+    m2.toString should be (m1.toString)
+    m2.rangeQuery(1) { (min, value, max) =>
+      min should be (-3)
+      max should be (2)
+      true
+    }
+  }
+
+  test("attribute metric - (long) set metric, nullability") {
+    val metric = new LongSetMetric()
+    metric.nullable() should be (true)
+    metric.containsNull() should be (false)
+
+    metric.addValue(null)
+    metric.nullable() should be (true)
+    metric.containsNull() should be (true)
+  }
+
+  test("attribute metric - (long) set metric, add value") {
+    val metric = new LongSetMetric()
+    metric.addValue(null)
+    metric.addValue(1L)
+    metric.addValue(2L)
+    metric.addValue(-1L)
+
+    metric.containsQuery(null.asInstanceOf[Long]) should be (Some(true))
+    metric.containsQuery(1L) should be (Some(true))
+    metric.containsQuery(2L) should be (Some(true))
+    metric.containsQuery(-1L) should be (Some(true))
+    metric.containsQuery(3L) should be (Some(false))
+  }
+
+  test("attribute metric - (long) set metric, read/write") {
+    val m1 = new LongSetMetric()
+    m1.addValue(null)
+    m1.addValue(1L)
+    m1.addValue(2L)
+    m1.addValue(-1L)
+
+    val m2 = new LongSetMetric()
+    m2.read(m1.write())
+    m2.containsNull should be (true)
+    m2.containsQuery(null.asInstanceOf[Long]) should be (Some(true))
+    m2.containsQuery(1L) should be (Some(true))
+    m2.containsQuery(2L) should be (Some(true))
+    m2.containsQuery(-1L) should be (Some(true))
+    m2.containsQuery(3L) should be (Some(false))
+  }
+
+  test("attribute metric - (long) set metric, read/write non-null") {
+    val m1 = new LongSetMetric()
+    m1.addValue(1L)
+    m1.addValue(2L)
+    m1.addValue(-1L)
+
+    val m2 = new LongSetMetric()
+    m2.read(m1.write())
+    m2.containsNull should be (false)
+    m2.containsQuery(null.asInstanceOf[Long]) should be (Some(false))
+    m2.containsQuery(1L) should be (Some(true))
+    m2.containsQuery(2L) should be (Some(true))
+    m2.containsQuery(-1L) should be (Some(true))
+    m2.containsQuery(3L) should be (Some(false))
+  }
 }
