@@ -58,14 +58,19 @@ abstract class AttributeMetric[T](implicit tag: ClassTag[T]) {
   def countQuery(): Option[Long] = None
 
   /** Check if metric contains / keeps track of the value, `None` is no-op */
-  def containsQuery(value: T): Option[Boolean] = None
+  def containsQuery(value: Any): Option[Boolean] = None
 
   /**
    * Check if value is in range provided by metric, first parameter is a value to check, second
    * parameter is a range query - (min, value, max) => Boolean, whether predicate passes or does
    * not pass query.
    */
-  def rangeQuery(value: T)(func: (T, T, T) => Boolean): Option[Boolean] = None
+  def rangeQuery(value: Any)(func: (T, T, T) => Boolean): Option[Boolean] = None
+
+  /** Whether or not value can be added to metric */
+  def canAddValue(unresolvedValue: Any): Boolean = {
+    unresolvedValue == null || StatisticsUtils.softCompare(unresolvedValue.getClass, clazz)
+  }
 
   /**
    * Add unresolved value, checks and compares type with runtime class including Java classes.
@@ -135,9 +140,15 @@ abstract class MinMaxMetric[T <: AnyVal](implicit tag: ClassTag[T]) extends Attr
     }
   }
 
-  override def rangeQuery(value: T)(func: (T, T, T) => Boolean): Option[Boolean] = {
-    // `func` should contain: (min, value, max) => Boolean
-    if (min == null || max == null || value == null) Some(false) else Some(func(min, value, max))
+  override def rangeQuery(value: Any)(func: (T, T, T) => Boolean): Option[Boolean] = {
+    if (min == null || max == null || value == null) {
+      Some(false)
+    } else if (!StatisticsUtils.softCompare(value.getClass, clazz)) {
+      Some(false)
+    } else {
+      // `func` should contain: (min, value, max) => Boolean
+      Some(func(min, value.asInstanceOf[T], max))
+    }
   }
 
   override def nullable(): Boolean = false
@@ -186,7 +197,7 @@ abstract class SetMetric[T](implicit tag: ClassTag[T]) extends AttributeMetric[T
 
   override def addResolvedValue(value: T): Unit = set.add(value)
 
-  override def containsQuery(value: T): Option[Boolean] = Some(set.contains(value))
+  override def containsQuery(value: Any): Option[Boolean] = Some(set.contains(value))
 
   override def nullable(): Boolean = true
 
@@ -220,6 +231,10 @@ abstract class SetMetric[T](implicit tag: ClassTag[T]) extends AttributeMetric[T
       }
     }
     buffer.array().slice(0, buffer.writerIndex)
+  }
+
+  override def toString(): String = {
+    s"SetMetric[$clazz]"
   }
 }
 
