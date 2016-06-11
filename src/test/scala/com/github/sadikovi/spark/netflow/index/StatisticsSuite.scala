@@ -568,6 +568,24 @@ class StatisticsSuite extends UnitTestSpec {
     }
   }
 
+  test("attribute metric - canAddValue for MinMaxMetric") {
+    val metric = new ByteMinMaxMetric()
+    metric.canAddValue(1) should be (false)
+    metric.canAddValue(1L) should be (false)
+    metric.canAddValue(1.toShort) should be (false)
+    metric.canAddValue(1.toByte) should be (true)
+  }
+
+  test("attribute metric - canAddValue for SetMetric") {
+    val metric = new LongSetMetric()
+    metric.canAddValue(1.toByte) should be (false)
+    metric.canAddValue(1.toShort) should be (false)
+    metric.canAddValue(1) should be (false)
+    metric.canAddValue(1L) should be (true)
+    // since set metric is nullable we check for adding a null value
+    metric.canAddValue(null) should be (true)
+  }
+
   test("attribute metric - min/max metric add -> range query (byte)") {
     val metric = new ByteMinMaxMetric()
     metric.rangeQuery(null.asInstanceOf[Byte]) { (min, value, max) => true} should be (Some(false))
