@@ -51,7 +51,7 @@ object NetFlowReadBenchmark {
 
   // Initialize Spark context
   val sparkConf = new SparkConf()
-  val sc = new SparkContext("local[*]", "test-sql-context", sparkConf)
+  val sc = new SparkContext("local[1]", "test-sql-context", sparkConf)
   val sqlContext = new SQLContext(sc)
 
   def main(args: Array[String]): Unit = {
@@ -66,9 +66,9 @@ object NetFlowReadBenchmark {
       sys.error("NetFlow version must be specified, e.g. '--version 5'"))
 
     // scalastyle:off
-    println(s"- Iterations: ${iterations}")
-    println(s"- Files: ${files}")
-    println(s"- Version: ${version}")
+    println(s"- Iterations: $iterations")
+    println(s"- Files: $files")
+    println(s"- Version: $version")
     // scalastyle:on
 
     // Defined benchmarks
