@@ -16,6 +16,7 @@
 
 package com.github.sadikovi.netflowlib;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -98,12 +99,13 @@ public final class Buffers {
       if (isCompressed) {
         inflater = new Inflater();
         // InflaterInputStream is replaced with ReadAheadInputStream to allow to resolve EOF before
-        // actual record reading
-        stream = new ReadAheadInputStream(in, inflater, bufferLength);
+        // actual record reading, we also wrap read ahead stream into buffered input stream
+        stream = new BufferedInputStream(
+          new ReadAheadInputStream(in, inflater, bufferLength), bufferLength);
         compression = true;
       } else {
         inflater = null;
-        stream = in;
+        stream = new BufferedInputStream(in);
         compression = false;
       }
 
@@ -199,7 +201,7 @@ public final class Buffers {
     // Reference to inflater to find out EOF mainly
     private final Inflater inflater;
     // Stream to read either standard DataInputStream or InflaterInputStream
-    private FilterInputStream stream;
+    private BufferedInputStream stream;
     // Primary array of bytes for a record
     private final byte[] primary;
     // Secondary array of bytes for a record, used when compression buffer needs to be refilled
