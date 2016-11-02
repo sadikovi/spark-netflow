@@ -151,32 +151,24 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
 
   test("fail reading invalid input") {
     val sqlContext = new SQLContext(sc)
-    try {
+    val err = intercept[SparkException] {
       sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:${path3}").count()
-      assert(false, "No exception was thrown")
-    } catch {
-      case se: SparkException =>
-        val msg = se.getMessage()
-        assert(msg.contains("java.lang.UnsupportedOperationException: " +
-          "Corrupt NetFlow file. Wrong magic number"))
-      case other: Throwable => throw other
     }
+    val msg = err.getMessage()
+    assert(msg.contains("java.lang.UnsupportedOperationException: " +
+      "Corrupt NetFlow file. Wrong magic number"))
   }
 
   test("fail to read data of corrupt file") {
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
       load(s"file:${path4}")
-    try {
+    val err = intercept[SparkException] {
       df.select("srcip").count()
-      assert(false, "No exception was thrown")
-    } catch {
-      case se: SparkException =>
-        val msg = se.getMessage()
-        assert(msg.contains("java.lang.IllegalArgumentException: Unexpected EOF"))
-      case other: Throwable => throw other
     }
+    val msg = err.getMessage()
+    assert(msg.contains("java.lang.IllegalArgumentException: Unexpected EOF"))
   }
 
   test("fail to read unsupported version 8") {
@@ -187,10 +179,56 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
     }
   }
 
-  test("fail if no version specified") {
-    intercept[RuntimeException] {
-      new NetFlowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
-    }
+  test("return default version if no version and no paths are specified") {
+    val relation = new NetFlowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
+    relation.getInterface() should be (
+      s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}${NetFlowRelation.VERSION_5}.InterfaceV5")
+  }
+
+  test("return version interface 5 if no version provided with at least one path") {
+    val relation =
+      new NetFlowRelation(Array(s"file:${path1}"), None, None, Map.empty)(new SQLContext(sc))
+    relation.getInterface() should be (
+      s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}${NetFlowRelation.VERSION_5}.InterfaceV5")
+  }
+
+  test("return version interface 7 if no version provided with at least one path") {
+    val relation =
+      new NetFlowRelation(Array(s"file:${path6}"), None, None, Map.empty)(new SQLContext(sc))
+    relation.getInterface() should be (
+      s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}${NetFlowRelation.VERSION_7}.InterfaceV7")
+  }
+
+  test("return None when paths are empty") {
+    val version = NetFlowRelation.lookupVersion(sc.hadoopConfiguration, Array.empty)
+    version should be (None)
+  }
+
+  test("return version 5 from Array(version 5, version 7) paths") {
+    val version = NetFlowRelation.lookupVersion(sc.hadoopConfiguration, Array(path1, path6))
+    version should be (Some(5))
+  }
+
+  test("return version 7 from Array(version 7, version 5) paths") {
+    val version = NetFlowRelation.lookupVersion(sc.hadoopConfiguration, Array(path6, path1))
+    version should be (Some(7))
+  }
+
+  test("resolve predicate pushdown mode when no option is provided") {
+    val relation = new NetFlowRelation(Array.empty, None, None, Map.empty)(new SQLContext(sc))
+    relation.getPredicatePushdown should be (true)
+  }
+
+  test("resolve predicate pushdown mode when false is provided") {
+    val relation = new NetFlowRelation(Array.empty, None, None,
+      Map("predicate-pushdown" -> "false"))(new SQLContext(sc))
+    relation.getPredicatePushdown should be (false)
+  }
+
+  test("resolve predicate pushdown mode when true is provided") {
+    val relation = new NetFlowRelation(Array.empty, None, None,
+      Map("predicate-pushdown" -> "true"))(new SQLContext(sc))
+    relation.getPredicatePushdown should be (true)
   }
 
   test("read empty non-compressed NetFlow file") {

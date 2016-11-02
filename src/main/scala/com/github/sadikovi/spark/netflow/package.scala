@@ -26,11 +26,13 @@ package object netflow {
    */
   implicit class NetFlowDataFrameReader(reader: DataFrameReader) {
     def netflow5: String => DataFrame = {
-      reader.format("com.github.sadikovi.spark.netflow").option("version", "5").load
+      reader.format("com.github.sadikovi.spark.netflow").
+        option("version", NetFlowRelation.VERSION_5).load
     }
 
     def netflow7: String => DataFrame = {
-      reader.format("com.github.sadikovi.spark.netflow").option("version", "7").load
+      reader.format("com.github.sadikovi.spark.netflow").
+        option("version", NetFlowRelation.VERSION_7).load
     }
   }
 }
