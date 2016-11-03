@@ -92,6 +92,10 @@ Using statistics does not require any special conditions apart from enabling opt
 ```scala
 val sqlContext = new SQLContext(sc)
 
+// You can provide only format, package will infer version from provided files, or you can enforce
+// version of the files with `version` option.
+val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").load("...")
+
 // You can read files from local file system or HDFS
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").load("file:/...").
@@ -100,9 +104,6 @@ val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
 // You can also specify buffer size when reading compressed NetFlow files
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").option("buffer", "50Mb").load("hdfs://sandbox:8020/tmp/...")
-
-// You can also provide only format, it will infer version from provided files
-val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").load("...") 
 ```
 
 Alternatively you can use shortcuts for NetFlow files
