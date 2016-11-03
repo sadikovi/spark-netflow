@@ -90,8 +90,6 @@ Using statistics does not require any special conditions apart from enabling opt
 
 ### Scala API
 ```scala
-val sqlContext = new SQLContext(sc)
-
 // You can provide only format, package will infer version from provided files, or you can enforce
 // version of the files with `version` option.
 val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").load("...")
