@@ -20,7 +20,8 @@ import java.io.IOException
 
 import scala.util.{Failure, Success, Try}
 
-import org.apache.hadoop.fs.FileStatus
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileStatus, FSDataInputStream, Path}
 import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.RDD
@@ -30,6 +31,7 @@ import org.apache.spark.sql.types.StructType
 
 import org.slf4j.LoggerFactory
 
+import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.index.StatisticsPathResolver
@@ -47,16 +49,8 @@ private[netflow] class NetFlowRelation(
   private val logger = LoggerFactory.getLogger(getClass())
 
   // Interface for NetFlow version
-  private val interface = parameters.get("version") match {
-    case Some(str: String) => Try(str.toLong) match {
-      case Success(value) =>
-        NetFlowRegistry.createInterface(s"com.github.sadikovi.spark.netflow.version${value}")
-      case Failure(error) =>
-        NetFlowRegistry.createInterface(str)
-    }
-    case None => sys.error("'version' must be specified for NetFlow data. Can be a version " +
-      "number, e.g 5, 7, or can be fully-qualified class name for NetFlow interface")
-  }
+  private val interface = NetFlowRegistry.createInterface(
+    getVersionQualifiedClassName(parameters.get("version")))
 
   // Buffer size in bytes, by default use standard record buffer size ~1Mb
   private val bufferSize = parameters.get("buffer") match {
@@ -124,14 +118,36 @@ private[netflow] class NetFlowRelation(
   }
   logger.info(s"Statistics: $statisticsStatus")
 
+  // Get currently parsed interface, mostly for testing
+  private[netflow] def getInterface(): String = interface.getClass.getName
+
   // Get buffer size in bytes, mostly for testing
   private[netflow] def getBufferSize(): Int = bufferSize
+
+  private[netflow] def getPredicatePushdown(): Boolean = usePredicatePushdown
 
   // Get partition mode, mostly for testing
   private[netflow] def getPartitionMode(): PartitionMode = partitionMode
 
   private[netflow] def inferSchema(): StructType = {
     interface.getSQLSchema(applyConversion)
+  }
+
+  /** Resolve version as class name for resolving interface */
+  private[netflow] def getVersionQualifiedClassName(maybeVersion: Option[String]): String = {
+    maybeVersion match {
+      case Some(str: String) => Try(str.toInt) match {
+        case Success(version) => s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}$version"
+        case Failure(error) => str
+      }
+      case None =>
+        // we try resolving option if possible using similar approach as Parquet datasource
+        val version = NetFlowRelation.
+          lookupVersion(sqlContext.sparkContext.hadoopConfiguration, paths).
+          getOrElse(NetFlowRelation.VERSION_5.toInt)
+        logger.debug(s"Resolved interface to version $version")
+        s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}$version"
+    }
   }
 
   override def dataSchema: StructType = inferSchema()
@@ -247,5 +263,39 @@ private[netflow] class NetFlowRelation(
       s"predicate pushdown $usePredicatePushdown, " +
       s"statistics $statisticsStatus, " +
       s"conversion: $applyConversion)"
+  }
+}
+
+/** Companion object to maintain internal constants */
+private[spark] object NetFlowRelation {
+  val INTERNAL_PARTIAL_CLASSNAME = "com.github.sadikovi.spark.netflow.version"
+  val VERSION_5 = "5"
+  val VERSION_7 = "7"
+
+  /**
+   * Look up NetFlow version given paths to the files. We select only subset of files and return
+   * final version, since we only support batch of files of same version.
+   */
+  def lookupVersion(conf: Configuration, paths: Array[String]): Option[Int] = {
+    if (paths.isEmpty) {
+      None
+    } else {
+      // take first path and read header
+      val path = new Path(paths.head)
+      val fs = path.getFileSystem(conf)
+      var stream: FSDataInputStream = null
+      try {
+        stream = fs.open(path)
+        // buffer size at this point does not really matter, we are not reading entire file
+        val reader = NetFlowReader.prepareReader(stream, RecordBuffer.MIN_BUFFER_LENGTH)
+        val header = reader.getHeader()
+        Some(header.getFlowVersion())
+      } finally {
+        if (stream != null) {
+          stream.close()
+          stream = null
+        }
+      }
+    }
   }
 }
