@@ -34,6 +34,7 @@ import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.NetFlowFilters
 import com.github.sadikovi.spark.netflow.index.AttributeMap
 import com.github.sadikovi.spark.netflow.sources._
+import com.github.sadikovi.spark.util.CloseableIterator
 
 /** NetFlowFilePartition to hold sequence of file paths */
 private[spark] class NetFlowFilePartition[T <: NetFlowFileStatus : ClassTag] (
@@ -104,7 +105,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
       val fileLength = elem.length
 
       // Prepare file stream
-      val stm: FSDataInputStream = fs.open(path)
+      var stm: FSDataInputStream = fs.open(path)
       val reader = NetFlowReader.prepareReader(stm, elem.bufferSize)
       val header = reader.getHeader()
       // Actual version of the file
@@ -140,7 +141,33 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
         reader.prepareRecordBuffer(internalColumns)
       }
 
-      val rawIterator = recordBuffer.iterator().asScala
+      val rawIterator = new CloseableIterator[Array[Object]] {
+        private var delegate = recordBuffer.iterator().asScala
+
+        override def getNext(): Array[Object] = {
+          // If delegate has traversed over all elements mark it as finished
+          // to allow to close stream
+          if (delegate.hasNext) {
+            delegate.next
+          } else {
+            finished = true
+            null
+          }
+        }
+
+        override def close(): Unit = {
+          // Close stream if possible of fail silently,
+          // at this point exception does not really matter
+          try {
+            if (stm != null) {
+              stm.close()
+              stm = null
+            }
+          } catch {
+            case err: Exception => // do nothing
+          }
+        }
+      }
 
       // Try collecting statistics before any other mode, because attributes collect raw data. If
       // file exists, it is assumed that statistics are already written
@@ -205,7 +232,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
       buffer = buffer ++ withConversionsIterator
     }
 
-    new Iterator[SQLRow] {
+    new InterruptibleIterator(context, new Iterator[SQLRow] {
       def next(): SQLRow = {
         SQLRow.fromSeq(buffer.next())
       }
@@ -213,6 +240,6 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
       def hasNext: Boolean = {
         buffer.hasNext
       }
-    }
+    })
   }
 }
