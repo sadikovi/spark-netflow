@@ -16,14 +16,14 @@
 
 package com.github.sadikovi.spark.rdd
 
-import java.io.IOException
+import java.io.{InputStream, IOException, File}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, FSDataInputStream, Path}
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.{SparkContext, Partition, TaskContext, InterruptibleIterator}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row => SQLRow}
@@ -31,6 +31,7 @@ import org.apache.spark.sql.sources._
 
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
+import com.github.sadikovi.netflowlib.util.NioBufferedFileInputStream
 import com.github.sadikovi.spark.netflow.NetFlowFilters
 import com.github.sadikovi.spark.netflow.index.AttributeMap
 import com.github.sadikovi.spark.netflow.sources._
@@ -66,7 +67,8 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     val applyConversion: Boolean,
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate],
-    val statisticsIndex: Map[Int, MappedColumn]) extends FileRDD[SQLRow](sc, Nil) {
+    val statisticsIndex: Map[Int, MappedColumn],
+    val useDirectBuffer: Boolean = false) extends FileRDD[SQLRow](sc, Nil) {
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)
     slices.indices.map(i => new NetFlowFilePartition[NetFlowFileStatus](id, i, slices(i))).toArray
@@ -105,8 +107,19 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
       val fileLength = elem.length
 
       // Prepare file stream
-      var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize)
+      var stm: InputStream = null
+      // direct buffers are supported only for local file system right now
+      // in this case default buffer size for stream is used
+      val reader = if (useDirectBuffer && fs.getScheme == "file") {
+        val fileObj = new File(path.toUri.getPath)
+        stm = new NioBufferedFileInputStream(fileObj)
+        logDebug(s"Using direct buffers for file $fileObj")
+        NetFlowReader.prepareReader(stm, NioBufferedFileInputStream.DEFAULT_BUFFER_SIZE_BYTES)
+      } else {
+        stm = fs.open(path)
+        NetFlowReader.prepareReader(stm, elem.bufferSize)
+      }
+
       val header = reader.getHeader()
       // Actual version of the file
       val actualVersion = header.getFlowVersion()
