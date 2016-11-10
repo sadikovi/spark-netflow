@@ -17,7 +17,7 @@
 package com.github.sadikovi.netflowlib;
 
 import java.io.BufferedInputStream;
-import java.io.DataInputStream;
+import java.io.InputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
@@ -31,6 +31,7 @@ import io.netty.buffer.Unpooled;
 
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.util.FilterIterator;
+import com.github.sadikovi.netflowlib.util.NioBufferedFileInputStream;
 import com.github.sadikovi.netflowlib.util.ReadAheadInputStream;
 
 /**
@@ -90,7 +91,7 @@ public final class Buffers {
    */
   public static class ScanRecordBuffer extends RecordBuffer {
     public ScanRecordBuffer(
-        DataInputStream in,
+        InputStream in,
         RecordMaterializer recordMaterializer,
         int recordSize,
         ByteOrder byteOrder,
@@ -98,14 +99,22 @@ public final class Buffers {
         int bufferLength) {
       if (isCompressed) {
         inflater = new Inflater();
-        // InflaterInputStream is replaced with ReadAheadInputStream to allow to resolve EOF before
-        // actual record reading, we also wrap read ahead stream into buffered input stream
-        stream = new BufferedInputStream(
-          new ReadAheadInputStream(in, inflater, bufferLength), bufferLength);
+        if (in instanceof NioBufferedFileInputStream) {
+          stream = new ReadAheadInputStream(in, inflater, bufferLength);
+        } else {
+          // InflaterInputStream is replaced with ReadAheadInputStream to allow to resolve EOF before
+          // actual record reading, we also wrap read ahead stream into buffered input stream
+          stream = new BufferedInputStream(
+            new ReadAheadInputStream(in, inflater, bufferLength), bufferLength);
+        }
         compression = true;
       } else {
         inflater = null;
-        stream = new BufferedInputStream(in);
+        if (in instanceof NioBufferedFileInputStream) {
+          stream = in;
+        } else {
+          stream = new BufferedInputStream(in);
+        }
         compression = false;
       }
 
@@ -201,7 +210,7 @@ public final class Buffers {
     // Reference to inflater to find out EOF mainly
     private final Inflater inflater;
     // Stream to read either standard DataInputStream or InflaterInputStream
-    private BufferedInputStream stream;
+    private InputStream stream;
     // Primary array of bytes for a record
     private final byte[] primary;
     // Secondary array of bytes for a record, used when compression buffer needs to be refilled
@@ -223,7 +232,7 @@ public final class Buffers {
    */
   public static final class FilterRecordBuffer extends ScanRecordBuffer {
     public FilterRecordBuffer(
-        DataInputStream in,
+        InputStream in,
         RecordMaterializer recordMaterializer,
         int recordSize,
         ByteOrder byteOrder,

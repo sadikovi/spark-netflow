@@ -118,6 +118,14 @@ private[netflow] class NetFlowRelation(
   }
   logger.info(s"Statistics: $statisticsStatus")
 
+  // Whether or not use nio direct buffers when reading file, only applied to local file system,
+  // does not take effect for HDFS
+  private[netflow] val useDirectBuffer = parameters.get("nio") match {
+    case Some("true") => true
+    case otherValue => false
+  }
+  logger.info(s"Use direct buffer [experimental]: $useDirectBuffer")
+
   // Get currently parsed interface, mostly for testing
   private[netflow] def getInterface(): String = interface.getClass.getName
 
@@ -247,7 +255,7 @@ private[netflow] class NetFlowRelation(
 
       // Return `NetFlowFileRDD`, we store data of each file based on provided partition mode
       new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
-        resolvedColumns, resolvedFilter, statisticsIndex)
+        resolvedColumns, resolvedFilter, statisticsIndex, useDirectBuffer)
     }
   }
 

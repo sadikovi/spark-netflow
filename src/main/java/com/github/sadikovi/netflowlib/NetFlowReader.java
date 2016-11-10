@@ -16,7 +16,7 @@
 
 package com.github.sadikovi.netflowlib;
 
-import java.io.DataInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.HashMap;
@@ -42,6 +42,7 @@ import com.github.sadikovi.netflowlib.version.NetFlow;
 import com.github.sadikovi.netflowlib.version.NetFlowV5;
 import com.github.sadikovi.netflowlib.version.NetFlowV7;
 
+import com.github.sadikovi.netflowlib.util.NioBufferedFileInputStream;
 import com.github.sadikovi.netflowlib.util.Logging;
 
 /**
@@ -63,7 +64,7 @@ public final class NetFlowReader extends Logging {
   private static final short HEADER_BIG_ENDIAN = 2;
 
   public static NetFlowReader prepareReader(
-      DataInputStream inputStream,
+      InputStream inputStream,
       int buffer) throws IOException {
     return new NetFlowReader(inputStream, buffer);
   }
@@ -73,7 +74,7 @@ public final class NetFlowReader extends Logging {
    * strategy based on columns, predicate and statistics. Metadata, header are parsed as part of
    * initialization.
    */
-  private NetFlowReader(DataInputStream inputStream, int buffer) throws IOException {
+  private NetFlowReader(InputStream inputStream, int buffer) throws IOException {
     in = inputStream;
     bufferLength = buffer;
 
@@ -440,7 +441,7 @@ public final class NetFlowReader extends Logging {
   }
 
   // Stream of the NetFlow file
-  private final DataInputStream in;
+  private final InputStream in;
   // Byte order of the file
   private final ByteOrder byteOrder;
   // Stream version of the file
