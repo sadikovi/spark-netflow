@@ -19,6 +19,9 @@ package com.github.sadikovi.netflowlib;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.sadikovi.netflowlib.Strategies.ScanStrategy;
 import com.github.sadikovi.netflowlib.Strategies.FullScan;
 import com.github.sadikovi.netflowlib.Strategies.FilterScan;
@@ -44,12 +47,11 @@ import com.github.sadikovi.netflowlib.predicate.Operators.TrivialPredicate;
 
 import com.github.sadikovi.netflowlib.statistics.Statistics;
 
-import com.github.sadikovi.netflowlib.util.Logging;
-
 /**
  * [[ScanPlanner]] interface defines strategies for parsing a record and resolving predicate tree.
  */
-public final class ScanPlanner extends Logging implements PredicateTransform {
+public final class ScanPlanner implements PredicateTransform {
+  private static Logger log = LoggerFactory.getLogger(ScanPlanner.class);
 
   /** Build appropriate strategy based on pruned columns, predicate tree and statistics */
   public static ScanStrategy buildStrategy(

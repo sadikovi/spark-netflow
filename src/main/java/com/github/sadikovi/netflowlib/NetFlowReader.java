@@ -24,6 +24,9 @@ import java.util.HashMap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.sadikovi.netflowlib.ScanPlanner;
 import com.github.sadikovi.netflowlib.Strategies.ScanStrategy;
 
@@ -42,8 +45,6 @@ import com.github.sadikovi.netflowlib.version.NetFlow;
 import com.github.sadikovi.netflowlib.version.NetFlowV5;
 import com.github.sadikovi.netflowlib.version.NetFlowV7;
 
-import com.github.sadikovi.netflowlib.util.Logging;
-
 /**
  * [[NetFlowReader]] is a main entry to process input stream of NetFlow file either from local
  * file system or HDFS. Provides API to retrieve header and other metadata before scanning records.
@@ -51,7 +52,9 @@ import com.github.sadikovi.netflowlib.util.Logging;
  * to be scanned.
  * [[FilterPredicate]] support is introduced to filter data on row basis.
  */
-public final class NetFlowReader extends Logging {
+public final class NetFlowReader {
+  private static Logger log = LoggerFactory.getLogger(NetFlowReader.class);
+
   // Internal byte offsets
   private static final short METADATA_LENGTH = 4;
   private static final short HEADER_OFFSET_LENGTH = 4;
