@@ -56,6 +56,10 @@ public class NetFlowReaderSuite {
     return fs.open(path);
   }
 
+  //////////////////////////////////////////////////////////////
+  // Reading different streams
+  //////////////////////////////////////////////////////////////
+
   // test reader on corrupt input
   @Test
   public void testReadingCorrupt() throws IOException {
@@ -152,6 +156,34 @@ public class NetFlowReaderSuite {
     RecordBuffer rb = nr.prepareRecordBuffer(cols);
     assertEquals(rb.iterator().hasNext(), false);
   }
+
+  //////////////////////////////////////////////////////////////
+  // Initialization of reader
+  //////////////////////////////////////////////////////////////
+
+  @Test
+  public void testInitializeStreamWithCustomSize() throws IOException {
+    String file = getClass().
+      getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.empty").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
+    assertEquals(nr.getBufferLength(), 30000);
+  }
+
+  @Test
+  public void testInitializeStreamWithDefaultSize() throws IOException {
+    String file = getClass().
+      getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.empty").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm);
+    assertEquals(nr.getBufferLength(), RecordBuffer.BUFFER_LENGTH_2);
+  }
+
+  //////////////////////////////////////////////////////////////
+  // Testing different scan strategies
+  //////////////////////////////////////////////////////////////
 
   @Test
   public void testStrategySkip() throws IOException {
