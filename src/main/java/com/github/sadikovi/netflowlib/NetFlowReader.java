@@ -62,10 +62,26 @@ public final class NetFlowReader extends Logging {
   private static final short HEADER_LITTLE_ENDIAN = 1;
   private static final short HEADER_BIG_ENDIAN = 2;
 
+  /**
+   * Initialize reader with input stream and provided buffer size, see
+   * com.github.sadikovi.netflowlib.Buffers for more information on buffer size constants.
+   * @param inputStream input stream, can be Hadoop FSDataInputStream
+   * @param buffer buffer size in bytes
+   * @return reader
+   */
   public static NetFlowReader prepareReader(
       DataInputStream inputStream,
       int buffer) throws IOException {
     return new NetFlowReader(inputStream, buffer);
+  }
+
+  /**
+   * Initialize reader with input stream and default buffer size ~1Mb.
+   * @param inputStream input stream, can be Hadoop FSDataInputStream
+   * @return reader
+   */
+  public static NetFlowReader prepareReader(DataInputStream inputStream) throws IOException {
+    return prepareReader(inputStream, RecordBuffer.BUFFER_LENGTH_2);
   }
 
   /**
@@ -437,6 +453,11 @@ public final class NetFlowReader extends Logging {
   public String toString() {
     return getClass().getSimpleName() + "[byte order: " + byteOrder + ", stream version: " +
       streamVersion + ", buffer length: " + bufferLength + "]";
+  }
+
+  /** Return size of buffer in bytes that is currently used by reader */
+  public int getBufferLength() {
+    return this.bufferLength;
   }
 
   // Stream of the NetFlow file
