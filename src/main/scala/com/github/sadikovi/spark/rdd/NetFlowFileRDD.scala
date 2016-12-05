@@ -168,6 +168,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
           }
         }
       }
+      Option(TaskContext.get).foreach(_.addTaskCompletionListener(_ => rawIterator.closeIfNeeded))
 
       // Try collecting statistics before any other mode, because attributes collect raw data. If
       // file exists, it is assumed that statistics are already written
