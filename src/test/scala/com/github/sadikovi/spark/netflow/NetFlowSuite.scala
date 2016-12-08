@@ -157,7 +157,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
         load(s"file:${path3}").count()
     }
     val msg = err.getMessage()
-    assert(msg.contains("java.lang.UnsupportedOperationException: " +
+    assert(msg.contains("java.io.IOException: " +
       "Corrupt NetFlow file. Wrong magic number"))
   }
 

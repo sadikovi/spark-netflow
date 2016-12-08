@@ -68,8 +68,8 @@ public class NetFlowReaderSuite {
 
     try {
       NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
-    } catch (UnsupportedOperationException uoe) {
-      assertThat(uoe.getMessage(), containsString("Corrupt NetFlow file. Wrong magic number"));
+    } catch (IOException ioe) {
+      assertThat(ioe.getMessage(), containsString("Corrupt NetFlow file. Wrong magic number"));
     }
   }
 

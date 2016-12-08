@@ -134,7 +134,7 @@ public final class NetFlowReader {
       // Verify consistency of NetFlow file, also this ensures that we are at the beginning of the
       // input stream
       if (magic1 != HEADER_MAGIC1 || magic2 != HEADER_MAGIC2) {
-        throw new UnsupportedOperationException("Corrupt NetFlow file. Wrong magic number");
+        throw new IOException("Corrupt NetFlow file. Wrong magic number");
       }
 
       // Resolve byte order, last case corresponds to incorrect reading from buffer
@@ -143,7 +143,7 @@ public final class NetFlowReader {
       } else if (order == HEADER_LITTLE_ENDIAN) {
         byteOrder = ByteOrder.LITTLE_ENDIAN;
       } else {
-        throw new UnsupportedOperationException("Could not recognize byte order " + order);
+        throw new IOException("Could not recognize byte order " + order);
       }
 
       streamVersion = stream;
@@ -153,7 +153,7 @@ public final class NetFlowReader {
 
       // Read header
       header = getHeader();
-    } catch (Exception err) {
+    } catch (IOException err) {
       if (ignoreCorrupt) {
         // we subsume exception and log warning. Set header to null
         log.warn("Failed to initialize reader, ignoreCorruptFile=" + ignoreCorrupt +
