@@ -31,9 +31,12 @@ trait SparkLocal extends SparkBase {
       set("spark.executor.memory", "2g")
   }
 
-  override def startSparkContext() {
+  override def startSparkContext(sparkOptions: Map[String, String]) {
     setLoggingLevel(Level.ERROR)
     val conf = localConf()
+    sparkOptions.foreach { case (key, value) =>
+      conf.set(key, value)
+    }
     _sc = new SparkContext(conf)
   }
 }

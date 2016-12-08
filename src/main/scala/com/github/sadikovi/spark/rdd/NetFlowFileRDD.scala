@@ -67,6 +67,9 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate],
     val statisticsIndex: Map[Int, MappedColumn]) extends FileRDD[SQLRow](sc, Nil) {
+  // when true, ignore corrupt files, either with wrong header or corrupt data block
+  private val ignoreCorruptFiles = sc.getConf.getBoolean("spark.files.ignoreCorruptFiles", false);
+
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)
     slices.indices.map(i => new NetFlowFilePartition[NetFlowFileStatus](id, i, slices(i))).toArray
@@ -106,131 +109,138 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
 
       // Prepare file stream
       var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize)
-      val header = reader.getHeader()
-      // Actual version of the file
-      val actualVersion = header.getFlowVersion()
-      // Compression flag
-      val isCompressed = header.isCompressed()
-
-      logDebug(s"""
-          > NetFlow: {
-          >   File: ${elem.path},
-          >   File length: ${fileLength} bytes,
-          >   Flow version: ${actualVersion},
-          >   Compression: ${isCompressed},
-          >   Buffer size: ${elem.bufferSize} bytes,
-          >   Start capture: ${header.getStartCapture()},
-          >   End capture: ${header.getEndCapture()},
-          >   Hostname: ${header.getHostname()},
-          >   Comments: ${header.getComments()}
-          > }
-        """.stripMargin('>'))
-
-      // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
-      require(actualVersion == elem.version,
-        s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}. " +
-          "Scan of the files with different (compatible) versions, e.g. 5, 6, and 7 is not " +
-          "supported currently")
-
-      // Build record buffer based on resolved filter, if filter is not defined use default scan
-      // with trivial predicate
-      val recordBuffer = if (updatedFilter.nonEmpty) {
-        reader.prepareRecordBuffer(internalColumns, updatedFilter.get)
+      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize, ignoreCorruptFiles)
+      // this flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
+      // throw exception, if file is corrupt
+      if (!reader.isValid()) {
+        logWarning(s"Failed to read file $path, ignoreCorruptFiles=$ignoreCorruptFiles")
+        buffer = buffer ++ Iterator.empty
       } else {
-        reader.prepareRecordBuffer(internalColumns)
-      }
+        val header = reader.getHeader()
+        // Actual version of the file
+        val actualVersion = header.getFlowVersion()
+        // Compression flag
+        val isCompressed = header.isCompressed()
 
-      val rawIterator = new CloseableIterator[Array[Object]] {
-        private var delegate = recordBuffer.iterator().asScala
+        logDebug(s"""
+            > NetFlow: {
+            >   File: ${elem.path},
+            >   File length: ${fileLength} bytes,
+            >   Flow version: ${actualVersion},
+            >   Compression: ${isCompressed},
+            >   Buffer size: ${elem.bufferSize} bytes,
+            >   Start capture: ${header.getStartCapture()},
+            >   End capture: ${header.getEndCapture()},
+            >   Hostname: ${header.getHostname()},
+            >   Comments: ${header.getComments()}
+            > }
+          """.stripMargin('>'))
 
-        override def getNext(): Array[Object] = {
-          // If delegate has traversed over all elements mark it as finished
-          // to allow to close stream
-          if (delegate.hasNext) {
-            delegate.next
-          } else {
-            finished = true
-            null
-          }
+        // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
+        require(actualVersion == elem.version,
+          s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}. " +
+            "Scan of the files with different (compatible) versions, e.g. 5, 6, and 7 is not " +
+            "supported currently")
+
+        // Build record buffer based on resolved filter, if filter is not defined use default scan
+        // with trivial predicate
+        val recordBuffer = if (updatedFilter.nonEmpty) {
+          reader.prepareRecordBuffer(internalColumns, updatedFilter.get)
+        } else {
+          reader.prepareRecordBuffer(internalColumns)
         }
 
-        override def close(): Unit = {
-          // Close stream if possible of fail silently,
-          // at this point exception does not really matter
-          try {
-            if (stm != null) {
-              stm.close()
-              stm = null
+        val rawIterator = new CloseableIterator[Array[Object]] {
+          private var delegate = recordBuffer.iterator().asScala
+
+          override def getNext(): Array[Object] = {
+            // If delegate has traversed over all elements mark it as finished
+            // to allow to close stream
+            if (delegate.hasNext) {
+              delegate.next
+            } else {
+              finished = true
+              null
             }
-          } catch {
-            case err: Exception => // do nothing
           }
-        }
-      }
-      Option(TaskContext.get).foreach(_.addTaskCompletionListener(_ => rawIterator.closeIfNeeded))
 
-      // Try collecting statistics before any other mode, because attributes collect raw data. If
-      // file exists, it is assumed that statistics are already written
-      val writableIterator = if (updatedFilter.isEmpty && elem.statisticsPathStatus.nonEmpty &&
-          statisticsIndex.nonEmpty) {
-        val statStatus = elem.statisticsPathStatus.get
-        if (!statStatus.exists) {
-          logDebug(s"Prepare statistics for a path ${statStatus.path}")
-          val attributes = AttributeMap.create()
-          new Iterator[Array[Object]] {
-            override def hasNext: Boolean = {
-              // If raw iterator does not have any elements we assume that it is EOF and write
-              // statistics into a file
-              // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
-              // then continue to extract records. For empty files, Spark will try to write
-              // statistics twice, because of double invocation of `hasNext`, we overwrite old file
-              if (!rawIterator.hasNext) {
-                logInfo(s"Ready to write statistics for path: ${statStatus.path}")
-                attributes.write(statStatus.path, conf, overwrite = true)
+          override def close(): Unit = {
+            // Close stream if possible of fail silently,
+            // at this point exception does not really matter
+            try {
+              if (stm != null) {
+                stm.close()
+                stm = null
               }
-              rawIterator.hasNext
+            } catch {
+              case err: Exception => // do nothing
             }
+          }
+        }
+        Option(TaskContext.get).foreach(_.addTaskCompletionListener(_ => rawIterator.closeIfNeeded))
 
-            override def next(): Array[Object] = {
-              val arr = rawIterator.next
-              for (i <- 0 until numColumns) {
-                if (statisticsIndex.contains(i)) {
-                  val key = statisticsIndex(i).internalColumn.getColumnName
-                  attributes.updateStatistics(key, arr(i))
+        // Try collecting statistics before any other mode, because attributes collect raw data. If
+        // file exists, it is assumed that statistics are already written
+        val writableIterator = if (updatedFilter.isEmpty && elem.statisticsPathStatus.nonEmpty &&
+            statisticsIndex.nonEmpty) {
+          val statStatus = elem.statisticsPathStatus.get
+          if (!statStatus.exists) {
+            logDebug(s"Prepare statistics for a path ${statStatus.path}")
+            val attributes = AttributeMap.create()
+            new Iterator[Array[Object]] {
+              override def hasNext: Boolean = {
+                // If raw iterator does not have any elements we assume that it is EOF and write
+                // statistics into a file
+                // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
+                // then continue to extract records. For empty files, Spark will try to write
+                // statistics twice, because of double invocation of `hasNext`, overwrite old file
+                if (!rawIterator.hasNext) {
+                  logInfo(s"Ready to write statistics for path: ${statStatus.path}")
+                  attributes.write(statStatus.path, conf, overwrite = true)
                 }
+                rawIterator.hasNext
               }
-              arr
+
+              override def next(): Array[Object] = {
+                val arr = rawIterator.next
+                for (i <- 0 until numColumns) {
+                  if (statisticsIndex.contains(i)) {
+                    val key = statisticsIndex(i).internalColumn.getColumnName
+                    attributes.updateStatistics(key, arr(i))
+                  }
+                }
+                arr
+              }
             }
+          } else {
+            logDebug(s"Statistics file ${statStatus.path} already exists, skip writing")
+            rawIterator
           }
         } else {
-          logDebug(s"Statistics file ${statStatus.path} already exists, skip writing")
+          logDebug("Statistics are disabled, skip writing")
           rawIterator
         }
-      } else {
-        logDebug("Statistics are disabled, skip writing")
-        rawIterator
-      }
 
-      // Conversion iterator, applies defined modification for convertable fields
-      val withConversionsIterator = if (applyConversion) {
-        // For each field we check if possible conversion is available. If it is we apply direct
-        // conversion, otherwise return unchanged value. Note that this should be in sync with
-        // `applyConversion` and updated schema from `ResolvedInterface`.
-        writableIterator.map(arr => {
-          for (i <- 0 until numColumns) {
-            resolvedColumns(i).convertFunction match {
-              case Some(func) => arr(i) = func.direct(arr(i))
-              case None => // do nothing
+        // Conversion iterator, applies defined modification for convertable fields
+        val withConversionsIterator = if (applyConversion) {
+          // For each field we check if possible conversion is available. If it is we apply direct
+          // conversion, otherwise return unchanged value. Note that this should be in sync with
+          // `applyConversion` and updated schema from `ResolvedInterface`.
+          writableIterator.map(arr => {
+            for (i <- 0 until numColumns) {
+              resolvedColumns(i).convertFunction match {
+                case Some(func) => arr(i) = func.direct(arr(i))
+                case None => // do nothing
+              }
             }
-          }
-          arr
-        })
-      } else {
-        writableIterator
-      }
+            arr
+          })
+        } else {
+          writableIterator
+        }
 
-      buffer = buffer ++ withConversionsIterator
+        buffer = buffer ++ withConversionsIterator
+      }
     }
 
     new InterruptibleIterator(context, new Iterator[SQLRow] {

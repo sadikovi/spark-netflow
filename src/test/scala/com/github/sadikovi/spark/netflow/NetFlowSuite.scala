@@ -26,8 +26,6 @@ import org.apache.spark.sql.{SQLContext, DataFrame, Row}
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.sources._
 
-import org.scalatest.ConfigMap
-
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetFlowV5
 import com.github.sadikovi.spark.netflow.sources._
@@ -36,16 +34,9 @@ import com.github.sadikovi.spark.util.Utils
 import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 import com.github.sadikovi.testutil.implicits._
 
-class NetFlowSuite extends UnitTestSpec with SparkLocal {
-  override def beforeAll(configMap: ConfigMap) {
-    startSparkContext()
-  }
-
-  override def afterAll(configMap: ConfigMap) {
-    stopSparkContext()
-  }
-
-  private def readNetFlow(
+/** Common functionality to read NetFlow files */
+abstract class SparkNetFlowTestSuite extends UnitTestSpec with SparkLocal {
+  protected def readNetFlow(
       sqlContext: SQLContext,
       version: Short,
       path: String,
@@ -76,6 +67,16 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
   val path12 = getClass().getResource("/anomaly/ftv5.2016-03-15.compress9.bigend.records1").getPath
   // version 5 file that starts with large byte 255
   val path13 = getClass().getResource("/anomaly/ftv5.2016-04-09.compress9.large-byte-start").getPath
+}
+
+class NetFlowSuite extends SparkNetFlowTestSuite {
+  override def beforeAll() {
+    startSparkContext()
+  }
+
+  override def afterAll() {
+    stopSparkContext()
+  }
 
   test("read uncompressed v5 format") {
     val sqlContext = new SQLContext(sc)
@@ -635,5 +636,37 @@ class NetFlowSuite extends UnitTestSpec with SparkLocal {
       df.filter(col("srcip") === "0.0.0.1").count() should be (1)
       df.filter(col("srcip") === "100.100.100.100").count() should be (0)
     }
+  }
+}
+
+/** Suite to test `ignoreCorruptFiles` option */
+class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
+  override def beforeAll() {
+    startSparkContext(Map("spark.files.ignoreCorruptFiles" -> "true"))
+  }
+
+  override def afterAll() {
+    stopSparkContext()
+  }
+
+  test("return empty iterator, when file is not a NetFlow file (header failure)") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      load(s"file:${path3}")
+    df.count() should be (0)
+  }
+
+  test("return partial data, when NetFlow file is corrupt") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      load(s"file:${path4}")
+    df.count() should be (553)
+  }
+
+  test("return full data, when NetFlow file is correct") {
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+      load(s"file:${path2}")
+    df.count() should be (1000)
   }
 }
