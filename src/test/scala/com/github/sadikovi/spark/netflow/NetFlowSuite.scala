@@ -26,8 +26,6 @@ import org.apache.spark.sql.{SQLContext, DataFrame, Row}
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.sources._
 
-import org.scalatest.ConfigMap
-
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.version.NetFlowV5
 import com.github.sadikovi.spark.netflow.sources._
@@ -37,11 +35,11 @@ import com.github.sadikovi.testutil.{UnitTestSpec, SparkLocal}
 import com.github.sadikovi.testutil.implicits._
 
 class NetFlowSuite extends UnitTestSpec with SparkLocal {
-  override def beforeAll(configMap: ConfigMap) {
+  override def beforeAll() {
     startSparkContext()
   }
 
-  override def afterAll(configMap: ConfigMap) {
+  override def afterAll() {
     stopSparkContext()
   }
 

@@ -21,6 +21,7 @@ import java.io.IOException
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FSDataInputStream, Path}
@@ -58,6 +59,10 @@ private[spark] class NetFlowFilePartition[T <: NetFlowFileStatus : ClassTag] (
  * of SQL rows back. Used internally solely for the purpose of datasource API. We assume that we
  * process files of the same version, and prune common fields. `NetFlowFileRDD` operates on already
  * resolved columns, the same applies to filters.
+ *
+ * RDD also respects Spark 2.x option of `spark.files.ignoreCorruptFiles` to ignore corrupt NetFlow
+ * files, it might return partial data, if header is correct and records are valid before corrupted
+ * block.
  */
 private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     @transient sc: SparkContext,
@@ -67,6 +72,9 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     val resolvedColumns: Array[MappedColumn],
     val resolvedFilter: Option[FilterPredicate],
     val statisticsIndex: Map[Int, MappedColumn]) extends FileRDD[SQLRow](sc, Nil) {
+  // Ignore corrupt files, this behaviour (including default) is similar to `FileScanRDD`.
+  private val ignoreCorruptFiles = sc.getConf.getBoolean("spark.files.ignoreCorruptFiles", false)
+
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)
     slices.indices.map(i => new NetFlowFilePartition[NetFlowFileStatus](id, i, slices(i))).toArray
@@ -106,52 +114,90 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
 
       // Prepare file stream
       var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize)
-      val header = reader.getHeader()
-      // Actual version of the file
-      val actualVersion = header.getFlowVersion()
-      // Compression flag
-      val isCompressed = header.isCompressed()
+      val reader: NetFlowReader = try {
+        NetFlowReader.prepareReader(stm, elem.bufferSize)
+      } catch {
+        // Reader can throw IO exceptions as well as unsupported exceptions, e.g. when version that
+        // is provided is different from file version, so we fetch all non-fatal exceptions.
+        case NonFatal(readerErr) => {
+          try {
+            stm.close()
+          } catch {
+            case err: Throwable => // do nothing
+          }
 
-      logDebug(s"""
-          > NetFlow: {
-          >   File: ${elem.path},
-          >   File length: ${fileLength} bytes,
-          >   Flow version: ${actualVersion},
-          >   Compression: ${isCompressed},
-          >   Buffer size: ${elem.bufferSize} bytes,
-          >   Start capture: ${header.getStartCapture()},
-          >   End capture: ${header.getEndCapture()},
-          >   Hostname: ${header.getHostname()},
-          >   Comments: ${header.getComments()}
-          > }
-        """.stripMargin('>'))
+          if (ignoreCorruptFiles) {
+            logWarning(s"Exception occured when reading file $path " +
+              s"(ignoreCorruptFiles=$ignoreCorruptFiles), message=$readerErr")
+            null
+          } else {
+            throw readerErr
+          }
+        }
+      }
 
-      // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
-      require(actualVersion == elem.version,
-        s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}. " +
-          "Scan of the files with different (compatible) versions, e.g. 5, 6, and 7 is not " +
-          "supported currently")
-
-      // Build record buffer based on resolved filter, if filter is not defined use default scan
-      // with trivial predicate
-      val recordBuffer = if (updatedFilter.nonEmpty) {
-        reader.prepareRecordBuffer(internalColumns, updatedFilter.get)
+      // Reader is null only in case of initialization failure, we need to return empty iterator
+      val recordBufferIterator = if (reader == null) {
+        logDebug(s"Skip current $path, reader is null")
+        null
       } else {
-        reader.prepareRecordBuffer(internalColumns)
+        val header = reader.getHeader()
+        // Actual version of the file
+        val actualVersion = header.getFlowVersion()
+        // Compression flag
+        val isCompressed = header.isCompressed()
+
+        logDebug(s"""
+            > NetFlow: {
+            >   File: ${elem.path},
+            >   File length: ${fileLength} bytes,
+            >   Flow version: ${actualVersion},
+            >   Compression: ${isCompressed},
+            >   Buffer size: ${elem.bufferSize} bytes,
+            >   Start capture: ${header.getStartCapture()},
+            >   End capture: ${header.getEndCapture()},
+            >   Hostname: ${header.getHostname()},
+            >   Comments: ${header.getComments()}
+            > }
+          """.stripMargin('>'))
+
+        // Currently we cannot resolve version and proceed with parsing, we require pre-set version.
+        require(actualVersion == elem.version,
+          s"Expected version ${elem.version}, got ${actualVersion} for file ${elem.path}. " +
+            "Scan of the files with different (compatible) versions, e.g. 5, 6, and 7 is not " +
+            "supported currently")
+
+        // Build record buffer based on resolved filter, if filter is not defined use default scan
+        // with trivial predicate
+        val recordBuffer = if (updatedFilter.nonEmpty) {
+          reader.prepareRecordBuffer(internalColumns, updatedFilter.get)
+        } else {
+          reader.prepareRecordBuffer(internalColumns)
+        }
+        recordBuffer.iterator().asScala
       }
 
       val rawIterator = new CloseableIterator[Array[Object]] {
-        private var delegate = recordBuffer.iterator().asScala
+        private var delegate = recordBufferIterator
+        private val currentFile = elem.path
+        private val ignoreCorrupt = ignoreCorruptFiles
 
         override def getNext(): Array[Object] = {
           // If delegate has traversed over all elements mark it as finished
-          // to allow to close stream
-          if (delegate.hasNext) {
-            delegate.next
-          } else {
-            finished = true
-            null
+          // to allow to close stream.
+          // When `ignoreCorruptFiles` is set to true, we also ignore failures in iterator.
+          try {
+            if (delegate.hasNext) {
+              delegate.next
+            } else {
+              finished = true
+              null
+            }
+          } catch {
+            case NonFatal(err) if ignoreCorrupt =>
+              logWarning(s"Skipped the rest content in the corrupted file: $currentFile", err)
+              finished = true
+              null
           }
         }
 
@@ -181,10 +227,11 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
           new Iterator[Array[Object]] {
             override def hasNext: Boolean = {
               // If raw iterator does not have any elements we assume that it is EOF and write
-              // statistics into a file
+              // statistics into a file.
               // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
               // then continue to extract records. For empty files, Spark will try to write
-              // statistics twice, because of double invocation of `hasNext`, we overwrite old file
+              // statistics twice, because of double invocation of `hasNext`, in this case we
+              // overwrite old file
               if (!rawIterator.hasNext) {
                 logInfo(s"Ready to write statistics for path: ${statStatus.path}")
                 attributes.write(statStatus.path, conf, overwrite = true)
