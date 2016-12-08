@@ -75,6 +75,9 @@ public class NetFlowHeader {
     this.headerSize = headerSize;
   }
 
+  /** For subclasses to overwrite */
+  protected NetFlowHeader() { }
+
   ////////////////////////////////////////////////////////////
   // Setters API
   ////////////////////////////////////////////////////////////
@@ -257,6 +260,10 @@ public class NetFlowHeader {
     return this.FIELDS;
   }
 
+  public boolean isValid() {
+    return this.isValid;
+  }
+
   // bit vector of fields
   private long FIELDS = 0;
   // flow stream format version either 1 or 3
@@ -301,4 +308,6 @@ public class NetFlowHeader {
   private InterfaceName interfaceName = null;
   // interface alias
   private InterfaceAlias interfaceAlias = null;
+  // whether or not header is valid
+  protected boolean isValid = true;
 }

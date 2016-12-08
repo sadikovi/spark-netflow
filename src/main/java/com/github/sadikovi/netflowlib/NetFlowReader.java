@@ -70,21 +70,37 @@ public final class NetFlowReader {
    * com.github.sadikovi.netflowlib.Buffers for more information on buffer size constants.
    * @param inputStream input stream, can be Hadoop FSDataInputStream
    * @param buffer buffer size in bytes
+   * @param ignoreCorruptFile if true, ignores corrupt file, either when reading header or data
+   * @return reader
+   */
+  public static NetFlowReader prepareReader(
+      DataInputStream inputStream,
+      int buffer,
+      boolean ignoreCorruptFile) throws IOException {
+    return new NetFlowReader(inputStream, buffer, ignoreCorruptFile);
+  }
+
+  /**
+   * Initialize reader with input stream and buffer size. By default, fails if
+   * file is corrupt, e.g. file is not NetFlow file, or has corrupt data block.
+   * @param inputStream input stream, can be Hadoop FSDataInputStream
+   * @param buffer buffer size in bytes
    * @return reader
    */
   public static NetFlowReader prepareReader(
       DataInputStream inputStream,
       int buffer) throws IOException {
-    return new NetFlowReader(inputStream, buffer);
+    return prepareReader(inputStream, buffer, false);
   }
 
   /**
-   * Initialize reader with input stream and default buffer size ~1Mb.
+   * Initialize reader with input stream and default buffer size ~1Mb. By default, fails if
+   * file is corrupt, e.g. file is not NetFlow file, or has corrupt data block.
    * @param inputStream input stream, can be Hadoop FSDataInputStream
    * @return reader
    */
   public static NetFlowReader prepareReader(DataInputStream inputStream) throws IOException {
-    return prepareReader(inputStream, RecordBuffer.BUFFER_LENGTH_2);
+    return prepareReader(inputStream, RecordBuffer.BUFFER_LENGTH_2, false);
   }
 
   /**
@@ -92,48 +108,66 @@ public final class NetFlowReader {
    * strategy based on columns, predicate and statistics. Metadata, header are parsed as part of
    * initialization.
    */
-  private NetFlowReader(DataInputStream inputStream, int buffer) throws IOException {
+  private NetFlowReader(
+      DataInputStream inputStream,
+      int buffer,
+      boolean ignoreCorruptFile) throws IOException {
     in = inputStream;
     bufferLength = buffer;
+    ignoreCorrupt = ignoreCorruptFile;
+    byte[] metadata = null;
+    ByteBuf buf = null;
 
-    byte[] metadata = new byte[METADATA_LENGTH];
-    in.read(metadata, 0, METADATA_LENGTH);
+    try {
+      metadata = new byte[METADATA_LENGTH];
+      in.read(metadata, 0, METADATA_LENGTH);
 
-    // Parse metadata, byte order does not really matter, so we go for big endian. Metadata contains
-    // magic numbers to verify consistency of the NetFlow file, byte order encoded as either 1 or 2,
-    // and stream version which affects header parsing (currently only 1 and 3 are supported).
-    ByteBuf buf = Unpooled.wrappedBuffer(metadata).order(ByteOrder.BIG_ENDIAN);
-    short magic1 = buf.getUnsignedByte(0);
-    short magic2 = buf.getUnsignedByte(1);
-    short order = buf.getUnsignedByte(2);
-    short stream = buf.getUnsignedByte(3);
+      // Parse metadata, byte order does not really matter, so we go for big endian. Metadata contains
+      // magic numbers to verify consistency of the NetFlow file, byte order encoded as either 1 or 2,
+      // and stream version which affects header parsing (currently only 1 and 3 are supported).
+      buf = Unpooled.wrappedBuffer(metadata).order(ByteOrder.BIG_ENDIAN);
+      short magic1 = buf.getUnsignedByte(0);
+      short magic2 = buf.getUnsignedByte(1);
+      short order = buf.getUnsignedByte(2);
+      short stream = buf.getUnsignedByte(3);
 
-    // Verify consistency of NetFlow file, also this ensures that we are at the beginning of the
-    // input stream
-    if (magic1 != HEADER_MAGIC1 || magic2 != HEADER_MAGIC2) {
-      throw new UnsupportedOperationException("Corrupt NetFlow file. Wrong magic number");
+      // Verify consistency of NetFlow file, also this ensures that we are at the beginning of the
+      // input stream
+      if (magic1 != HEADER_MAGIC1 || magic2 != HEADER_MAGIC2) {
+        throw new UnsupportedOperationException("Corrupt NetFlow file. Wrong magic number");
+      }
+
+      // Resolve byte order, last case corresponds to incorrect reading from buffer
+      if (order == HEADER_BIG_ENDIAN) {
+        byteOrder = ByteOrder.BIG_ENDIAN;
+      } else if (order == HEADER_LITTLE_ENDIAN) {
+        byteOrder = ByteOrder.LITTLE_ENDIAN;
+      } else {
+        throw new UnsupportedOperationException("Could not recognize byte order " + order);
+      }
+
+      streamVersion = stream;
+
+      // Check stream version
+      ensureStreamVersion();
+
+      // Read header
+      header = getHeader();
+    } catch (Exception err) {
+      if (ignoreCorrupt) {
+        // we subsume exception and log warning. Set header to null
+        log.warn("Failed to initialize reader, ignoreCorruptFile=" + ignoreCorrupt, err);
+        header = new CorruptNetFlowHeader();
+      } else {
+        throw err;
+      }
+    } finally {
+      metadata = null;
+      if (buf != null) {
+        buf.release();
+        buf = null;
+      }
     }
-
-    // Resolve byte order, last case corresponds to incorrect reading from buffer
-    if (order == HEADER_BIG_ENDIAN) {
-      byteOrder = ByteOrder.BIG_ENDIAN;
-    } else if (order == HEADER_LITTLE_ENDIAN) {
-      byteOrder = ByteOrder.LITTLE_ENDIAN;
-    } else {
-      throw new UnsupportedOperationException("Could not recognize byte order " + order);
-    }
-
-    streamVersion = stream;
-
-    // Check stream version
-    ensureStreamVersion();
-
-    // Read header
-    header = getHeader();
-
-    metadata = null;
-    buf.release();
-    buf = null;
   }
 
   /** Ensure that stream version is either version 1 or version 3 */
@@ -442,13 +476,14 @@ public final class NetFlowReader {
       log.info("Skip scan based on strategy " + strategy);
       return new EmptyRecordBuffer();
     } else if (strategy.fullScan()) {
-      log.info("Full scan based on strategy " + strategy);
+      log.info("Full scan based on strategy " + strategy + ", ignoreCorrupt=" + ignoreCorrupt);
+      // wrap into closeable iterator
       return new ScanRecordBuffer(in, strategy.getRecordMaterializer(), recordSize, byteOrder,
-        isCompressed, bufferLength);
+        isCompressed, bufferLength, ignoreCorrupt);
     } else {
-      log.info("Filter scan based on strategy " + strategy);
+      log.info("Filter scan based on strategy " + strategy + ", ignoreCorrupt=" + ignoreCorrupt);
       return new FilterRecordBuffer(in, strategy.getRecordMaterializer(), recordSize, byteOrder,
-        isCompressed, bufferLength);
+        isCompressed, bufferLength, ignoreCorrupt);
     }
   }
 
@@ -463,14 +498,23 @@ public final class NetFlowReader {
     return this.bufferLength;
   }
 
+  /**
+   * Whether or not reader is valid. Note that it returns null header, if reader is invalid.
+   */
+  public boolean isValid() {
+    return header.isValid();
+  }
+
   // Stream of the NetFlow file
   private final DataInputStream in;
   // Byte order of the file
-  private final ByteOrder byteOrder;
+  private ByteOrder byteOrder;
   // Stream version of the file
-  private final short streamVersion;
+  private short streamVersion;
   // Buffer size for record buffer
   private final int bufferLength;
   // NetFlow header
   private NetFlowHeader header = null;
+  // Whether or not to ignore corrupt file stream
+  private final boolean ignoreCorrupt;
 }

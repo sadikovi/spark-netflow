@@ -32,6 +32,7 @@ import io.netty.buffer.Unpooled;
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.util.FilterIterator;
 import com.github.sadikovi.netflowlib.util.ReadAheadInputStream;
+import com.github.sadikovi.netflowlib.util.SafeIterator;
 
 /**
  * All buffers supported in NetFlow reader.
@@ -95,7 +96,8 @@ public final class Buffers {
         int recordSize,
         ByteOrder byteOrder,
         boolean isCompressed,
-        int bufferLength) {
+        int bufferLength,
+        boolean ignoreCorrupt) {
       if (isCompressed) {
         inflater = new Inflater();
         // InflaterInputStream is replaced with ReadAheadInputStream to allow to resolve EOF before
@@ -111,6 +113,7 @@ public final class Buffers {
 
       this.recordMaterializer = recordMaterializer;
       this.recordSize = recordSize;
+      this.ignoreCorrupt = ignoreCorrupt;
       primary = new byte[recordSize];
       secondary = new byte[recordSize];
       buffer = Unpooled.wrappedBuffer(primary).order(byteOrder);
@@ -119,7 +122,7 @@ public final class Buffers {
 
     @Override
     public Iterator<Object[]> iterator() {
-      return new Iterator<Object[]>() {
+      Iterator<Object[]> iter = new Iterator<Object[]>() {
         @Override
         public boolean hasNext() {
           // `stream.available()` returns either [0, 1] in case of compressed stream and
@@ -188,12 +191,19 @@ public final class Buffers {
           throw new UnsupportedOperationException("Remove operation is not supported");
         }
       };
+
+      // when ignoring corrupt records, wrap it into iterator with safe termination on failures
+      if (ignoreCorrupt) {
+        return new SafeIterator<Object[]>(iter);
+      } else {
+        return iter;
+      }
     }
 
     @Override
     public String toString() {
       return "Record buffer: " + getClass().getCanonicalName() + "[compression: " + compression +
-        ", record size: " + recordSize + "]";
+        ", record size: " + recordSize + ", ignoreCorrupt: " + ignoreCorrupt + "]";
     }
 
     // Whether or not input stream is compressed
@@ -214,6 +224,8 @@ public final class Buffers {
     private final int recordSize;
     // Record materializer to process individual record
     private final RecordMaterializer recordMaterializer;
+    // Ignore corrupt records and terminate iterator once encountered
+    private final boolean ignoreCorrupt;
   }
 
   /**
@@ -228,8 +240,10 @@ public final class Buffers {
         int recordSize,
         ByteOrder byteOrder,
         boolean isCompressed,
-        int bufferLength) {
-      super(in, recordMaterializer, recordSize, byteOrder, isCompressed, bufferLength);
+        int bufferLength,
+        boolean ignoreCorrupt) {
+      super(in, recordMaterializer, recordSize, byteOrder, isCompressed, bufferLength,
+        ignoreCorrupt);
     }
 
     @Override

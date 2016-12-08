@@ -73,6 +73,16 @@ public class NetFlowReaderSuite {
     }
   }
 
+  // test reader on corrupt input, should not fail
+  @Test
+  public void testReadingCorruptWithIgnoreCorrupt() throws IOException {
+    String file = getClass().getResource("/corrupt/ftv5.2016-01-13.compress.9.sample-01").getPath();
+    FSDataInputStream stm = getTestStream(file);
+
+    NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000, true);
+    assertEquals(nr.isValid(), false);
+  }
+
   @Test
   public void testReadingCompressed() throws IOException {
     String file = getClass().
@@ -82,6 +92,7 @@ public class NetFlowReaderSuite {
     NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
     NetFlowHeader header = nr.getHeader();
 
+    assertEquals(nr.isValid(), true);
     assertEquals(header.getFlowVersion(), (short) 7);
     assertEquals(header.isCompressed(), true);
     assertEquals(header.getStartCapture(), 0L);
@@ -103,6 +114,7 @@ public class NetFlowReaderSuite {
     NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
     NetFlowHeader header = nr.getHeader();
 
+    assertEquals(nr.isValid(), true);
     assertEquals(header.getFlowVersion(), (short) 5);
     assertEquals(header.isCompressed(), false);
     assertEquals(header.getStartCapture(), 0L);
@@ -124,6 +136,7 @@ public class NetFlowReaderSuite {
     NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
     NetFlowHeader header = nr.getHeader();
 
+    assertEquals(nr.isValid(), true);
     assertEquals(header.getFlowVersion(), (short) 5);
     assertEquals(header.isCompressed(), false);
     assertEquals(header.getStartCapture(), 0L);
@@ -145,6 +158,7 @@ public class NetFlowReaderSuite {
     NetFlowReader nr = NetFlowReader.prepareReader(stm, 30000);
     NetFlowHeader header = nr.getHeader();
 
+    assertEquals(nr.isValid(), true);
     assertEquals(header.getFlowVersion(), (short) 5);
     assertEquals(header.isCompressed(), true);
     assertEquals(header.getStartCapture(), 0L);
