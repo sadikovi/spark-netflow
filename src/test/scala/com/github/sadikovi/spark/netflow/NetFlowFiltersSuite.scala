@@ -23,7 +23,7 @@ import org.apache.spark.sql.sources._
 import com.github.sadikovi.netflowlib.predicate.FilterApi
 import com.github.sadikovi.netflowlib.predicate.Columns.Column
 import com.github.sadikovi.netflowlib.predicate.Operators.{FilterPredicate, In => JIn}
-import com.github.sadikovi.spark.netflow.index.{Attribute, AttributeMap}
+import com.github.sadikovi.spark.netflow.index.{Attribute, AttributeBatch}
 import com.github.sadikovi.spark.netflow.sources.NetFlowRegistry
 import com.github.sadikovi.testutil.UnitTestSpec
 
@@ -32,10 +32,10 @@ class NetFlowFiltersSuite extends UnitTestSpec {
   private val catalog = NetFlowRegistry.createInterface(
     "com.github.sadikovi.spark.netflow.sources.FakeDefaultProvider")
 
-  // Fake attribute map with dummy columns
-  private val attributes = fakeAttributeMap()
+  // Fake attribute batch with dummy columns
+  private val attributes = fakeAttributeBatch()
 
-  private def fakeAttributeMap(): AttributeMap = {
+  private def fakeAttributeBatch(): AttributeBatch = {
     val col2 = Attribute[Short]("col2", 6)
     col2.addValue(4.toShort)
     col2.addValue(6.toShort)
@@ -44,7 +44,7 @@ class NetFlowFiltersSuite extends UnitTestSpec {
     col4.addValue(1L)
     col4.addValue(5L)
     col4.addValue(12L)
-    AttributeMap.empty.registerAttributes(col2 :: col4 :: Nil)
+    AttributeBatch.empty.registerAttributes(col2 :: col4 :: Nil)
   }
 
   private def compareFilter(got: FilterPredicate, expected: FilterPredicate): Unit = {

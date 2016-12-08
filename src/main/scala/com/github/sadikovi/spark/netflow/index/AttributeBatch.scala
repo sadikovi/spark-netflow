@@ -23,10 +23,10 @@ import scala.collection.mutable.HashMap
 import org.apache.hadoop.conf.{Configuration => HadoopConf}
 
 /**
- * [[AttributeMap]] is a statistics container for attributes. Provides API to register attributes,
+ * [[AttributeBatch]] is a statistics container for attributes. Provides API to register attributes,
  * update statistics for individual attribute and write all attributes into a file.
  */
-private[spark] class AttributeMap {
+private[spark] class AttributeBatch {
   // Map of attributes, name is considered to be unique key for attribute. Column name is usually
   // used as unique key
   private val map: HashMap[String, Attribute[_]] = HashMap.empty
@@ -35,13 +35,13 @@ private[spark] class AttributeMap {
   private[index] def getMap() = map
 
   /** Register new attribute */
-  def registerAttribute(attr: Attribute[_]): AttributeMap = {
+  def registerAttribute(attr: Attribute[_]): AttributeBatch = {
     map += attr.name -> attr
     this
   }
 
   /** Register sequence of attributes */
-  def registerAttributes(attrs: Seq[Attribute[_]]): AttributeMap = {
+  def registerAttributes(attrs: Seq[Attribute[_]]): AttributeBatch = {
     map ++= attrs.map { attr => (attr.name, attr) }
     this
   }
@@ -90,7 +90,7 @@ private[spark] class AttributeMap {
     query(key, value) { (attr, v) => attr.containsInSet(v) }
   }
 
-  /** Return writer for this attribute map */
+  /** Return writer for this attribute batch */
   def write(path: String, conf: HadoopConf, overwrite: Boolean = false): Unit = {
     val writer = new StatisticsWriter(ByteOrder.BIG_ENDIAN, map.values.toSeq)
     writer.save(path, conf, overwrite)
@@ -102,15 +102,15 @@ private[spark] class AttributeMap {
 }
 
 /**
- * Interface to create or load attribute map.
- * When creating new attribute map returns map with predefined set of statistics.
+ * Interface to create or load attribute batch.
+ * When creating new attribute batch returns map with predefined set of statistics.
  * Note that number, name and type of attributes should be in sync with resolved interface columns,
  * meaning that columns with attribute names should have statistics enabled, otherwise it will not
  * collect anything, resulting in incorrect filtering.
  */
-object AttributeMap {
-  def create(): AttributeMap =
-    new AttributeMap().registerAttributes(
+object AttributeBatch {
+  def create(): AttributeBatch =
+    new AttributeBatch().registerAttributes(
       Attribute[Long]("unix_secs", 1) ::
       Attribute[Long]("srcip", 6) ::
       Attribute[Long]("dstip", 6) ::
@@ -119,14 +119,14 @@ object AttributeMap {
       Attribute[Short]("protocol", 6) ::
       Nil)
 
-  def empty(): AttributeMap = new AttributeMap()
+  def empty(): AttributeBatch = new AttributeBatch()
 
-  def read(path: String, conf: HadoopConf): AttributeMap = {
+  def read(path: String, conf: HadoopConf): AttributeBatch = {
     val reader = new StatisticsReader()
-    new AttributeMap().registerAttributes(reader.load(path, conf))
+    new AttributeBatch().registerAttributes(reader.load(path, conf))
   }
 
-  def read(path: String): AttributeMap = {
+  def read(path: String): AttributeBatch = {
     read(path, new HadoopConf(true))
   }
 }

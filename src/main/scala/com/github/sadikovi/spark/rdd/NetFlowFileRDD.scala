@@ -32,7 +32,7 @@ import org.apache.spark.sql.sources._
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.NetFlowFilters
-import com.github.sadikovi.spark.netflow.index.AttributeMap
+import com.github.sadikovi.spark.netflow.index.AttributeBatch
 import com.github.sadikovi.spark.netflow.sources._
 import com.github.sadikovi.spark.util.CloseableIterator
 
@@ -88,7 +88,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
         val statStatus = elem.statisticsPathStatus.get
         if (statStatus.exists) {
           logDebug("Applying statistics to update filter")
-          val attributes = AttributeMap.read(statStatus.path, conf)
+          val attributes = AttributeBatch.read(statStatus.path, conf)
           Some(NetFlowFilters.updateFilter(resolvedFilter.get, attributes))
         } else {
           resolvedFilter
@@ -177,7 +177,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
         val statStatus = elem.statisticsPathStatus.get
         if (!statStatus.exists) {
           logDebug(s"Prepare statistics for a path ${statStatus.path}")
-          val attributes = AttributeMap.create()
+          val attributes = AttributeBatch.create()
           new Iterator[Array[Object]] {
             override def hasNext: Boolean = {
               // If raw iterator does not have any elements we assume that it is EOF and write
