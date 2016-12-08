@@ -23,7 +23,7 @@ import java.util.NoSuchElementException;
  * Iterator implementation that terminates delegate iterator when exception occurs during value
  * extraction.
  */
-public final class SafeIterator<E> implements Iterator<E> {
+public class SafeIterator<E> implements Iterator<E> {
   private boolean gotNext = false;
   private E nextValue = null;
   protected boolean finished = false;
@@ -70,5 +70,10 @@ public final class SafeIterator<E> implements Iterator<E> {
     }
     gotNext = false;
     return nextValue;
+  }
+
+  @Override
+  public void remove() {
+    throw new UnsupportedOperationException("Operation 'remove' is not supported");
   }
 }
