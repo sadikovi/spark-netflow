@@ -137,9 +137,9 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
       }
 
       // Reader is null only in case of initialization failure, we need to return empty iterator
-      if (reader == null) {
+      val recordBufferIterator = if (reader == null) {
         logDebug(s"Skip current $path, reader is null")
-        buffer = buffer ++ Iterator.empty
+        null
       } else {
         val header = reader.getHeader()
         // Actual version of the file
@@ -174,108 +174,110 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
         } else {
           reader.prepareRecordBuffer(internalColumns)
         }
+        recordBuffer.iterator().asScala
+      }
 
-        val rawIterator = new CloseableIterator[Array[Object]] {
-          private var delegate = recordBuffer.iterator().asScala
-           private val currentFile = elem.path
+      val rawIterator = new CloseableIterator[Array[Object]] {
+        private var delegate = recordBufferIterator
+        private val currentFile = elem.path
+        private val ignoreCorrupt = ignoreCorruptFiles
 
-          override def getNext(): Array[Object] = {
-            // If delegate has traversed over all elements mark it as finished
-            // to allow to close stream.
-            // When `ignoreCorruptFiles` is set to true, we also ignore failures in iterator.
-            try {
-              if (delegate.hasNext) {
-                delegate.next
-              } else {
-                finished = true
-                null
-              }
-            } catch {
-              case NonFatal(err) =>
-                logWarning(s"Skipped the rest content in the corrupted file: $currentFile", err)
-                finished = true
-                null
+        override def getNext(): Array[Object] = {
+          // If delegate has traversed over all elements mark it as finished
+          // to allow to close stream.
+          // When `ignoreCorruptFiles` is set to true, we also ignore failures in iterator.
+          try {
+            if (delegate.hasNext) {
+              delegate.next
+            } else {
+              finished = true
+              null
             }
-          }
-
-          override def close(): Unit = {
-            // Close stream if possible of fail silently,
-            // at this point exception does not really matter
-            try {
-              if (stm != null) {
-                stm.close()
-                stm = null
-              }
-            } catch {
-              case err: Exception => // do nothing
-            }
+          } catch {
+            case NonFatal(err) if ignoreCorrupt =>
+              logWarning(s"Skipped the rest content in the corrupted file: $currentFile", err)
+              finished = true
+              null
           }
         }
-        Option(TaskContext.get).foreach(_.addTaskCompletionListener(_ => rawIterator.closeIfNeeded))
 
-        // Try collecting statistics before any other mode, because attributes collect raw data. If
-        // file exists, it is assumed that statistics are already written
-        val writableIterator = if (updatedFilter.isEmpty && elem.statisticsPathStatus.nonEmpty &&
-            statisticsIndex.nonEmpty) {
-          val statStatus = elem.statisticsPathStatus.get
-          if (!statStatus.exists) {
-            logDebug(s"Prepare statistics for a path ${statStatus.path}")
-            val attributes = AttributeMap.create()
-            new Iterator[Array[Object]] {
-              override def hasNext: Boolean = {
-                // If raw iterator does not have any elements we assume that it is EOF and write
-                // statistics into a file.
-                // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
-                // then continue to extract records. For empty files, Spark will try to write
-                // statistics twice, because of double invocation of `hasNext`, in this case we
-                // overwrite old file
-                if (!rawIterator.hasNext) {
-                  logInfo(s"Ready to write statistics for path: ${statStatus.path}")
-                  attributes.write(statStatus.path, conf, overwrite = true)
-                }
-                rawIterator.hasNext
-              }
-
-              override def next(): Array[Object] = {
-                val arr = rawIterator.next
-                for (i <- 0 until numColumns) {
-                  if (statisticsIndex.contains(i)) {
-                    val key = statisticsIndex(i).internalColumn.getColumnName
-                    attributes.updateStatistics(key, arr(i))
-                  }
-                }
-                arr
-              }
+        override def close(): Unit = {
+          // Close stream if possible of fail silently,
+          // at this point exception does not really matter
+          try {
+            if (stm != null) {
+              stm.close()
+              stm = null
             }
-          } else {
-            logDebug(s"Statistics file ${statStatus.path} already exists, skip writing")
-            rawIterator
+          } catch {
+            case err: Exception => // do nothing
+          }
+        }
+      }
+      Option(TaskContext.get).foreach(_.addTaskCompletionListener(_ => rawIterator.closeIfNeeded))
+
+      // Try collecting statistics before any other mode, because attributes collect raw data. If
+      // file exists, it is assumed that statistics are already written
+      val writableIterator = if (updatedFilter.isEmpty && elem.statisticsPathStatus.nonEmpty &&
+          statisticsIndex.nonEmpty) {
+        val statStatus = elem.statisticsPathStatus.get
+        if (!statStatus.exists) {
+          logDebug(s"Prepare statistics for a path ${statStatus.path}")
+          val attributes = AttributeMap.create()
+          new Iterator[Array[Object]] {
+            override def hasNext: Boolean = {
+              // If raw iterator does not have any elements we assume that it is EOF and write
+              // statistics into a file.
+              // There is a feature in Spark when iterator is invoked once to get `hasNext`, and
+              // then continue to extract records. For empty files, Spark will try to write
+              // statistics twice, because of double invocation of `hasNext`, in this case we
+              // overwrite old file
+              if (!rawIterator.hasNext) {
+                logInfo(s"Ready to write statistics for path: ${statStatus.path}")
+                attributes.write(statStatus.path, conf, overwrite = true)
+              }
+              rawIterator.hasNext
+            }
+
+            override def next(): Array[Object] = {
+              val arr = rawIterator.next
+              for (i <- 0 until numColumns) {
+                if (statisticsIndex.contains(i)) {
+                  val key = statisticsIndex(i).internalColumn.getColumnName
+                  attributes.updateStatistics(key, arr(i))
+                }
+              }
+              arr
+            }
           }
         } else {
-          logDebug("Statistics are disabled, skip writing")
+          logDebug(s"Statistics file ${statStatus.path} already exists, skip writing")
           rawIterator
         }
-
-        // Conversion iterator, applies defined modification for convertable fields
-        val withConversionsIterator = if (applyConversion) {
-          // For each field we check if possible conversion is available. If it is we apply direct
-          // conversion, otherwise return unchanged value. Note that this should be in sync with
-          // `applyConversion` and updated schema from `ResolvedInterface`.
-          writableIterator.map(arr => {
-            for (i <- 0 until numColumns) {
-              resolvedColumns(i).convertFunction match {
-                case Some(func) => arr(i) = func.direct(arr(i))
-                case None => // do nothing
-              }
-            }
-            arr
-          })
-        } else {
-          writableIterator
-        }
-
-        buffer = buffer ++ withConversionsIterator
+      } else {
+        logDebug("Statistics are disabled, skip writing")
+        rawIterator
       }
+
+      // Conversion iterator, applies defined modification for convertable fields
+      val withConversionsIterator = if (applyConversion) {
+        // For each field we check if possible conversion is available. If it is we apply direct
+        // conversion, otherwise return unchanged value. Note that this should be in sync with
+        // `applyConversion` and updated schema from `ResolvedInterface`.
+        writableIterator.map(arr => {
+          for (i <- 0 until numColumns) {
+            resolvedColumns(i).convertFunction match {
+              case Some(func) => arr(i) = func.direct(arr(i))
+              case None => // do nothing
+            }
+          }
+          arr
+        })
+      } else {
+        writableIterator
+      }
+
+      buffer = buffer ++ withConversionsIterator
     }
 
     new InterruptibleIterator(context, new Iterator[SQLRow] {
