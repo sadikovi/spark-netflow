@@ -68,7 +68,7 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
     val resolvedFilter: Option[FilterPredicate],
     val statisticsIndex: Map[Int, MappedColumn]) extends FileRDD[SQLRow](sc, Nil) {
   // when true, ignore corrupt files, either with wrong header or corrupt data block
-  private val ignoreCorruptFiles = sc.getConf.getBoolean("spark.files.ignoreCorruptFiles", false);
+  private val ignoreCorruptFiles = sc.getConf.getBoolean("spark.files.ignoreCorruptFiles", false)
 
   override def getPartitions: Array[Partition] = {
     val slices = partitionMode.tryToPartition(data)

@@ -86,6 +86,11 @@ specified when selecting data, columns that are selected contain all statistics 
 all data is scanned/requested. The easiest way to trigger that is running `count()` on DataFrame.
 Using statistics does not require any special conditions apart from enabling option.
 
+### Dealing with corrupt files
+Package supports Spark option `spark.files.ignoreCorruptFiles`. When set to `true`, corrupt files
+are ignored (corrupt header, wrong format) or partially read (corrupt data block in a middle of a
+file). By default option is set to `false`, similar to Spark.
+
 ## Example
 
 ### Scala API
