@@ -113,7 +113,7 @@ public class UtilSuite {
 
   @Test
   public void testSafeIteratorTerminateOnErrorInHasNext() {
-    List<String> values = new ArrayList<String>();
+    final List<String> values = new ArrayList<String>();
     values.add("a");
     values.add(null);
     values.add("a");
@@ -134,6 +134,9 @@ public class UtilSuite {
       public String next() {
         return current;
       }
+
+      @Override
+      public void remove() { }
     };
     SafeIterator<String> iter = new SafeIterator<String>(delegate);
 
@@ -149,7 +152,7 @@ public class UtilSuite {
 
   @Test
   public void testSafeIteratorTerminateOnErrorInNext() {
-    List<String> values = new ArrayList<String>();
+    final List<String> values = new ArrayList<String>();
     values.add("a");
     values.add(null);
     values.add("a");
@@ -165,6 +168,9 @@ public class UtilSuite {
       public String next() {
         return parent.next().toString();
       }
+
+      @Override
+      public void remove() { }
     };
     SafeIterator<String> iter = new SafeIterator<String>(delegate);
 

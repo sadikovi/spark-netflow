@@ -156,7 +156,8 @@ public final class NetFlowReader {
     } catch (Exception err) {
       if (ignoreCorrupt) {
         // we subsume exception and log warning. Set header to null
-        log.warn("Failed to initialize reader, ignoreCorruptFile=" + ignoreCorrupt, err);
+        log.warn("Failed to initialize reader, ignoreCorruptFile=" + ignoreCorrupt +
+          ", error=" + err);
         header = new CorruptNetFlowHeader();
       } else {
         throw err;

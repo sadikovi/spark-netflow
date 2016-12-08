@@ -187,49 +187,4 @@ public class CorruptNetFlowHeader extends NetFlowHeader {
   public long getFields() {
     throw new UnsupportedOperationException("Header is corrupt");
   }
-
-  // bit vector of fields
-  private long FIELDS = 0;
-  // flow stream format version either 1 or 3
-  private short sversion = 0;
-  // byte order, either big endian or little endian
-  private ByteOrder order = null;
-  // actual header size (will be different in case of stream version 3)
-  private int headerSize = 0;
-  // version of NetFlow
-  private short dversion = 0;
-  // start time of flow capture
-  private long start = 0;
-  // end time of flow capture
-  private long end = 0;
-  // header flags as bit vector
-  private long flags = 0;
-  // rotation schedule
-  private long rotation = 0;
-  // number of flows
-  private long numFlows = 0;
-  // number of dropped packets (stream version 1) / flows (stream version 3)
-  private long numDropped = 0;
-  // number of misordered packets (stream version 1) / flows (stream version 3)
-  private long numMisordered = 0;
-  // name of capture device
-  private String hostname = null;
-  // ascii comments
-  private String comments = null;
-  // vendor (cisco - 0x1)
-  private int vendor = 0;
-  // aggregation version
-  private short aggregationVersion = 0;
-  // aggregation method
-  private short aggregationMethod = 0;
-  // exporter IP
-  private long exporterIP = 0;
-  // number of corrupt packets (stream version 1) / flows (stream version 3)
-  private long numCorrupt = 0;
-  // times sequence # was so far off lost/misordered state could not be determined
-  private long seqReset = 0;
-  // interface name
-  private InterfaceName interfaceName = null;
-  // interface alias
-  private InterfaceAlias interfaceAlias = null;
 }
