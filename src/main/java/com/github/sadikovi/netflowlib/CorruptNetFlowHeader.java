@@ -18,11 +18,12 @@ package com.github.sadikovi.netflowlib;
 
 import java.nio.ByteOrder;
 
-/** Class to indicate that header is corrupt */
+/**
+ * Class to indicate that header is corrupt. Overwrites parent method `isValid()` to hint on
+ * incorrectness of header.
+ */
 public class CorruptNetFlowHeader extends NetFlowHeader {
-  public CorruptNetFlowHeader() {
-    this.isValid = false;
-  }
+  public CorruptNetFlowHeader() { }
 
   ////////////////////////////////////////////////////////////
   // Setters API
@@ -183,5 +184,10 @@ public class CorruptNetFlowHeader extends NetFlowHeader {
   @Override
   public long getFields() {
     throw new UnsupportedOperationException("Header is corrupt");
+  }
+
+  @Override
+  public boolean isValid() {
+    return false;
   }
 }

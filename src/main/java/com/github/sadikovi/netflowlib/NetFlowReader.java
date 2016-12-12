@@ -500,7 +500,9 @@ public final class NetFlowReader {
   }
 
   /**
-   * Whether or not reader is valid. Note that it returns null header, if reader is invalid.
+   * Whether or not reader is valid, currently is based on validity of header, assuming that file
+   * is of correct format, but might still have corrupt data blocks. See buffers implementation for
+   * usage of `ignoreCorrupt`.
    */
   public boolean isValid() {
     return header.isValid();

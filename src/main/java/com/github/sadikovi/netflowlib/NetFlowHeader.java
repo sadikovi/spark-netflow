@@ -260,8 +260,12 @@ public class NetFlowHeader {
     return this.FIELDS;
   }
 
+  /**
+   * By default standard NetFlow header is always valid. Subclasses should overwrite this method,
+   * if that is not the case, or method should be conditional.
+   */
   public boolean isValid() {
-    return this.isValid;
+    return true;
   }
 
   // bit vector of fields
@@ -308,6 +312,4 @@ public class NetFlowHeader {
   private InterfaceName interfaceName = null;
   // interface alias
   private InterfaceAlias interfaceAlias = null;
-  // whether or not header is valid
-  protected boolean isValid = true;
 }
