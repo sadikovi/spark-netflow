@@ -18,9 +18,6 @@ package com.github.sadikovi.netflowlib;
 
 import java.nio.ByteOrder;
 
-import com.github.sadikovi.netflowlib.fields.InterfaceAlias;
-import com.github.sadikovi.netflowlib.fields.InterfaceName;
-
 /** Class to indicate that header is corrupt */
 public class CorruptNetFlowHeader extends NetFlowHeader {
   public CorruptNetFlowHeader() {
