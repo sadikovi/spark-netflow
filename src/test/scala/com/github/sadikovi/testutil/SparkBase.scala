@@ -23,8 +23,13 @@ import org.apache.spark.{SparkContext, SparkConf}
 private[testutil] trait SparkBase {
   @transient private[testutil] var _sc: SparkContext = null
 
-  /** Start (or init) Spark context. */
+  /** Initialize Spark context with default parameters */
   def startSparkContext() {
+    startSparkContext(Map.empty)
+  }
+
+  /** Start (or init) Spark context. */
+  def startSparkContext(sparkOptions: Map[String, String]) {
     // stop previous Spark context
     stopSparkContext()
     _sc = new SparkContext()

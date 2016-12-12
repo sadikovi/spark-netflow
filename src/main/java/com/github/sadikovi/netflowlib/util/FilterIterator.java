@@ -25,7 +25,7 @@ import java.util.NoSuchElementException;
  * internal methods to provide original stream of values. When iterator is called, standard methods
  * will be called with filter already.
  */
-public final class FilterIterator<E> implements Iterator<E> {
+public class FilterIterator<E> implements Iterator<E> {
   public FilterIterator(Iterator<E> iterator) {
     this.iterator = iterator;
   }

@@ -75,6 +75,9 @@ public class NetFlowHeader {
     this.headerSize = headerSize;
   }
 
+  /** For subclasses to overwrite */
+  protected NetFlowHeader() { }
+
   ////////////////////////////////////////////////////////////
   // Setters API
   ////////////////////////////////////////////////////////////
@@ -255,6 +258,14 @@ public class NetFlowHeader {
 
   public long getFields() {
     return this.FIELDS;
+  }
+
+  /**
+   * By default standard NetFlow header is always valid. Subclasses should overwrite this method,
+   * if that is not the case, or method should be conditional.
+   */
+  public boolean isValid() {
+    return true;
   }
 
   // bit vector of fields
