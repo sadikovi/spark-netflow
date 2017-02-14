@@ -7,7 +7,11 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 ## Requirements
 | Spark version | spark-netflow latest version |
 |---------------|------------------------------|
-| 1.4+ | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.4.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.5.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 1.6.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 2.0.x | master branch |
+| 2.1.x | master branch |
 
 ## Linking
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For

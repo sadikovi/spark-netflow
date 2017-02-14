@@ -8,7 +8,7 @@ crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 spName := "sadikovi/spark-netflow"
 
-val defaultSparkVersion = "1.4.1"
+val defaultSparkVersion = "2.1.0"
 
 sparkVersion := sys.props.getOrElse("spark.testVersion", defaultSparkVersion)
 
@@ -27,6 +27,8 @@ spIgnoreProvided := true
 sparkComponents := Seq("sql")
 
 libraryDependencies ++= Seq(
+  // Spark build requires this transient depedency
+  "io.netty" % "netty" % "3.6.2.Final" % "provided",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.novocode" % "junit-interface" % "0.11" % "test"
 )

@@ -22,7 +22,6 @@ import scala.util.{Failure, Success, Try}
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FSDataInputStream, Path}
-import org.apache.hadoop.mapreduce.Job
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SQLContext, Row}
@@ -40,11 +39,9 @@ import com.github.sadikovi.spark.rdd.NetFlowFileRDD
 import com.github.sadikovi.spark.util.Utils
 
 private[netflow] class NetFlowRelation(
-    override val paths: Array[String],
-    private val maybeDataSchema: Option[StructType],
-    override val userDefinedPartitionColumns: Option[StructType],
+    @transient val sqlContext: SQLContext,
     private val parameters: Map[String, String])
-    (@transient val sqlContext: SQLContext) extends HadoopFsRelation {
+  extends BaseRelation with PrunedFilteredScan {
 
   private val logger = LoggerFactory.getLogger(getClass())
 
@@ -143,22 +140,20 @@ private[netflow] class NetFlowRelation(
       case None =>
         // we try resolving option if possible using similar approach as Parquet datasource
         val version = NetFlowRelation.
-          lookupVersion(sqlContext.sparkContext.hadoopConfiguration, paths).
+          lookupVersion(sqlContext.sparkContext.hadoopConfiguration, null).
           getOrElse(NetFlowRelation.VERSION_5.toInt)
         logger.debug(s"Resolved interface to version $version")
         s"${NetFlowRelation.INTERNAL_PARTIAL_CLASSNAME}$version"
     }
   }
 
-  override def dataSchema: StructType = inferSchema()
+  override def schema: StructType = inferSchema()
 
-  override def buildScan(
-      requiredColumns: Array[String],
-      inputFiles: Array[FileStatus]): RDD[Row] = {
-    buildScan(requiredColumns, Array.empty, inputFiles)
+  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    null
   }
 
-  override def buildScan(
+  private[netflow] def buildScan(
       requiredColumns: Array[String],
       filters: Array[Filter],
       inputFiles: Array[FileStatus]): RDD[Row] = {
@@ -249,10 +244,6 @@ private[netflow] class NetFlowRelation(
       new NetFlowFileRDD(sqlContext.sparkContext, fileStatuses, partitionMode, applyConversion,
         resolvedColumns, resolvedFilter, statisticsIndex)
     }
-  }
-
-  override def prepareJobForWrite(job: Job): OutputWriterFactory = {
-    throw new UnsupportedOperationException("Write is not supported in this version of package")
   }
 
   override def toString: String = {
