@@ -23,7 +23,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, FSDataInputStream, Path}
 import org.apache.hadoop.mapreduce.Job
 
-import org.apache.spark.{TaskContext, InterruptibleIterator}
+import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFactory, PartitionedFile}
@@ -33,19 +33,21 @@ import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
 import com.github.sadikovi.netflowlib.NetFlowReader
-import com.github.sadikovi.netflowlib.Buffers.RecordBuffer
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
 import com.github.sadikovi.spark.netflow.sources._
-import com.github.sadikovi.spark.util.{CloseableIterator, SerializableConfiguration, Utils}
+import com.github.sadikovi.spark.util.{CloseableIterator, SerializableConfiguration}
 
 class DefaultSource extends FileFormat with DataSourceRegister {
   @transient private val log = LoggerFactory.getLogger(classOf[DefaultSource])
+  // Resolved interface for NetFlow version schema
   private var interface: ResolvedInterface = _
+  // Resolved datasource options
+  private var opts: NetFlowOptions = _
 
   override def shortName(): String = "netflow"
 
   /** Resolve interface based on datasource options and list of files to read */
-  private def inferInterface(
+  private[netflow] def resolveInterface(
       spark: SparkSession,
       options: Map[String, String],
       paths: Seq[Path]): ResolvedInterface = {
@@ -72,17 +74,16 @@ class DefaultSource extends FileFormat with DataSourceRegister {
       files: Seq[FileStatus]): Option[StructType] = {
     // Create interface name to resolve SQL schema
     if (interface == null) {
-      interface = inferInterface(spark, options, files.map { _.getPath })
+      interface = resolveInterface(spark, options, files.map(_.getPath))
     }
     log.info(s"Resolved interface as $interface")
 
-    // Conversion of numeric field into string, such as IP, by default is on
-    val applyConversion = options.get("stringify") match {
-      case Some("true") => true
-      case Some("false") => false
-      case _ => true
+    if (opts == null) {
+      opts = new NetFlowOptions(options)
     }
-    Some(interface.getSQLSchema(applyConversion))
+    log.info(s"Resolved options as $opts")
+
+    Some(interface.getSQLSchema(opts.applyConversion))
   }
 
   override def buildReader(
@@ -93,37 +94,9 @@ class DefaultSource extends FileFormat with DataSourceRegister {
       filters: Seq[Filter],
       options: Map[String, String],
       hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
+    // Check that interface and options are resolved
     assert(interface != null)
-
-    // Buffer size in bytes, by default use standard record buffer size ~1Mb
-    val bufferSize = options.get("buffer") match {
-      case Some(str) =>
-        val bytes = Utils.byteStringAsBytes(str)
-        if (bytes > Integer.MAX_VALUE) {
-          sys.error(s"Cannot set buffer larger than ${Integer.MAX_VALUE}")
-        } else if (bytes < RecordBuffer.MIN_BUFFER_LENGTH) {
-          log.warn(s"Buffer size ${bytes} < minimum buffer size, it will be updated to " +
-            "minimum buffer size")
-          RecordBuffer.MIN_BUFFER_LENGTH
-        } else {
-          bytes.toInt
-        }
-      case None => RecordBuffer.BUFFER_LENGTH_2
-    }
-
-    // Whether or not to use predicate pushdown at the NetFlow library level
-    val usePredicatePushdown = options.get("predicate-pushdown") match {
-      case Some("true") => true
-      case Some("false") => false
-      case _ => true
-    }
-
-    // Conversion of numeric field into string, such as IP, by default is enabled
-    val applyConversion = options.get("stringify") match {
-      case Some("true") => true
-      case Some("false") => false
-      case _ => true
-    }
+    assert(opts != null)
 
     // Convert SQL columns to internal mapped columns, also check if statistics are enabled, so
     // schema is adjusted to include statistics columns
@@ -142,29 +115,29 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     // predicate pushdown (normally it is used for benchmarks), but in some situations when
     // library filters incorrectly this can be a short time fix
     val resolvedFilter: Option[FilterPredicate] = reducedFilter match {
-      case Some(filter) if usePredicatePushdown =>
+      case Some(filter) if opts.usePredicatePushdown =>
         Option(NetFlowFilters.convertFilter(filter, interface))
-      case Some(filter) if !usePredicatePushdown =>
-        log.warn("Predicate pushdown is disabled")
+      case Some(filter) if !opts.usePredicatePushdown =>
+        log.warn("NetFlow library-level predicate pushdown is disabled")
         None
       case other =>
         None
     }
     log.info(s"Resolved NetFlow filter: $resolvedFilter")
 
-    reader(spark, hadoopConf, interface.version(), applyConversion, bufferSize, resolvedColumns,
-      resolvedFilter)
+    prepareRead(spark, hadoopConf, interface, opts, resolvedColumns, resolvedFilter)
   }
 
   /** Return partial function to read partitioned files */
-  private def reader(
+  private def prepareRead(
       spark: SparkSession,
       hadoopConf: Configuration,
-      flowVersion: Short,
-      applyConversion: Boolean,
-      bufferSize: Int,
+      interface: ResolvedInterface,
+      opts: NetFlowOptions,
       resolvedColumns: Array[MappedColumn],
       resolvedFilter: Option[FilterPredicate]): (PartitionedFile) => Iterator[InternalRow] = {
+    // Required version of NetFlow files
+    val flowVersion = interface.version()
     // Array of internal columns for NetFlow library
     val internalColumns = resolvedColumns.map(_.internalColumn)
     // Number of columns to process
@@ -173,20 +146,22 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     val ignoreCorruptFiles =
       spark.sparkContext.getConf.getBoolean("spark.files.ignoreCorruptFiles", false)
     val confBroadcast = spark.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
+    val optsBroadcast = spark.sparkContext.broadcast(opts)
 
     (file: PartitionedFile) => {
+      // Separate logger for each partition, do not use global logger for default source
       val log = LoggerFactory.getLogger(classOf[DefaultSource])
+      val opts = optsBroadcast.value
       val conf = confBroadcast.value.value
+
       val fs = FileSystem.get(conf)
       val path = new Path(file.filePath)
       val fileLength = file.length
 
       // Prepare file stream
       var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, bufferSize, ignoreCorruptFiles)
-      // this flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
-      // throw exception, if file is corrupt
-      // this flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
+      val reader = NetFlowReader.prepareReader(stm, opts.bufferSize, ignoreCorruptFiles)
+      // This flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
       // throw exception, if file is corrupt
       if (!reader.isValid()) {
         log.warn(s"Failed to read file $path, ignoreCorruptFiles=$ignoreCorruptFiles")
@@ -195,16 +170,14 @@ class DefaultSource extends FileFormat with DataSourceRegister {
         val header = reader.getHeader()
         // Actual version of the file
         val actualVersion = header.getFlowVersion()
-        // Compression flag
-        val isCompressed = header.isCompressed()
 
         log.debug(s"""
             > NetFlow: {
             >   File: $path,
             >   File length: $fileLength bytes,
             >   Flow version: $actualVersion,
-            >   Compression: $isCompressed,
-            >   Buffer size: $bufferSize bytes,
+            >   Compression: ${header.isCompressed()},
+            >   Buffer size: ${opts.bufferSize} bytes,
             >   Start capture: ${header.getStartCapture()},
             >   End capture: ${header.getEndCapture()},
             >   Hostname: ${header.getHostname()},
@@ -260,14 +233,15 @@ class DefaultSource extends FileFormat with DataSourceRegister {
         }
 
         // Conversion iterator, applies defined modification for convertable fields
-        val withConversionsIterator = if (applyConversion) {
+        val withConversionsIterator = if (opts.applyConversion) {
           // For each field we check if possible conversion is available. If it is we apply direct
           // conversion, otherwise return unchanged value. Note that this should be in sync with
           // `applyConversion` and updated schema from `ResolvedInterface`.
+          // TODO: improve performance of conversion
           rawIterator.map { arr =>
             for (i <- 0 until numColumns) {
               resolvedColumns(i).convertFunction match {
-                case Some(func) => arr(i) = func.direct(arr(i))
+                case Some(func) => arr(i) = func.directCatalyst(arr(i))
                 case None => // do nothing
               }
             }
@@ -278,13 +252,8 @@ class DefaultSource extends FileFormat with DataSourceRegister {
         }
 
         new Iterator[InternalRow] {
-          def next(): InternalRow = {
-            InternalRow.fromSeq(withConversionsIterator.next())
-          }
-
-          def hasNext: Boolean = {
-            withConversionsIterator.hasNext
-          }
+          override def next(): InternalRow = InternalRow.fromSeq(withConversionsIterator.next())
+          override def hasNext: Boolean = withConversionsIterator.hasNext
         }
       }
     }

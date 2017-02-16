@@ -19,6 +19,8 @@ package com.github.sadikovi.spark.netflow.sources
 import scala.collection.mutable.HashMap
 import scala.util.Try
 
+import org.apache.spark.unsafe.types.UTF8String
+
 /**
  * [[ConvertFunction]] interface to provide direct `Any -> String` and reversed `String -> Any`
  * conversions.
@@ -26,6 +28,11 @@ import scala.util.Try
 abstract class ConvertFunction {
   /** Direct conversion rule */
   def direct(value: Any): String
+
+  /** Direct conversion for Catalyst internal type */
+  def directCatalyst(value: Any): UTF8String = {
+    UTF8String.fromString(direct(value))
+  }
 
   /** Reversed conversion rule */
   def reversed(value: String): Any
