@@ -18,9 +18,9 @@ package com.github.sadikovi.spark.netflow.sources
 
 import org.apache.spark.sql.types.{ByteType, IntegerType, LongType, ShortType, StringType}
 
-import com.github.sadikovi.testutil.UnitTestSpec
+import com.github.sadikovi.testutil.UnitTestSuite
 
-class NetFlowRegistrySuite extends UnitTestSpec {
+class NetFlowRegistrySuite extends UnitTestSuite {
   test("resolve test provider") {
     // resolve full class name for provider
     var provider = NetFlowRegistry.lookupInterface(

@@ -16,10 +16,10 @@
 
 package com.github.sadikovi.spark.util
 
-import com.github.sadikovi.testutil.UnitTestSpec
+import com.github.sadikovi.testutil.UnitTestSuite
 import com.github.sadikovi.testutil.implicits._
 
-class UtilsSuite extends UnitTestSpec {
+class UtilsSuite extends UnitTestSuite {
 
   test("parse buffer size") {
     val sizes = Seq("1024", "10Kb", "10K", "10Mb", "10M", "10Gb", "10G")

@@ -144,7 +144,7 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     val numColumns = resolvedColumns.length
     // when true, ignore corrupt files, either with wrong header or corrupt data block
     val ignoreCorruptFiles =
-      spark.sparkContext.getConf.getBoolean("spark.files.ignoreCorruptFiles", false)
+      spark.conf.getOption("spark.files.ignoreCorruptFiles").map(_.toBoolean).getOrElse(false)
     val confBroadcast = spark.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
     val optsBroadcast = spark.sparkContext.broadcast(opts)
 
@@ -271,6 +271,12 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     case _: DefaultSource => true
     case _ => false
   }
+
+  /** Get resolved interface, for testing */
+  private[netflow] def getInterface(): ResolvedInterface = interface
+
+  /** Get NetFlow options, for testing */
+  private[netflow] def getOptions(): NetFlowOptions = opts
 }
 
 /** Companion object to maintain internal constants */

@@ -23,11 +23,6 @@ import org.apache.spark.sql.sources._
 import com.github.sadikovi.netflowlib.predicate.Columns._
 import com.github.sadikovi.netflowlib.predicate.FilterApi
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate
-import com.github.sadikovi.netflowlib.predicate.Operators.{Eq => JEq, In => JIn}
-import com.github.sadikovi.netflowlib.predicate.Operators.{Gt => JGt, Ge => JGe}
-import com.github.sadikovi.netflowlib.predicate.Operators.{Lt => JLt, Le => JLe}
-import com.github.sadikovi.netflowlib.predicate.Operators.{And => JAnd, Or => JOr, Not => JNot}
-import com.github.sadikovi.spark.netflow.index.AttributeMap
 import com.github.sadikovi.spark.netflow.sources._
 
 /**
@@ -84,93 +79,6 @@ private[spark] object NetFlowFilters {
     // Full scan in NetFlow library and filtering in Spark will be done.
     case unsupportedFilter =>
       FilterApi.trivial(true)
-  }
-
-  /**
-   * Update filter predicate based on attribute map. Column name of filter predicate is used as a
-   * key of the attribute map to extract relevant attribute. For different predicate different
-   * statistics data is used. No-op when attribute is not found, or filter is trivial.
-   */
-  def updateFilter(filter: FilterPredicate, attributes: AttributeMap): FilterPredicate = {
-    filter match {
-      case eq: JEq =>
-        val key = eq.getColumn().getColumnName()
-        val value = eq.getValue()
-        attributes.in(key, value).orElse(attributes.between(key, value)) match {
-          case Some(true) => eq
-          case Some(false) => FilterApi.trivial(false)
-          case None => eq
-        }
-      case gt: JGt =>
-        val key = gt.getColumn().getColumnName()
-        val value = gt.getValue()
-        attributes.ltMax(key, value) match {
-          case Some(true) => attributes.geMin(key, value) match {
-            case Some(true) | None => gt
-            case Some(false) => FilterApi.trivial(true)
-          }
-          case Some(false) => FilterApi.trivial(false)
-          case None => gt
-        }
-      case ge: JGe =>
-        val key = ge.getColumn().getColumnName()
-        val value = ge.getValue()
-        attributes.leMax(key, value) match {
-          case Some(true) => attributes.gtMin(key, value) match {
-            case Some(true) | None => ge
-            case Some(false) => FilterApi.trivial(true)
-          }
-          case Some(false) => FilterApi.trivial(false)
-          case None => ge
-        }
-      case lt: JLt =>
-        val key = lt.getColumn().getColumnName()
-        val value = lt.getValue()
-        attributes.gtMin(key, value) match {
-          case Some(true) => attributes.leMax(key, value) match {
-            case Some(true) | None => lt
-            case Some(false) => FilterApi.trivial(true)
-          }
-          case Some(false) => FilterApi.trivial(false)
-          case None => lt
-        }
-      case le: JLe =>
-        val key = le.getColumn().getColumnName()
-        val value = le.getValue()
-        attributes.geMin(key, value) match {
-          case Some(true) => attributes.ltMax(key, value) match {
-            case Some(true) | None => le
-            case Some(false) => FilterApi.trivial(true)
-          }
-          case Some(false) => FilterApi.trivial(false)
-          case None => le
-        }
-      case in: JIn =>
-        val key = in.getColumn().getColumnName()
-        val set = in.getValues()
-        val iter = set.iterator()
-        val updatedSet = new JHashSet[Any]()
-        // Collect values that are determined to be removed
-        while (iter.hasNext) {
-          val value = iter.next
-          attributes.in(key, value).orElse(attributes.between(key, value)) match {
-            case Some(true) | None =>
-              // Add values to updated set that confirm to statistics or it is no-op
-              updatedSet.add(value)
-            case Some(false) => // do nothing, this value is discarded
-          }
-        }
-        FilterApi.in(in.getColumn(), updatedSet)
-      case and: JAnd =>
-        FilterApi.and(updateFilter(and.getLeft, attributes), updateFilter(and.getRight, attributes))
-      case or: JOr =>
-        FilterApi.or(updateFilter(or.getLeft, attributes), updateFilter(or.getRight, attributes))
-      case not: JNot =>
-        FilterApi.not(updateFilter(not.getChild, attributes))
-      case otherPredicate =>
-        // Return undefined filter unchanged
-        otherPredicate
-    }
   }
 
   //////////////////////////////////////////////////////////////

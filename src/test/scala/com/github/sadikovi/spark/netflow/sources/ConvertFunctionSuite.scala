@@ -16,9 +16,11 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
-import com.github.sadikovi.testutil.UnitTestSpec
+import org.apache.spark.unsafe.types.UTF8String
 
-class ConvertFunctionSuite extends UnitTestSpec {
+import com.github.sadikovi.testutil.UnitTestSuite
+
+class ConvertFunctionSuite extends UnitTestSuite {
   test("ip conversion") {
     val dataset = Seq(
       ("127.0.0.1", 2130706433L),
@@ -48,6 +50,7 @@ class ConvertFunctionSuite extends UnitTestSpec {
     for (elem <- dataset) {
       val (ip, num) = elem
       convertFunction.direct(num) should equal (ip)
+      convertFunction.directCatalyst(num) should equal (UTF8String.fromString(ip))
     }
 
     // test reversed conversion
@@ -72,20 +75,49 @@ class ConvertFunctionSuite extends UnitTestSpec {
 
     // test direct conversion for all indices of protocol
     convertFunction.direct(1.toShort) should be ("ICMP")
+    convertFunction.directCatalyst(1.toShort) should be (UTF8String.fromString("ICMP"))
+
     convertFunction.direct(3.toShort) should be ("GGP")
+    convertFunction.directCatalyst(3.toShort) should be (UTF8String.fromString("GGP"))
+
     convertFunction.direct(6.toShort) should be ("TCP")
+    convertFunction.directCatalyst(6.toShort) should be (UTF8String.fromString("TCP"))
+
     convertFunction.direct(8.toShort) should be ("EGP")
+    convertFunction.directCatalyst(8.toShort) should be (UTF8String.fromString("EGP"))
+
     convertFunction.direct(12.toShort) should be ("PUP")
+    convertFunction.directCatalyst(12.toShort) should be (UTF8String.fromString("PUP"))
+
     convertFunction.direct(17.toShort) should be ("UDP")
+    convertFunction.directCatalyst(17.toShort) should be (UTF8String.fromString("UDP"))
+
     convertFunction.direct(20.toShort) should be ("HMP")
+    convertFunction.directCatalyst(20.toShort) should be (UTF8String.fromString("HMP"))
+
     convertFunction.direct(27.toShort) should be ("RDP")
+    convertFunction.directCatalyst(27.toShort) should be (UTF8String.fromString("RDP"))
+
     convertFunction.direct(46.toShort) should be ("RSVP")
+    convertFunction.directCatalyst(46.toShort) should be (UTF8String.fromString("RSVP"))
+
     convertFunction.direct(47.toShort) should be ("GRE")
+    convertFunction.directCatalyst(47.toShort) should be (UTF8String.fromString("GRE"))
+
     convertFunction.direct(50.toShort) should be ("ESP")
+    convertFunction.directCatalyst(50.toShort) should be (UTF8String.fromString("ESP"))
+
     convertFunction.direct(51.toShort) should be ("AH")
+    convertFunction.directCatalyst(51.toShort) should be (UTF8String.fromString("AH"))
+
     convertFunction.direct(66.toShort) should be ("RVD")
+    convertFunction.directCatalyst(66.toShort) should be (UTF8String.fromString("RVD"))
+
     convertFunction.direct(88.toShort) should be ("IGMP")
+    convertFunction.directCatalyst(88.toShort) should be (UTF8String.fromString("IGMP"))
+
     convertFunction.direct(89.toShort) should be ("OSPF")
+    convertFunction.directCatalyst(89.toShort) should be (UTF8String.fromString("OSPF"))
 
     // test reversed conversion
     convertFunction.reversed("ICMP") should be (1)

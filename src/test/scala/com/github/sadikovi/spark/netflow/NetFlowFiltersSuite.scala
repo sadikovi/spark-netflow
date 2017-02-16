@@ -23,29 +23,13 @@ import org.apache.spark.sql.sources._
 import com.github.sadikovi.netflowlib.predicate.FilterApi
 import com.github.sadikovi.netflowlib.predicate.Columns.Column
 import com.github.sadikovi.netflowlib.predicate.Operators.{FilterPredicate, In => JIn}
-import com.github.sadikovi.spark.netflow.index.{Attribute, AttributeMap}
 import com.github.sadikovi.spark.netflow.sources.NetFlowRegistry
-import com.github.sadikovi.testutil.UnitTestSpec
+import com.github.sadikovi.testutil.UnitTestSuite
 
-class NetFlowFiltersSuite extends UnitTestSpec {
+class NetFlowFiltersSuite extends UnitTestSuite {
   // Fake interface to resolve filters
   private val catalog = NetFlowRegistry.createInterface(
     "com.github.sadikovi.spark.netflow.sources.FakeDefaultProvider")
-
-  // Fake attribute map with dummy columns
-  private val attributes = fakeAttributeMap()
-
-  private def fakeAttributeMap(): AttributeMap = {
-    val col2 = Attribute[Short]("col2", 6)
-    col2.addValue(4.toShort)
-    col2.addValue(6.toShort)
-    col2.addValue(8.toShort)
-    val col4 = Attribute[Long]("col4", 6)
-    col4.addValue(1L)
-    col4.addValue(5L)
-    col4.addValue(12L)
-    AttributeMap.empty.registerAttributes(col2 :: col4 :: Nil)
-  }
 
   private def compareFilter(got: FilterPredicate, expected: FilterPredicate): Unit = {
     got.getClass() should be (expected.getClass())
@@ -93,7 +77,7 @@ class NetFlowFiltersSuite extends UnitTestSpec {
     ))
 
     // no filters
-    NetFlowFilters.reduceFilter(Array.empty) should be (None)
+    NetFlowFilters.reduceFilter(Seq.empty) should be (None)
   }
 
   test("convert filter - EqualTo") {
@@ -244,187 +228,5 @@ class NetFlowFiltersSuite extends UnitTestSpec {
     intercept[ClassCastException] {
       NetFlowFilters.convertFilter(GreaterThan("col1", "10"), catalog)
     }
-  }
-
-  //////////////////////////////////////////////////////////////
-  // Update filter based on statistics
-  //////////////////////////////////////////////////////////////
-  test("update filter - eq") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-    // Equality
-    filter = FilterApi.eq(col4, 5L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Not in the set
-    filter = FilterApi.eq(col4, 6L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-  }
-
-  test("update filter - in") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-    // In equality
-    filter = inFilter(col4, Array(1L, 2L, 3L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), inFilter(col4, Array(1L)))
-
-    // Not in the set
-    filter = inFilter(col4, Array(100L, 101L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), inFilter(col4, Array()))
-  }
-
-  test("update filter - gt") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Value is within the range
-    filter = FilterApi.gt(col4, 4L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is less than min
-    filter = FilterApi.gt(col4, -1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-
-    // Value equals min
-    filter = FilterApi.gt(col4, 1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is greater than max
-    filter = FilterApi.gt(col4, 15L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-
-    // Value equals max
-    filter = FilterApi.gt(col4, 12L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-  }
-
-  test("update filter - ge") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Value is within the range
-    filter = FilterApi.ge(col4, 4L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is less than min
-    filter = FilterApi.ge(col4, -1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-
-    // Value equals min
-    filter = FilterApi.ge(col4, 1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-
-    // Value is greater than max
-    filter = FilterApi.ge(col4, 15L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-
-    // Value equals max
-    filter = FilterApi.ge(col4, 12L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-  }
-
-  test("update filter - lt") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Value is within the range
-    filter = FilterApi.lt(col4, 4L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is less than min
-    filter = FilterApi.lt(col4, -1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-
-    // Value equals min
-    filter = FilterApi.lt(col4, 1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-
-    // Value is greater than max
-    filter = FilterApi.lt(col4, 15L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-
-    // Value equals max
-    filter = FilterApi.lt(col4, 12L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-  }
-
-  test("update filter - le") {
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Value is within the range
-    filter = FilterApi.le(col4, 4L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is less than min
-    filter = FilterApi.le(col4, -1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(false))
-
-    // Value equals min
-    filter = FilterApi.le(col4, 1L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), filter)
-
-    // Value is greater than max
-    filter = FilterApi.le(col4, 15L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-
-    // Value equals max
-    filter = FilterApi.le(col4, 12L)
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes), FilterApi.trivial(true))
-  }
-
-  test("update filter - and") {
-    val col2 = catalog.getColumn("col2").internalColumn
-    val col3 = catalog.getColumn("col3").internalColumn
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Case 1
-    filter = FilterApi.and(FilterApi.eq(col4, 3L), FilterApi.eq(col2, 4.toShort))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.and(FilterApi.trivial(false), FilterApi.eq(col2, 4.toShort)))
-
-    // Case 2
-    filter = FilterApi.and(FilterApi.eq(col3, 10), FilterApi.eq(col4, 3L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.and(FilterApi.eq(col3, 10), FilterApi.trivial(false)))
-
-    // Case 3
-    filter = FilterApi.and(FilterApi.ge(col4, 2L), FilterApi.le(col4, 20L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.and(FilterApi.ge(col4, 2L), FilterApi.trivial(true)))
-  }
-
-  test("update filter - or") {
-    val col2 = catalog.getColumn("col2").internalColumn
-    val col3 = catalog.getColumn("col3").internalColumn
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    // Case 1
-    filter = FilterApi.or(FilterApi.eq(col4, 3L), FilterApi.eq(col2, 5.toShort))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.or(FilterApi.trivial(false), FilterApi.trivial(false)))
-
-    // Case 2
-    filter = FilterApi.or(FilterApi.eq(col3, 10), FilterApi.eq(col4, 3L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.or(FilterApi.eq(col3, 10), FilterApi.trivial(false)))
-
-    // Case 3
-    filter = FilterApi.or(FilterApi.lt(col4, 2L), FilterApi.gt(col4, 12L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.or(FilterApi.lt(col4, 2L), FilterApi.trivial(false)))
-  }
-
-  test("update filter - not") {
-    val col2 = catalog.getColumn("col2").internalColumn
-    val col3 = catalog.getColumn("col3").internalColumn
-    val col4 = catalog.getColumn("col4").internalColumn
-    var filter: FilterPredicate = null
-
-    filter = FilterApi.not(FilterApi.eq(col4, 3L))
-    compareFilter(NetFlowFilters.updateFilter(filter, attributes),
-      FilterApi.not(FilterApi.trivial(false)))
   }
 }
