@@ -154,7 +154,6 @@ trait TestBase {
     }
   }
 
-
   /** Execute code block with created temporary directory with provided permission */
   def withTempDir(permission: FsPermission)(func: HadoopPath => Unit): Unit = {
     withTempHadoopPath(createTempDir(), Some(permission))(func)
