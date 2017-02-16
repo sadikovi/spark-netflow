@@ -38,7 +38,7 @@ import com.github.sadikovi.spark.netflow.sources._
 private[spark] object NetFlowFilters {
 
   /** Reduce array of Spark filters to single `Filter` instance as option. */
-  def reduceFilter(filters: Array[Filter]): Option[Filter] = {
+  def reduceFilter(filters: Seq[Filter]): Option[Filter] = {
     if (filters.isEmpty) {
       None
     } else if (filters.length == 1) {

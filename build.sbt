@@ -2,7 +2,7 @@ name := "spark-netflow"
 
 organization := "com.github.sadikovi"
 
-scalaVersion := "2.10.5"
+scalaVersion := "2.11.7"
 
 crossScalaVersions := Seq("2.10.5", "2.11.7")
 
@@ -65,12 +65,12 @@ EclipseKeys.eclipseOutput := Some("target/eclipse")
 // tasks dependencies
 lazy val compileScalastyle = taskKey[Unit]("compileScalastyle")
 compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).toTask("").value
-(compile in Compile) <<= (compile in Compile).dependsOn(compileScalastyle)
+// (compile in Compile) <<= (compile in Compile).dependsOn(compileScalastyle)
 
 // Create a default Scala style task to run with tests
 lazy val testScalastyle = taskKey[Unit]("testScalastyle")
 testScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Test).toTask("").value
-(test in Test) <<= (test in Test).dependsOn(testScalastyle)
+// (test in Test) <<= (test in Test).dependsOn(testScalastyle)
 
 /********************
  * Release settings *
