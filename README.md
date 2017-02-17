@@ -10,8 +10,8 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 | 1.4.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 | 1.5.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 | 1.6.x | [1.3.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
-| 2.0.x | master branch |
-| 2.1.x | master branch |
+| 2.0.x | [2.0.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 2.1.x | [2.0.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 > Documentation reflects changes in master branch, for documentation on a specific version, please
 > select corresponding version tag or branch.
@@ -106,7 +106,7 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.11/spark-netflow_2.11-2.0.0-SNAPSHOT.jar \
+  target/scala-2.11/spark-netflow_2.11-2.0.0.jar \
   --iterations 5 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*' \
   --version 5
