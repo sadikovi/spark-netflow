@@ -60,6 +60,19 @@ class ConvertFunctionSuite extends UnitTestSuite {
     }
   }
 
+  test("fail ip conversion for invalid input") {
+    val convertFunction = IPv4ConvertFunction()
+    var err = intercept[IllegalArgumentException] {
+      convertFunction.reversed("123")
+    }
+    assert(err.getMessage.contains("Invalid IPv4: 123"))
+
+    err = intercept[IllegalArgumentException] {
+      convertFunction.reversed("1.2.3")
+    }
+    assert(err.getMessage.contains("Invalid IPv4: 1.2.3"))
+  }
+
   test("protocol conversion") {
     val protocols: Array[Short] = (0 until 256).map(_.toShort).toArray
 
@@ -124,6 +137,10 @@ class ConvertFunctionSuite extends UnitTestSuite {
     convertFunction.reversed("TCP") should be (6)
     convertFunction.reversed("UDP") should be (17)
     convertFunction.reversed("255") should be (255)
+  }
+
+  test("fail protocol conversion, if value is invalid") {
+    val convertFunction = ProtocolConvertFunction()
     intercept[RuntimeException] {
       convertFunction.reversed("udp")
     }

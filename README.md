@@ -97,6 +97,7 @@ SELECT srcip, dstip, srcport, dstport FROM ips LIMIT 10;
 
 ## Building From Source
 This library is built using `sbt`, to build a JAR file simply run `sbt package` from project root.
+To build jars for Scala 2.10.x and 2.11.x run `sbt +package`.
 
 ## Testing
 Run `sbt test` from project root.

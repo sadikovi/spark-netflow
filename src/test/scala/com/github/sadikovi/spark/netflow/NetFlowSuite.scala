@@ -84,7 +84,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
       option("stringify", "false").load(s"file:$path1")
 
-    val res = df.collect()
+    val res = df.collect
     res.length should be (1000)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
       65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
@@ -96,7 +96,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
       option("stringify", "false").load(s"file:$path2")
 
-    val res = df.collect()
+    val res = df.collect
     res.length should be (1000)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
       65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
@@ -108,7 +108,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
       option("stringify", "false").load(s"file:$path6")
 
-    val res = df.collect()
+    val res = df.collect
     res.length should be (1000)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
       17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
@@ -120,7 +120,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
       option("stringify", "false").load(s"file:$path7")
 
-    val res = df.collect()
+    val res = df.collect
     res.length should be (1000)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
       17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
@@ -132,7 +132,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "7").
       option("stringify", "false").load(s"file:$path8")
 
-    val res = df.collect()
+    val res = df.collect
     res.length should be (1000)
     res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0, 65280,
       17, 0, 0, 0, 0, 0, 0, 0, 0, 65280, 0))
@@ -152,14 +152,14 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     withTempDir { dir =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$dir")
-      df.collect().isEmpty should be (true)
+      df.collect.isEmpty should be (true)
     }
   }
 
   test("fail reading invalid input") {
     val err = intercept[SparkException] {
       spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-        load(s"file:$path3").count()
+        load(s"file:$path3").count
     }
     val msg = err.getMessage()
     assert(msg.contains("java.io.IOException: " +
@@ -170,7 +170,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
       load(s"file:$path4")
     val err = intercept[SparkException] {
-      df.select("srcip").count()
+      df.select("srcip").count
     }
     val msg = err.getMessage()
     assert(msg.contains("java.lang.IllegalArgumentException: Unexpected EOF"))
@@ -182,6 +182,183 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
         load(s"file:$path4")
     }
   }
+
+  test("read empty non-compressed NetFlow file") {
+    val df = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:$path9")
+    df.collect.length should be (0)
+  }
+
+  test("read empty compressed NetFlow file") {
+    var df: DataFrame = null
+
+    // Read file with compression 2
+    df = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:$path10")
+    df.collect.length should be (0)
+
+    df = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:$path11")
+    df.collect.length should be (0)
+  }
+
+  test("read NetFlow file with 1 record only") {
+    val df = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").option("stringify", "false").load(s"file:$path12")
+    val res = df.collect
+    res.length should be (1)
+    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
+      65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
+  }
+
+  test("issue #26 - read NetFlow file that starts with large byte") {
+    val df = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:$path13").
+      select("srcip", "dstip", "protocol", "srcport", "dstport", "octets", "packets")
+    val res = df.collect
+
+    res.length should be (1000)
+    res.take(5) should be (Array(
+      Row("172.29.31.106", "141.168.161.5", "ICMP", 2048, 18358, 96L, 1L),
+      Row("139.168.52.154", "172.49.40.150", "TCP", 59527, 3016, 41L, 1L),
+      Row("144.136.201.10", "192.168.177.26", "UDP", 123, 123, 76L, 1),
+      Row("147.132.239.10", "139.168.47.149", "TCP", 80, 64036, 40L, 1L),
+      Row("172.49.40.189", "172.115.30.32", "TCP", 443, 63526, 18642, 37)
+    ))
+
+    res.takeRight(5) should be (Array(
+      Row("144.132.81.10", "139.168.143.23", "UDP", 53, 50725, 164L, 1L),
+      Row("10.111.198.7", "147.132.239.10", "TCP", 56190, 80, 40L, 1L),
+      Row("139.168.112.131", "172.49.40.146", "TCP", 64424, 3217, 919L, 4L),
+      Row("10.97.217.136", "147.10.8.55", "TCP", 8080, 53941, 431L, 3L),
+      Row("10.233.198.51", "144.132.81.10", "UDP", 52865, 53, 81L, 1L)
+    ))
+  }
+
+  test("fail read if there is NetFlow version mismatch using implicit wrapper for v5") {
+    import com.github.sadikovi.spark.netflow._
+    // test failure on passing different than "5" version
+    val err = intercept[SparkException] {
+      spark.read.netflow5(s"file:$path5").count
+    }
+    assert(err.getMessage.contains("java.lang.IllegalArgumentException: requirement failed: " +
+      "Expected version 5, got 8"))
+  }
+
+  test("read NetFlow files using implicit wrapper for v5") {
+    import com.github.sadikovi.spark.netflow._
+    // parsing NetFlow v5 file
+    val df = spark.read.netflow5(s"file:$path2")
+    val expected = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "5").load(s"file:$path2")
+    checkAnswer(df, expected)
+  }
+
+  test("fail read if there is NetFlow version mismatch using implicit wrapper for v7") {
+    import com.github.sadikovi.spark.netflow._
+    // test failure on passing different than "7" version
+    val err = intercept[SparkException] {
+      spark.read.netflow7(s"file:$path5").count
+    }
+    assert(err.getMessage.contains("java.lang.IllegalArgumentException: requirement failed: " +
+      "Expected version 7, got 8"))
+  }
+
+  test("read NetFlow files using implicit wrapper for v7") {
+    import com.github.sadikovi.spark.netflow._
+    // test parsing normal file for version 7
+    val df = spark.read.netflow7(s"file:$path7")
+    val expected = spark.read.format("com.github.sadikovi.spark.netflow").
+      option("version", "7").load(s"file:$path7")
+    checkAnswer(df, expected)
+  }
+
+  test("issue #2 - fields conversion to String for uncompressed file") {
+    var df = readNetFlow(spark, 5, path1, false)
+    df.count should be (1000)
+    df.collect.last should be (Row(999, 4294902759L, 999, 743, 17))
+
+    df = readNetFlow(spark, 5, path1, true)
+    df.count should be (1000)
+    df.collect.last should be (Row("0.0.3.231", "255.255.3.231", 999, 743, "UDP"))
+
+    // test for version 7 - uncompressed
+    df = readNetFlow(spark, 7, path6, true)
+    df.count should be (1000)
+    df.collect.last should be (Row("0.0.3.231", "255.255.3.231", 999, 743, "UDP"))
+  }
+
+  test("issue #2 - fields conversion to String for compressed file") {
+    var df = readNetFlow(spark, 5, path2, false)
+    df.count should be (1000)
+    df.collect.last should be (Row(999, 4294902759L, 999, 743, 17))
+
+    df = readNetFlow(spark, 5, path2, true)
+    df.count should be (1000)
+    df.collect.last should be (Row("0.0.3.231", "255.255.3.231", 999, 743, "UDP"))
+
+    // test for version 7 - compressed
+    df = readNetFlow(spark, 7, path8, true)
+    df.count should be (1000)
+    df.collect.last should be (Row("0.0.3.231", "255.255.3.231", 999, 743, "UDP"))
+  }
+
+  test("ignore scanning file for unix_secs out of range") {
+    val df = spark.read.netflow5(s"file:$path1").filter(col("unix_secs") === -1)
+    df.count should be (0)
+  }
+
+  test("scan variations with simple predicate") {
+    var df: DataFrame = null
+
+    df = spark.read.netflow5(s"file:$path2").filter(col("srcip") === "0.0.0.1").
+      select("srcip", "dstip", "protocol")
+    df.collect should be (Array(Row("0.0.0.1", "255.255.0.1", "UDP")))
+
+    df = spark.read.netflow7(s"file:$path7").
+      filter(col("srcport") > 0 && col("srcport") <= 5).
+      select("srcip", "dstip", "protocol", "srcport")
+    df.collect should be (Array(
+      Row("0.0.0.1", "255.255.0.1", "UDP", 1),
+      Row("0.0.0.2", "255.255.0.2", "UDP", 2),
+      Row("0.0.0.3", "255.255.0.3", "UDP", 3),
+      Row("0.0.0.4", "255.255.0.4", "UDP", 4),
+      Row("0.0.0.5", "255.255.0.5", "UDP", 5)
+    ))
+  }
+
+  test("scan variations with complex predicate") {
+    var df: DataFrame = null
+
+    df = spark.read.netflow5(s"file:$path2").
+      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
+      filter(col("unix_secs").between(0L, 1L) && col("srcip") === "0.0.1.1")
+    df.collect should be (Array(Row(0L, "0.0.1.1", "255.255.1.1", 257, 1, 258)))
+
+    df = spark.read.netflow5(s"file:$path2").
+      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
+      filter(col("unix_secs").between(1L, 2L) && col("srcip") === "0.0.1.1")
+    df.collect should be (Array.empty)
+  }
+
+  test("scan with unsupported predicate and/or isNull") {
+    var df: DataFrame = null
+
+    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").startsWith("0.0."))
+    df.count should be (1000)
+    df.distinct.count should be (1000)
+
+    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").isNull)
+    df.collect should be (Array.empty)
+
+    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").isNotNull)
+    df.count should be (1000)
+    df.distinct.count should be (1000)
+  }
+
+  //////////////////////////////////////////////////////////////
+  // DefaultSource tests
+  //////////////////////////////////////////////////////////////
 
   test("check default opts and interface for default source") {
     val format = new DefaultSource()
@@ -224,56 +401,18 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     interface.version() should be (7)
   }
 
-  test("read empty non-compressed NetFlow file") {
-    val df = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").load(s"file:$path9")
-    df.collect().length should be (0)
-  }
+  test("issue #2 - conversion of various fields combinations") {
+    // should return empty array
+    val interface = NetFlowRegistry.createInterface("com.github.sadikovi.spark.netflow.version5")
 
-  test("read empty compressed NetFlow file") {
-    var df: DataFrame = null
+    val fields1 = Array(interface.getColumn("srcip"), interface.getColumn("dstip"))
+    fields1.map(_.convertFunction.isDefined) should be (Array(true, true))
 
-    // Read file with compression 2
-    df = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").load(s"file:$path10")
-    df.collect().length should be (0)
+    val fields2 = Array(interface.getColumn("unix_secs"), interface.getColumn("srcip"))
+    fields2.map(_.convertFunction.isDefined) should be (Array(false, true))
 
-    df = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").load(s"file:$path11")
-    df.collect().length should be (0)
-  }
-
-  test("read NetFlow file with 1 record only") {
-    val df = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").option("stringify", "false").load(s"file:$path12")
-    val res = df.collect()
-    res.length should be (1)
-    res.head should be (Row(0, 0, 0, 0, 0, 4294901760L, 0, 0, 65280, 1, 1, 0, 4294901760L, 0,
-      65280L, 17, 0, 0, 0, 0, 0, 0, 0, 65280))
-  }
-
-  test("issue #26 - read NetFlow file that starts with large byte") {
-    val df = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").load(s"file:$path13").
-      select("srcip", "dstip", "protocol", "srcport", "dstport", "octets", "packets")
-    val res = df.collect()
-
-    res.length should be (1000)
-    res.take(5) should be (Array(
-      Row("172.29.31.106", "141.168.161.5", "ICMP", 2048, 18358, 96L, 1L),
-      Row("139.168.52.154", "172.49.40.150", "TCP", 59527, 3016, 41L, 1L),
-      Row("144.136.201.10", "192.168.177.26", "UDP", 123, 123, 76L, 1),
-      Row("147.132.239.10", "139.168.47.149", "TCP", 80, 64036, 40L, 1L),
-      Row("172.49.40.189", "172.115.30.32", "TCP", 443, 63526, 18642, 37)
-    ))
-
-    res.takeRight(5) should be (Array(
-      Row("144.132.81.10", "139.168.143.23", "UDP", 53, 50725, 164L, 1L),
-      Row("10.111.198.7", "147.132.239.10", "TCP", 56190, 80, 40L, 1L),
-      Row("139.168.112.131", "172.49.40.146", "TCP", 64424, 3217, 919L, 4L),
-      Row("10.97.217.136", "147.10.8.55", "TCP", 8080, 53941, 431L, 3L),
-      Row("10.233.198.51", "144.132.81.10", "UDP", 52865, 53, 81L, 1L)
-    ))
+    val fields3 = Array(interface.getColumn("unix_secs"), interface.getColumn("unix_nsecs"))
+    fields3.map(_.convertFunction.isDefined) should be (Array(false, false))
   }
 
   test("issue #5 - prune only one column when running count directly") {
@@ -289,152 +428,52 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     iter.next() should be (InternalRow(0))
   }
 
-  test("read NetFlow files using implicit wrapper") {
-    import com.github.sadikovi.spark.netflow._
+  test("filter values when reading file, if predicate-pushdown is enabled") {
+    val format = new DefaultSource()
+    // run test for version 5
+    val schema = format.inferSchema(spark,
+      Map("version" -> "5", "predicate-pushdown" -> "true"), Seq.empty)
+    // schema is always resolved to Some()
+    // predicate should return 0 records, since all records have unix_secs as 0
+    val func = format.buildReader(spark, schema.get, StructType(Nil), StructType(Nil),
+      Seq(EqualTo("unix_secs", 1L)), Map.empty, new Configuration(false))
+    val iter = func(PartitionedFile(InternalRow.empty, path1, 0, 1024))
+    val res = iter.toArray
+    assert(res.length === 0)
+  }
 
-    var df: DataFrame = spark.emptyDataFrame
-    var expected: DataFrame = null
+  test("filter values when reading file, if predicate-pushdown is disabled") {
+    val format = new DefaultSource()
+    // run test for version 5
+    val schema = format.inferSchema(spark,
+      Map("version" -> "5", "predicate-pushdown" -> "false"), Seq.empty)
+    // schema is always resolved to Some()
+    // use same predicate on unix_secs, but with disabled predicate pushdown, this should return
+    // iterator with all records from the file
+    val func = format.buildReader(spark, schema.get, StructType(Nil), StructType(Nil),
+      Seq(EqualTo("unix_secs", 1L)), Map.empty, new Configuration(false))
+    val iter = func(PartitionedFile(InternalRow.empty, path1, 0, 1024))
+    val res = iter.toArray
+    // file contains 1000 records (flow-gen)
+    assert(res.length === 1000)
+  }
 
-    ////////////////////////////////////////////////////////////
-    // VERSION 5
-    ////////////////////////////////////////////////////////////
-
-    // test failure on passing different than "5" version
-    var err = intercept[SparkException] {
-      df = spark.read.netflow5(s"file:$path5")
-      df.count()
+  test("prepareWrite is unsupported") {
+    val format = new DefaultSource()
+    val err = intercept[UnsupportedOperationException] {
+      format.prepareWrite(spark, null, Map.empty, StructType(Nil))
     }
-    assert(err.getMessage.contains("java.lang.IllegalArgumentException: requirement failed: " +
-      "Expected version 5, got 8"))
-
-    // test parsing normal file for version 5
-    df = spark.read.netflow5(s"file:$path2")
-    expected = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "5").load(s"file:$path2")
-    checkAnswer(df, expected)
-
-    ////////////////////////////////////////////////////////////
-    // VERSION 7
-    ////////////////////////////////////////////////////////////
-
-    // test failure on passing different than "7" version
-    err = intercept[SparkException] {
-      df = spark.read.netflow7(s"file:$path5")
-      df.count()
-    }
-    assert(err.getMessage.contains("java.lang.IllegalArgumentException: requirement failed: " +
-      "Expected version 7, got 8"))
-
-    // test parsing normal file for version 7
-    df = spark.read.netflow7(s"file:$path7")
-    expected = spark.read.format("com.github.sadikovi.spark.netflow").
-      option("version", "7").load(s"file:$path7")
-    checkAnswer(df, expected)
+    assert(err.getMessage.contains("Write is not supported in this version of package"))
   }
 
-  test("issue #2 - conversion of various fields combinations") {
-    // should return empty array
-    val interface = NetFlowRegistry.createInterface("com.github.sadikovi.spark.netflow.version5")
-
-    val fields1 = Array(interface.getColumn("srcip"), interface.getColumn("dstip"))
-    fields1.map(_.convertFunction.isDefined) should be (Array(true, true))
-
-    val fields2 = Array(interface.getColumn("unix_secs"), interface.getColumn("srcip"))
-    fields2.map(_.convertFunction.isDefined) should be (Array(false, true))
-
-    val fields3 = Array(interface.getColumn("unix_secs"), interface.getColumn("unix_nsecs"))
-    fields3.map(_.convertFunction.isDefined) should be (Array(false, false))
-  }
-
-  test("issue #2 - fields conversion to String for uncompressed file") {
-    var df = readNetFlow(spark, 5, path1, false)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743, 17)))
-
-    df = readNetFlow(spark, 5, path1, true)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
-
-    // test for version 7 - uncompressed
-    df = readNetFlow(spark, 7, path6, true)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
-  }
-
-  test("issue #2 - fields conversion to String for compressed file") {
-    var df = readNetFlow(spark, 5, path2, false)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq(999, 4294902759L, 999, 743, 17)))
-
-    df = readNetFlow(spark, 5, path2, true)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
-
-    // test for version 7 - compressed
-    df = readNetFlow(spark, 7, path8, true)
-    df.count() should be (1000)
-    df.collect().last should be (Row.fromSeq(Seq("0.0.3.231", "255.255.3.231", 999, 743, "UDP")))
-  }
-
-  test("ignore scanning file for unix_secs out of range") {
-    val df = spark.read.netflow5(s"file:$path1").filter(col("unix_secs") === -1)
-    df.count() should be (0)
-  }
-
-  test("scan variations with simple predicate") {
-    var df: DataFrame = null
-
-    df = spark.read.netflow5(s"file:$path2").filter(col("srcip") === "0.0.0.1").
-      select("srcip", "dstip", "protocol")
-    df.collect() should be (Array(Row.fromSeq(Seq("0.0.0.1", "255.255.0.1", "UDP"))))
-
-    df = spark.read.netflow7(s"file:$path7").
-      filter(col("srcport") > 0 && col("srcport") <= 5).
-      select("srcip", "dstip", "protocol", "srcport")
-    df.collect() should be (Array(
-      Row("0.0.0.1", "255.255.0.1", "UDP", 1),
-      Row("0.0.0.2", "255.255.0.2", "UDP", 2),
-      Row("0.0.0.3", "255.255.0.3", "UDP", 3),
-      Row("0.0.0.4", "255.255.0.4", "UDP", 4),
-      Row("0.0.0.5", "255.255.0.5", "UDP", 5)
-    ))
-  }
-
-  test("scan variations with complex predicate") {
-    var df: DataFrame = null
-
-    df = spark.read.netflow5(s"file:$path2").
-      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
-      filter(col("unix_secs").between(0L, 1L) && col("srcip") === "0.0.1.1")
-    df.collect() should be (Array(Row(0L, "0.0.1.1", "255.255.1.1", 257, 1, 258)))
-
-    df = spark.read.netflow5(s"file:$path2").
-      select("unix_secs", "srcip", "dstip", "srcport", "dstport", "octets").
-      filter(col("unix_secs").between(1L, 2L) && col("srcip") === "0.0.1.1")
-    df.collect() should be (Array.empty)
-  }
-
-  test("scan with unsupported predicate and/or isNull") {
-    var df: DataFrame = null
-
-    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").startsWith("0.0."))
-    df.count() should be (1000)
-    df.distinct.count() should be (1000)
-
-    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").isNull)
-    df.collect() should be (Array.empty)
-
-    df = spark.read.netflow7(s"file:$path7").filter(col("srcip").isNotNull)
-    df.count() should be (1000)
-    df.distinct.count() should be (1000)
+  test("equals for default source") {
+    new DefaultSource().equals(new DefaultSource()) should be (true)
+    new DefaultSource().equals(null) should be (false)
   }
 }
 
 /** Suite to test `ignoreCorruptFiles` option */
 class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
-  override def beforeAll() { }
-  override def afterAll() { }
-
   before {
     startSparkSession()
   }
@@ -447,7 +486,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
     withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path3")
-      df.count() should be (0)
+      df.count should be (0)
     }
   }
 
@@ -455,7 +494,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
     withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path4")
-      df.count() should be (553)
+      df.count should be (553)
     }
   }
 
@@ -463,7 +502,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
     withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path2")
-      df.count() should be (1000)
+      df.count should be (1000)
     }
   }
 }
