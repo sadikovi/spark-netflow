@@ -17,5 +17,6 @@ project/plugins/project/
 .worksheet
 
 metastore_db/
+spark-warehouse/
 
 temp/
