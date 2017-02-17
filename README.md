@@ -106,7 +106,7 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.10/spark-netflow_2.10-1.3.0.jar \
+  target/scala-2.11/spark-netflow_2.11-1.4.0-SNAPSHOT.jar \
   --iterations 5 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*' \
   --version 5
@@ -124,8 +124,8 @@ Running benchmark: NetFlow full scan
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Scan, stringify = F                       593 /  671       1686.2       59303.3       1.0X
-Scan, stringify = T                      1264 / 1280        790.9      126431.2       0.5X
+Scan, stringify = F                       364 /  462       2748.0       36389.9       1.0X
+Scan, stringify = T                       923 /  935       1082.9       92347.8       0.4X
 
 Running benchmark: NetFlow predicate scan
   Running case: Predicate pushdown = F, high
@@ -136,10 +136,10 @@ Running benchmark: NetFlow predicate scan
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Predicate pushdown = F, high             1294 / 1305        773.0      129361.1       1.0X
-Predicate pushdown = T, high             1306 / 1330        765.5      130628.6       1.0X
-Predicate pushdown = F, low              1081 / 1127        924.8      108129.1       1.2X
-Predicate pushdown = T, low               272 /  275       3673.6       27221.0       4.8X
+Predicate pushdown = F, high             1009 / 1094        991.2      100892.6       1.0X
+Predicate pushdown = T, high             1056 / 2029        947.2      105570.7       1.0X
+Predicate pushdown = F, low               766 /  833       1304.9       76633.3       1.3X
+Predicate pushdown = T, low               175 /  181       5709.3       17515.4       5.8X
 
 Running benchmark: NetFlow aggregated report
   Running case: Aggregated report
@@ -147,7 +147,7 @@ Running benchmark: NetFlow aggregated report
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
 NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
 -------------------------------------------------------------------------------------------
-Aggregated report                        1551 / 1690        644.6      155143.4       1.0X
+Aggregated report                        1362 / 2242        734.3      136183.3       1.0X
 ```
 
 ## Using `netflowlib` library separately
