@@ -20,9 +20,9 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
 ```shell
- $SPARK_HOME/bin/spark-shell --packages sadikovi:spark-netflow:2.0.0-s_2.11
+ $SPARK_HOME/bin/spark-shell --packages com.github.sadikovi:spark-netflow_2.11:2.0.0
 ```
-Change to `sadikovi:spark-netflow:2.0.0-s_2.10` for Scala 2.10.x
+Change to `com.github.sadikovi:spark-netflow_2.11:2.0.0` for Scala 2.10.x
 
 ## Features
 - Column pruning
