@@ -16,31 +16,30 @@
 
 package com.github.sadikovi.testutil
 
+import scala.util.Try
+
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.sql.SparkSession
 
 /** General Spark base */
 private[testutil] trait SparkBase {
-  @transient private[testutil] var _sc: SparkContext = null
+  @transient private[testutil] var _spark: SparkSession = null
 
-  /** Initialize Spark context with default parameters */
-  def startSparkContext() {
-    startSparkContext(Map.empty)
+  def createSparkSession(): SparkSession
+
+  /** Start (or create) Spark session */
+  def startSparkSession(): Unit = {
+    stopSparkSession()
+    setLoggingLevel(Level.ERROR)
+    _spark = createSparkSession()
   }
 
-  /** Start (or init) Spark context. */
-  def startSparkContext(sparkOptions: Map[String, String]) {
-    // stop previous Spark context
-    stopSparkContext()
-    _sc = new SparkContext()
-  }
-
-  /** Stop Spark context. */
-  def stopSparkContext() {
-    if (_sc != null) {
-      _sc.stop()
+  /** Stop Spark session */
+  def stopSparkSession(): Unit = {
+    if (_spark != null) {
+      _spark.stop()
     }
-    _sc = null
+    _spark = null
   }
 
   /**
@@ -58,6 +57,24 @@ private[testutil] trait SparkBase {
     Logger.getRootLogger().setLevel(level)
   }
 
-  /** Returns Spark context. */
-  def sc: SparkContext = _sc
+  /** Returns Spark session */
+  def spark: SparkSession = _spark
+
+  /** Allow tests to set custom SQL configuration for duration of the closure */
+  def withSQLConf(pairs: (String, String)*)(func: => Unit): Unit = {
+    val (keys, values) = pairs.unzip
+    val currentValues = keys.map(key => Try(spark.conf.get(key)).toOption)
+    (keys, values).zipped.foreach(spark.conf.set)
+    try func finally {
+      keys.zip(currentValues).foreach {
+        case (key, Some(value)) => spark.conf.set(key, value)
+        case (key, None) => spark.conf.unset(key)
+      }
+    }
+  }
+
+  /** Allow tests to set custom SQL configuration for duration of closure using map of options */
+  def withSQLConf(options: Map[String, String])(func: => Unit): Unit = {
+    withSQLConf(options.toSeq: _*)(func)
+  }
 }

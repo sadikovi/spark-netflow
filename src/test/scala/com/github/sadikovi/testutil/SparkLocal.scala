@@ -17,13 +17,13 @@
 package com.github.sadikovi.testutil
 
 import org.apache.log4j.Level
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 
 /** Spark context with master "local[4]" */
 trait SparkLocal extends SparkBase {
   /** Loading Spark configuration for local mode */
-  final protected def localConf(): SparkConf = {
+  private def localConf: SparkConf = {
     new SparkConf().
       setMaster("local[4]").
       setAppName("spark-local-test").
@@ -31,12 +31,7 @@ trait SparkLocal extends SparkBase {
       set("spark.executor.memory", "2g")
   }
 
-  override def startSparkContext(sparkOptions: Map[String, String]) {
-    setLoggingLevel(Level.ERROR)
-    val conf = localConf()
-    sparkOptions.foreach { case (key, value) =>
-      conf.set(key, value)
-    }
-    _sc = new SparkContext(conf)
+  override def createSparkSession(): SparkSession = {
+    SparkSession.builder().config(localConf).getOrCreate()
   }
 }

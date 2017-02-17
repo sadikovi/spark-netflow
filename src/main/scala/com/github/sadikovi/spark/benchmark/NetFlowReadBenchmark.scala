@@ -18,9 +18,8 @@ package com.github.sadikovi.spark.benchmark
 
 import java.util.{HashMap => JHashMap}
 
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 
 /** Configuration option for cli */
@@ -50,9 +49,10 @@ object NetFlowReadBenchmark {
   private val VERSION = ConfOption("--version")
 
   // Initialize Spark context
-  val sparkConf = new SparkConf()
-  val sc = new SparkContext("local[1]", "test-sql-context", sparkConf)
-  val sqlContext = new SQLContext(sc)
+  val sparkConf = new SparkConf().
+    setMaster("local[4]").
+    setAppName("spark-netflow-benchmark")
+  val spark = SparkSession.builder().config(sparkConf).getOrCreate()
 
   def main(args: Array[String]): Unit = {
     val conf = process(args.toList, Conf())
@@ -96,13 +96,13 @@ object NetFlowReadBenchmark {
     val sqlBenchmark = new Benchmark("NetFlow full scan", 10000, iters)
 
     sqlBenchmark.addCase("Scan, stringify = F") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "false").load(files)
       df.foreach(_ => Unit)
     }
 
     sqlBenchmark.addCase("Scan, stringify = T") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "true").load(files)
       df.foreach(_ => Unit)
     }
@@ -115,28 +115,28 @@ object NetFlowReadBenchmark {
     val sqlBenchmark = new Benchmark("NetFlow predicate scan", 10000, iters)
 
     sqlBenchmark.addCase("Predicate pushdown = F, high") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "false").load(files).
-        filter(col("srcport") !== 10)
+        filter(col("srcport") =!= 10)
       df.foreach(_ => Unit)
     }
 
     sqlBenchmark.addCase("Predicate pushdown = T, high") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "true").load(files).
-        filter(col("srcport") !== 10)
+        filter(col("srcport") =!= 10)
       df.foreach(_ => Unit)
     }
 
     sqlBenchmark.addCase("Predicate pushdown = F, low") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "false").load(files).
         filter(col("srcip") === "127.0.0.1")
       df.foreach(_ => Unit)
     }
 
     sqlBenchmark.addCase("Predicate pushdown = T, low") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "true").load(files).
         filter(col("srcip") === "127.0.0.1")
       df.foreach(_ => Unit)
@@ -150,7 +150,7 @@ object NetFlowReadBenchmark {
     val sqlBenchmark = new Benchmark("NetFlow aggregated report", 10000, iters)
 
     sqlBenchmark.addCase("Aggregated report") { iter =>
-      val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+      val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).load(files).
         filter(col("srcport") > 10).
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")

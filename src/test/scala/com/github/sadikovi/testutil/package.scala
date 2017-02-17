@@ -18,16 +18,22 @@ package com.github.sadikovi.testutil
 
 import java.io.File
 
+import org.apache.hadoop.fs.{Path => HadoopPath}
+
 import org.scalatest._
 
 package object implicits {
-  implicit class PathBuilder(path: String) {
+  implicit class PathStringBuilder(path: String) {
     def /(suffix: String): String = path + File.separator + suffix
 
     def `:`(append: String): String = path + File.pathSeparator + append
   }
+
+  implicit class PathBuilder(path: HadoopPath) {
+    def /(suffix: String): HadoopPath = path.suffix(s"${HadoopPath.SEPARATOR}$suffix")
+  }
 }
 
 /** abstract general testing class */
-abstract class UnitTestSpec extends FunSuite with Matchers with OptionValues with Inside
+abstract class UnitTestSuite extends FunSuite with Matchers with OptionValues with Inside
   with Inspectors with TestBase with BeforeAndAfterAll with BeforeAndAfter

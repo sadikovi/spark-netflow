@@ -19,9 +19,9 @@ package com.github.sadikovi.spark.netflow.sources
 import org.apache.spark.sql.types.StringType
 
 import com.github.sadikovi.netflowlib.version.{NetFlowV5, NetFlowV7}
-import com.github.sadikovi.testutil.UnitTestSpec
+import com.github.sadikovi.testutil.UnitTestSuite
 
-class VersionSuite extends UnitTestSpec {
+class VersionSuite extends UnitTestSuite {
   // interface for version 5
   val interface5 = NetFlowRegistry.createInterface("com.github.sadikovi.spark.netflow.version5")
   val interface7 = NetFlowRegistry.createInterface("com.github.sadikovi.spark.netflow.version7")
