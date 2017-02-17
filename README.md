@@ -22,7 +22,7 @@ example, run this to include it when starting the spark shell:
 ```shell
  $SPARK_HOME/bin/spark-shell --packages com.github.sadikovi:spark-netflow_2.11:2.0.0
 ```
-Change to `com.github.sadikovi:spark-netflow_2.11:2.0.0` for Scala 2.10.x
+Change to `com.github.sadikovi:spark-netflow_2.10:2.0.0` for Scala 2.10.x
 
 ## Features
 - Column pruning
