@@ -55,15 +55,15 @@ encountered, this behaviour is similar to Spark.
 ```scala
 // You can provide only format, package will infer version from provided files, or you can enforce
 // version of the files with `version` option.
-val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").load("...")
+val df = spark.read.format("com.github.sadikovi.spark.netflow").load("...")
 
 // You can read files from local file system or HDFS
-val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+val df = spark.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").load("file:/...").
   select("srcip", "dstip", "packets")
 
 // You can also specify buffer size when reading compressed NetFlow files
-val df = sqlContext.read.format("com.github.sadikovi.spark.netflow").
+val df = spark.read.format("com.github.sadikovi.spark.netflow").
   option("version", "5").option("buffer", "50Mb").load("hdfs://sandbox:8020/tmp/...")
 ```
 
@@ -72,15 +72,15 @@ Alternatively you can use shortcuts for NetFlow files
 import com.github.sadikovi.spark.netflow._
 
 // this will read version 5 with default buffer size
-val df = sqlContext.read.netflow5("hdfs:/...")
+val df = spark.read.netflow5("hdfs:/...")
 
 // this will read version 7 without fields conversion
-val df = sqlContext.read.option("stringify", "false").netflow7("file:/...")
+val df = spark.read.option("stringify", "false").netflow7("file:/...")
 ```
 
 ### Python API
 ```python
-df = sqlContext.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
   load("file:/...").select("srcip", "srcport")
 
 res = df.where("srcip > 10")
