@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow
 
+import java.io.IOException
+
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -304,6 +306,11 @@ object DefaultSource {
         val reader = NetFlowReader.prepareReader(stream)
         val header = reader.getHeader()
         Some(header.getFlowVersion())
+      } catch {
+        case ioe: IOException =>
+          throw new IOException(
+            s"Failed to infer version for provided NetFlow files using path '$path', " +
+            s"reason: $ioe. Try specifying version manually using 'version' option", ioe)
       } finally {
         if (stream != null) {
           stream.close()
