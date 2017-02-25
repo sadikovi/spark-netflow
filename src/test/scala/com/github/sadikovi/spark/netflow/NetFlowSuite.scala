@@ -470,6 +470,27 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     new DefaultSource().equals(new DefaultSource()) should be (true)
     new DefaultSource().equals(null) should be (false)
   }
+
+  test("inferVersion - return None for empty paths") {
+    val conf = spark.sparkContext.hadoopConfiguration
+    DefaultSource.inferVersion(conf, Nil) should be (None)
+  }
+
+  test("inferVersion - return Some for correct NetFlow file") {
+    val conf = spark.sparkContext.hadoopConfiguration
+    DefaultSource.inferVersion(conf, new Path(path1) :: Nil) should be (Some(5))
+    DefaultSource.inferVersion(conf, new Path(path2) :: Nil) should be (Some(5))
+    DefaultSource.inferVersion(conf, new Path(path6) :: Nil) should be (Some(7))
+    DefaultSource.inferVersion(conf, new Path(path7) :: Nil) should be (Some(7))
+  }
+
+  test("inferVersion - fail to infer for invalid file") {
+    val conf = spark.sparkContext.hadoopConfiguration
+    val err = intercept[IOException] {
+      DefaultSource.inferVersion(conf, new Path(path3) :: Nil)
+    }
+    assert(err.getMessage.contains("Failed to infer version for provided NetFlow files"))
+  }
 }
 
 /** Suite to test `ignoreCorruptFiles` option */
