@@ -114,9 +114,8 @@ public final class Buffers {
       this.recordMaterializer = recordMaterializer;
       this.recordSize = recordSize;
       this.ignoreCorrupt = ignoreCorrupt;
-      primary = new byte[recordSize];
-      secondary = new byte[recordSize];
-      buffer = Unpooled.wrappedBuffer(primary).order(byteOrder);
+      recordBytes = new byte[recordSize];
+      buffer = Unpooled.wrappedBuffer(recordBytes).order(byteOrder);
       numBytesRead = 0;
     }
 
@@ -158,7 +157,7 @@ public final class Buffers {
         @Override
         public Object[] next() {
           try {
-            numBytesRead = stream.read(primary, 0, recordSize);
+            numBytesRead = stream.read(recordBytes, 0, recordSize);
             if (numBytesRead < 0) {
               throw new IOException("EOF, " + numBytesRead + " bytes read");
             } else if (numBytesRead < recordSize) {
@@ -170,13 +169,11 @@ public final class Buffers {
                   "Failed to read record: " + numBytesRead + " < " + recordSize);
               } else {
                 int remaining = recordSize - numBytesRead;
-                int addBytes = stream.read(secondary, 0, remaining);
+                int addBytes = stream.read(recordBytes, numBytesRead, remaining);
                 if (addBytes != remaining) {
                   throw new IllegalArgumentException(
                     "Failed to read record: " + addBytes + " != " + remaining);
                 }
-                // Copy the remaning bytes into primary array
-                System.arraycopy(secondary, 0, primary, numBytesRead, remaining);
               }
             }
           } catch (IOException io) {
@@ -212,10 +209,8 @@ public final class Buffers {
     private final Inflater inflater;
     // Stream to read either standard DataInputStream or InflaterInputStream
     private BufferedInputStream stream;
-    // Primary array of bytes for a record
-    private final byte[] primary;
-    // Secondary array of bytes for a record, used when compression buffer needs to be refilled
-    private final byte[] secondary;
+    // Array of bytes for a record, updated partially when compression buffer needs to be refilled
+    private final byte[] recordBytes;
     // Buffer for the record
     private ByteBuf buffer;
     // Number of bytes currently have been read
