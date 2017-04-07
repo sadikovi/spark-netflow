@@ -42,7 +42,8 @@ abstract class ConvertFunction {
 case class IPv4ConvertFunction() extends ConvertFunction {
   override def direct(value: Any): String = {
     val num = value.asInstanceOf[Long]
-    s"${(num & 4278190080L) >> 24}.${(num & 16711680L) >> 16}.${(num & 65280L) >> 8}.${num & 255}"
+    ((num & 4278190080L) >> 24) + "." + ((num & 16711680) >> 16) + "." + ((num & 65280) >> 8) +
+      "." + (num & 255)
   }
 
   override def reversed(value: String): Any = {
