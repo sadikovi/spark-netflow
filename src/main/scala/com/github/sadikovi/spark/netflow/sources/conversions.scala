@@ -42,8 +42,46 @@ abstract class ConvertFunction {
 case class IPv4ConvertFunction() extends ConvertFunction {
   override def direct(value: Any): String = {
     val num = value.asInstanceOf[Long]
-    ((num & 4278190080L) >> 24) + "." + ((num & 16711680) >> 16) + "." + ((num & 65280) >> 8) +
-      "." + (num & 255)
+    val sb = new StringBuilder()
+    sb.append((num & 4278190080L) >> 24)
+    sb.append('.')
+    sb.append((num & 16711680) >> 16)
+    sb.append('.')
+    sb.append((num & 65280) >> 8)
+    sb.append('.')
+    sb.append(num & 255)
+    sb.toString
+  }
+
+  private def store(bytes: Array[Byte], i: Int, value: Long): Int = {
+    var j = i
+    if (value >= 100) {
+      bytes(j) = ('0' + value / 100).toByte
+      j += 1
+      bytes(j) = ('0' + ((value % 100) / 10)).toByte
+      j += 1
+      bytes(j) = ('0' + (value % 10)).toByte
+    } else if (value >= 10) {
+      bytes(j) = ('0' + value / 10).toByte
+      j += 1
+      bytes(j) = ('0' + (value % 10)).toByte
+    } else {
+      bytes(j) = ('0' + value).toByte
+    }
+    j + 1
+  }
+
+  override def directCatalyst(value: Any): UTF8String = {
+    val num = value.asInstanceOf[Long]
+    val bytes = new Array[Byte](15)
+    var i = store(bytes, 0, (num & 4278190080L) >> 24)
+    bytes(i) = '.'
+    i = store(bytes, i + 1, (num & 16711680) >> 16)
+    bytes(i) = '.'
+    i = store(bytes, i + 1, (num & 65280) >> 8)
+    bytes(i) = '.'
+    i = store(bytes, i + 1, num & 255)
+    UTF8String.fromBytes(bytes, 0, i)
   }
 
   override def reversed(value: String): Any = {
