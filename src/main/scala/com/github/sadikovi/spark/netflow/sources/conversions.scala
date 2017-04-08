@@ -58,16 +58,12 @@ case class IPv4ConvertFunction() extends ConvertFunction {
     if (value >= 100) {
       bytes(j) = ('0' + value / 100).toByte
       j += 1
-      bytes(j) = ('0' + ((value % 100) / 10)).toByte
-      j += 1
-      bytes(j) = ('0' + (value % 10)).toByte
-    } else if (value >= 10) {
-      bytes(j) = ('0' + value / 10).toByte
-      j += 1
-      bytes(j) = ('0' + (value % 10)).toByte
-    } else {
-      bytes(j) = ('0' + value).toByte
     }
+    if (value >= 10) {
+      bytes(j) = ('0' + (value % 100) / 10).toByte
+      j += 1
+    }
+    bytes(j) = ('0' + (value % 10)).toByte
     j + 1
   }
 
