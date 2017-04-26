@@ -48,8 +48,7 @@ public final class Operators {
    * [[ColumnPredicate]] is a base class for column predicates, links to a column and filtering
    * value.
    * @param column predicate column
-   * @param value filtering value
-   * @param values list of values for predicates that support multiple values
+   * @param value filtering value or list of values for predicates that support multiple values
    */
   static abstract class ColumnPredicate implements FilterPredicate, Serializable {
     ColumnPredicate(Column column, Object value) {
@@ -365,6 +364,7 @@ public final class Operators {
    * [[MultiValueColumnPredicate]] allows to compare across values in the set provided, e.g. "In"
    * predicate. Currently does not check against null values. Note, that `getValue()` method in
    * case of multi value predicate returns null, use `getValues()` instead.
+   * @param column base predicate column
    * @param values set of values to compare
    */
   static abstract class MultiValueColumnPredicate extends ColumnPredicate {
@@ -408,7 +408,7 @@ public final class Operators {
     private HashSet<Object> values = new HashSet<Object>();
   }
 
-  /** "In" filter, should be evaluated to true, if value contains in the set */
+  /** "In" filter, should be evaluated to true if value contains in the set */
   public static final class In extends MultiValueColumnPredicate {
     In(Column column, HashSet<?> values) {
       super(column, values);
@@ -539,7 +539,7 @@ public final class Operators {
     }
   }
 
-  /** "And" logical operator */
+  /** "Or" logical operator */
   public static final class Or extends BinaryLogicalPredicate {
     Or(FilterPredicate left, FilterPredicate right) {
       super(left, right);
@@ -561,8 +561,8 @@ public final class Operators {
   }
 
   /**
-   * [[UnaryLogicalPredicate]] is an interface for simple logical operators, such as inverse of
-   * the current operator.
+   * [[UnaryLogicalPredicate]] is an interface for simple logical operators that have a single
+   * child predicate as base, such as inverse of the current operator.
    */
   static abstract class UnaryLogicalPredicate implements FilterPredicate, Serializable {
     UnaryLogicalPredicate(FilterPredicate child) {
