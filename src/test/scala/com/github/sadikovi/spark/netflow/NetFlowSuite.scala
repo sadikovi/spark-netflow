@@ -167,6 +167,25 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     assert(msg.contains(path3))
   }
 
+  test("fail reading invalid file with corrupt metadata (byte order/stream version)") {
+    withTempDir { dir =>
+      // write file of 4 bytes, first 2 should be magic numbers, byte order is set to correct
+      // value and stream version is wrong, which will trigger unsupported operation exception
+      val metadata = Array[Byte](0xCF.toByte, 0x10.toByte, 1, 127)
+      val out = fs.create(dir / "file")
+      out.write(metadata)
+      out.close()
+
+      val err = intercept[SparkException] {
+        spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+          load(s"file:${dir / "file"}").count()
+      }
+      val msg = err.getMessage()
+      assert(msg.contains("Unsupported stream version 127"))
+      assert(msg.contains(s"${dir / "file"}"))
+    }
+  }
+
   test("fail to read data of corrupt file") {
     val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
       load(s"file:$path4")
@@ -511,6 +530,23 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path3")
       df.count should be (0)
+    }
+  }
+
+  test("return empty iterator, when file is not a NetFlow file (metadata is wrong)") {
+    withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
+      withTempDir { dir =>
+        // write file of 4 bytes, first 2 should be magic numbers, byte order is set to correct
+        // value and stream version is wrong, which will trigger unsupported operation exception
+        val metadata = Array[Byte](0xCF.toByte, 0x10.toByte, 1, 127)
+        val out = fs.create(dir / "file")
+        out.write(metadata)
+        out.close()
+
+        val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
+          load(s"file:${dir / "file"}")
+        df.count should be (0)
+      }
     }
   }
 
