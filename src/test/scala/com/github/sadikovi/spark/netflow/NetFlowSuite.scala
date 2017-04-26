@@ -162,8 +162,9 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
         load(s"file:$path3").count
     }
     val msg = err.getMessage()
-    assert(msg.contains("java.io.IOException: " +
-      "Corrupt NetFlow file. Wrong magic number"))
+    assert(msg.contains("Corrupt NetFlow file. Wrong magic number"))
+    // check that message contains file path
+    assert(msg.contains(path3))
   }
 
   test("fail to read data of corrupt file") {
@@ -173,7 +174,9 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
       df.select("srcip").count
     }
     val msg = err.getMessage()
-    assert(msg.contains("java.lang.IllegalArgumentException: Unexpected EOF"))
+    assert(msg.contains("Unexpected EOF"))
+    // check that message contains file path
+    assert(msg.contains(path4))
   }
 
   test("fail to read unsupported version 8") {

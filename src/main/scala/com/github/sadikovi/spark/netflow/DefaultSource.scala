@@ -20,6 +20,7 @@ import java.io.IOException
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, FSDataInputStream, Path}
@@ -162,10 +163,17 @@ class DefaultSource extends FileFormat with DataSourceRegister {
 
       // Prepare file stream
       var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, opts.bufferSize, ignoreCorruptFiles)
+      // If reader initialization fails we either reset to null or report error
+      // latter check will ensure that we log corrupt file
+      val reader = try {
+        NetFlowReader.prepareReader(stm, opts.bufferSize, ignoreCorruptFiles)
+      } catch {
+        case NonFatal(err) if ignoreCorruptFiles => null
+        case NonFatal(err) => throw new RuntimeException(s"${err.getMessage}, file=$path", err)
+      }
       // This flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
       // throw exception, if file is corrupt
-      if (!reader.isValid()) {
+      if (reader == null || !reader.isValid()) {
         log.warn(s"Failed to read file $path, ignoreCorruptFiles=$ignoreCorruptFiles")
         Iterator.empty
       } else {
@@ -200,12 +208,19 @@ class DefaultSource extends FileFormat with DataSourceRegister {
 
         val rawIterator = new CloseableIterator[Array[Object]] {
           private var delegate = recordBuffer.iterator().asScala
+          // add filepath to report for any error message
+          private val filepath = path
 
           override def getNext(): Array[Object] = {
             // If delegate has traversed over all elements mark it as finished
             // to allow to close stream
             if (delegate.hasNext) {
-              delegate.next
+              try {
+                delegate.next
+              } catch {
+                case NonFatal(err) =>
+                  throw new RuntimeException(s"${err.getMessage}, file=$filepath", err)
+              }
             } else {
               finished = true
               null
