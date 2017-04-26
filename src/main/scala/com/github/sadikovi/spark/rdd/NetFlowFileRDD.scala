@@ -21,6 +21,7 @@ import java.io.IOException
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FSDataInputStream, Path}
@@ -109,10 +110,17 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
 
       // Prepare file stream
       var stm: FSDataInputStream = fs.open(path)
-      val reader = NetFlowReader.prepareReader(stm, elem.bufferSize, ignoreCorruptFiles)
+      // If reader initialization fails we either reset to null or report error
+      // check for valid reader (or null) will ensure that we log corrupt file
+      val reader = try {
+        NetFlowReader.prepareReader(stm, elem.bufferSize, ignoreCorruptFiles)
+      } catch {
+        case NonFatal(err) if ignoreCorruptFiles => null
+        case NonFatal(err) => throw new RuntimeException(s"${err.getMessage}, file=$path", err)
+      }
       // this flag is only checked when ignoreCorruptFiles = true, otherwise initialization will
       // throw exception, if file is corrupt
-      if (!reader.isValid()) {
+      if (reader == null || !reader.isValid()) {
         logWarning(s"Failed to read file $path, ignoreCorruptFiles=$ignoreCorruptFiles")
         buffer = buffer ++ Iterator.empty
       } else {
@@ -152,12 +160,19 @@ private[spark] class NetFlowFileRDD[T <: SQLRow : ClassTag] (
 
         val rawIterator = new CloseableIterator[Array[Object]] {
           private var delegate = recordBuffer.iterator().asScala
+          // add filepath to report for any error message
+          private val filepath = path
 
           override def getNext(): Array[Object] = {
             // If delegate has traversed over all elements mark it as finished
             // to allow to close stream
             if (delegate.hasNext) {
-              delegate.next
+              try {
+                delegate.next
+              } catch {
+                case NonFatal(err) =>
+                  throw new RuntimeException(s"${err.getMessage}, file=$filepath", err)
+              }
             } else {
               finished = true
               null
