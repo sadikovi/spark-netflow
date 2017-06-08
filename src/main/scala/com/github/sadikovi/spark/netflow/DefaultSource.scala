@@ -206,12 +206,12 @@ class DefaultSource extends FileFormat with DataSourceRegister {
           case None => reader.prepareRecordBuffer(internalColumns)
         }
 
-        val rawIterator = new CloseableIterator[Array[Object]] {
-          private var delegate = recordBuffer.iterator().asScala
+        val rawIterator = new CloseableIterator[InternalRow] {
+          private var delegate = recordBuffer.rowIterator().asScala
           // add filepath to report for any error message
           private val filepath = path
 
-          override def getNext(): Array[Object] = {
+          override def getNext(): InternalRow = {
             // If delegate has traversed over all elements mark it as finished
             // to allow to close stream
             if (delegate.hasNext) {
@@ -255,23 +255,20 @@ class DefaultSource extends FileFormat with DataSourceRegister {
           // conversion, otherwise return unchanged value. Note that this should be in sync with
           // `applyConversion` and updated schema from `ResolvedInterface`.
           // TODO: improve performance of conversion
-          rawIterator.map { arr =>
-            for (i <- 0 until numColumns) {
+          rawIterator.map { row =>
+            val seq = for (i <- 0 until numColumns) yield {
               resolvedColumns(i).convertFunction match {
-                case Some(func) => arr(i) = func.directCatalyst(arr(i))
-                case None => // do nothing
+                case Some(func) => func.directCatalyst(row.get(i, resolvedColumns(i).sqlType))
+                case None => row.get(i, resolvedColumns(i).sqlType)
               }
             }
-            arr
+            InternalRow.fromSeq(seq)
           }
         } else {
           rawIterator
         }
 
-        new Iterator[InternalRow] {
-          override def next(): InternalRow = InternalRow.fromSeq(withConversionsIterator.next())
-          override def hasNext: Boolean = withConversionsIterator.hasNext
-        }
+        withConversionsIterator
       }
     }
   }

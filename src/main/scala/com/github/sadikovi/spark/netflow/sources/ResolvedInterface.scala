@@ -30,7 +30,7 @@ import com.github.sadikovi.netflowlib.predicate.Columns.Column
 private[spark] case class MappedColumn(
   columnName: String,
   internalColumn: Column,
-  collectStatistics: Boolean,
+  sqlType: DataType,
   convertFunction: Option[ConvertFunction]
 )
 
@@ -62,7 +62,7 @@ abstract class ResolvedInterface {
       if (applyConversion && column.convertFunction.isDefined) {
         StructField(column.columnName, StringType, false)
       } else {
-        StructField(column.columnName, javaToSQLType(column.internalColumn.getColumnType()), false)
+        StructField(column.columnName, column.sqlType, false)
       }
     })
     StructType(sqlColumns)
@@ -76,9 +76,6 @@ abstract class ResolvedInterface {
 
   /** Get first `MappedColumn` as `Option`. */
   def getFirstColumnOption(): Option[MappedColumn] = columns.headOption
-
-  /** Get columns with enabled statistics */
-  def getStatisticsColumns(): Seq[MappedColumn] = columns.filter { _.collectStatistics }
 
   /** Get `MappedColumn` for a specified column name. Fail, if column name is not present. */
   def getColumn(columnName: String): MappedColumn = {

@@ -60,12 +60,13 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     int i = 0, offset = 0, len = 0;
     while (i < numColumns) {
       len = columns[i].getUnsignedBytes();
-      offsets[i] = offset;
       System.arraycopy(buffer.array(), buffer.arrayOffset() + columns[i].getColumnOffset(),
         data, offset, len);
+      offsets[i] = offset;
       offset += len;
+      ++i;
     }
-    return new ByteBufRow(offsets, data);
+    return new ByteBufRow(offsets, data, buffer.order());
   }
 
   private final Column[] columns;

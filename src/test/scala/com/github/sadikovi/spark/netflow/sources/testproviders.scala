@@ -16,6 +16,8 @@
 
 package com.github.sadikovi.spark.netflow.sources
 
+import org.apache.spark.sql.types._
+
 import com.github.sadikovi.netflowlib.predicate.Columns.{ByteColumn, ShortColumn, IntColumn, LongColumn}
 
 /** Test providers */
@@ -50,23 +52,23 @@ private class TestEmptyInterface extends ResolvedInterface {
 
 private class TestFullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("test", new LongColumn("test", 0), false, None))
+    MappedColumn("test", new LongColumn("test", 0), LongType, None))
 
   override def version(): Short = -2
 }
 
 private class Test1FullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("duplicate", new LongColumn("duplicate", 0), false, None),
-    MappedColumn("duplicate", new LongColumn("duplicate", 0), false, None))
+    MappedColumn("duplicate", new LongColumn("duplicate", 0), LongType, None),
+    MappedColumn("duplicate", new LongColumn("duplicate", 0), LongType, None))
 
   override def version(): Short = -3
 }
 
 private class Test2FullInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("test", new LongColumn("test1", 0), false, None),
-    MappedColumn("test", new LongColumn("test2", 1), false, None))
+    MappedColumn("test", new LongColumn("test1", 0), LongType, None),
+    MappedColumn("test", new LongColumn("test2", 1), LongType, None))
 
   override def version(): Short = -3
 }
@@ -81,10 +83,10 @@ private class FakeDefaultProvider extends NetFlowProvider {
 
 private class FakeInterface extends ResolvedInterface {
   override protected val columns: Seq[MappedColumn] = Seq(
-    MappedColumn("col1", new ByteColumn("col1", 0), false, None),
-    MappedColumn("col2", new ShortColumn("col2", 0), false, None),
-    MappedColumn("col3", new IntColumn("col3", 0), false, None),
-    MappedColumn("col4", new LongColumn("col4", 0), false, None))
+    MappedColumn("col1", new ByteColumn("col1", 0), ByteType, None),
+    MappedColumn("col2", new ShortColumn("col2", 0), ShortType, None),
+    MappedColumn("col3", new IntColumn("col3", 0), IntegerType, None),
+    MappedColumn("col4", new LongColumn("col4", 0), LongType, None))
 
   override def version(): Short = -1
 }

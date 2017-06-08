@@ -16,7 +16,10 @@
 
 package com.github.sadikovi.netflowlib.record;
 
-import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.util.ArrayData;
@@ -28,12 +31,12 @@ import org.apache.spark.unsafe.types.UTF8String;
 public class ByteBufRow extends InternalRow {
   private final int numFields;
   private final int[] offsets;
-  private final ByteBuffer buf;
+  private final ByteBuf buf;
 
-  ByteBufRow(int[] offsets, byte[] data) {
+  ByteBufRow(int[] offsets, byte[] data, ByteOrder byteOrder) {
     this.numFields = (offsets != null && offsets.length > 0) ? offsets.length : 0;
     this.offsets = offsets;
-    this.buf = ByteBuffer.wrap(data);
+    this.buf = Unpooled.wrappedBuffer(data).order(byteOrder);
   }
 
   @Override
@@ -83,7 +86,7 @@ public class ByteBufRow extends InternalRow {
     System.arraycopy(buf.array(), buf.arrayOffset(), dataCopy, 0, dataCopy.length);
     int[] offsetsCopy = new int[offsets.length];
     System.arraycopy(offsets, 0, offsetsCopy, 0, offsets.length);
-    return new ByteBufRow(offsetsCopy, dataCopy);
+    return new ByteBufRow(offsetsCopy, dataCopy, buf.order());
   }
 
   @Override
@@ -103,27 +106,27 @@ public class ByteBufRow extends InternalRow {
 
   @Override
   public boolean getBoolean(int ordinal) {
-    return buf.get(offsets[ordinal]) != 0;
+    return buf.getBoolean(offsets[ordinal]);
   }
 
   @Override
   public byte getByte(int ordinal) {
-    return buf.get(offsets[ordinal]);
+    return buf.getByte(offsets[ordinal]);
   }
 
   @Override
   public short getShort(int ordinal) {
-    return buf.getShort(offsets[ordinal]);
+    return buf.getUnsignedByte(offsets[ordinal]);
   }
 
   @Override
   public int getInt(int ordinal) {
-    return buf.getInt(offsets[ordinal]);
+    return buf.getUnsignedShort(offsets[ordinal]);
   }
 
   @Override
   public long getLong(int ordinal) {
-    return buf.getLong(offsets[ordinal]);
+    return buf.getUnsignedInt(offsets[ordinal]);
   }
 
   @Override
