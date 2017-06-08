@@ -18,6 +18,8 @@ package com.github.sadikovi.netflowlib.record;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.spark.sql.catalyst.InternalRow;
+
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Columns.ByteColumn;
 import com.github.sadikovi.netflowlib.predicate.Columns.ShortColumn;
@@ -34,6 +36,10 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
   public ScanRecordMaterializer(Column[] columns) {
     this.columns = columns;
     numColumns = columns.length;
+    recordSize = 0;
+    for (int i = 0; i < numColumns; i++) {
+      recordSize += this.columns[i].getUnsignedBytes();
+    }
   }
 
   @Override
@@ -47,6 +53,23 @@ public final class ScanRecordMaterializer extends RecordMaterializer {
     return newRecord;
   }
 
+  @Override
+  public InternalRow processRow(ByteBuf buffer) {
+    byte[] data = new byte[recordSize];
+    int[] offsets = new int[numColumns];
+    int i = 0, offset = 0, len = 0;
+    while (i < numColumns) {
+      len = columns[i].getUnsignedBytes();
+      offsets[i] = offset;
+      System.arraycopy(buffer.array(), buffer.arrayOffset() + columns[i].getColumnOffset(),
+        data, offset, len);
+      offset += len;
+    }
+    return new ByteBufRow(offsets, data);
+  }
+
   private final Column[] columns;
   private final int numColumns;
+  // total record size in bytes for selected columns
+  private int recordSize;
 }

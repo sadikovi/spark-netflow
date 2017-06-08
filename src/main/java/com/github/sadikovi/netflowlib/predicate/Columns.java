@@ -51,6 +51,9 @@ public final class Columns {
       return columnType;
     }
 
+    /** Get number of bytes per unsigned value */
+    public abstract int getUnsignedBytes();
+
     /** Get column offset in a record */
     public int getColumnOffset() {
       return columnOffset;
@@ -103,6 +106,11 @@ public final class Columns {
     }
 
     @Override
+    public int getUnsignedBytes() {
+      return 1;
+    }
+
+    @Override
     public Object getMin() {
       return minValue;
     }
@@ -128,6 +136,11 @@ public final class Columns {
 
     public ShortColumn(String name, int offset) {
       this(name, offset, (short) 0, Short.MAX_VALUE);
+    }
+
+    @Override
+    public int getUnsignedBytes() {
+      return 1;
     }
 
     @Override
@@ -159,6 +172,11 @@ public final class Columns {
     }
 
     @Override
+    public int getUnsignedBytes() {
+      return 2;
+    }
+
+    @Override
     public Object getMin() {
       return minValue;
     }
@@ -184,6 +202,11 @@ public final class Columns {
 
     public LongColumn(String name, int offset) {
       this(name, offset, (long) 0, Long.MAX_VALUE);
+    }
+
+    @Override
+    public int getUnsignedBytes() {
+      return 4;
     }
 
     @Override

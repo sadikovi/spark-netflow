@@ -21,6 +21,8 @@ import java.util.HashMap;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.spark.sql.catalyst.InternalRow;
+
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
@@ -42,6 +44,10 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
     this.inspectors = new HashMap<String, ArrayList<ValueInspector>>();
     for (Column col: filterColumns) {
       inspectors.put(col.getColumnName(), columnInspectors.get(col));
+    }
+    recordSize = 0;
+    for (int i = 0; i < numColumns; i++) {
+      recordSize += this.columns[i].getUnsignedBytes();
     }
   }
 
@@ -66,6 +72,36 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
         newRecord[i] = readField(columns[i], buffer);
       }
       return newRecord;
+    }
+  }
+
+  @Override
+  public InternalRow processRow(ByteBuf buffer) {
+    // Process filter columns, evaluate predicate upfront
+    for (int i=0; i<numFilterColumns; i++) {
+      updateValueInspectors(filterColumns[i], buffer);
+    }
+
+    boolean result = tree.accept(this);
+    // Reset value inspectors
+    for (int i=0; i<numFilterColumns; i++) {
+      resetValueInspectors(filterColumns[i]);
+    }
+
+    if (!result) {
+      return null;
+    } else {
+      byte[] data = new byte[recordSize];
+      int[] offsets = new int[numColumns];
+      int i = 0, offset = 0, len = 0;
+      while (i < numColumns) {
+        len = columns[i].getUnsignedBytes();
+        offsets[i] = offset;
+        System.arraycopy(buffer.array(), buffer.arrayOffset() + columns[i].getColumnOffset(),
+          data, offset, len);
+        offset += len;
+      }
+      return new ByteBufRow(offsets, data);
     }
   }
 
@@ -109,4 +145,6 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
   private final Column[] filterColumns;
   private final int numFilterColumns;
   private final HashMap<String, ArrayList<ValueInspector>> inspectors;
+  // total record size in bytes for selected columns
+  private int recordSize;
 }

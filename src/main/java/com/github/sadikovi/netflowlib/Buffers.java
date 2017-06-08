@@ -29,6 +29,8 @@ import java.util.zip.InflaterInputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
+import org.apache.spark.sql.catalyst.InternalRow;
+
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.util.FilterIterator;
 import com.github.sadikovi.netflowlib.util.ReadAheadInputStream;
@@ -50,6 +52,8 @@ public final class Buffers {
     public static final int BUFFER_LENGTH_2 = 1048576;
 
     public abstract Iterator<Object[]> iterator();
+
+    public abstract Iterator<InternalRow> rowIterator();
 
     @Override
     public String toString() {
@@ -74,6 +78,26 @@ public final class Buffers {
 
         @Override
         public Object[] next() {
+          throw new NoSuchElementException("Empty iterator");
+        }
+
+        @Override
+        public void remove() {
+          throw new UnsupportedOperationException("Remove operation is not supported");
+        }
+      };
+    }
+
+    @Override
+    public Iterator<InternalRow> rowIterator() {
+      return new Iterator<InternalRow>() {
+        @Override
+        public boolean hasNext() {
+          return false;
+        }
+
+        @Override
+        public InternalRow next() {
           throw new NoSuchElementException("Empty iterator");
         }
 
@@ -198,6 +222,68 @@ public final class Buffers {
     }
 
     @Override
+    public Iterator<InternalRow> rowIterator() {
+      Iterator<InternalRow> iter = new Iterator<InternalRow>() {
+        @Override
+        public boolean hasNext() {
+          boolean hasNext = true;
+          try {
+            hasNext = stream.available() > 0;
+          } catch (IOException io) {
+            hasNext = false;
+          } finally {
+            if (!hasNext) {
+              try {
+                stream.close();
+              } catch (IOException io) {
+                stream = null;
+              }
+            }
+          }
+
+          return hasNext;
+        }
+
+        @Override
+        public InternalRow next() {
+          try {
+            numBytesRead = stream.read(recordBytes, 0, recordSize);
+            if (numBytesRead < 0) {
+              throw new IOException("EOF, " + numBytesRead + " bytes read");
+            } else if (numBytesRead < recordSize) {
+              // We have to read entire record when there is no compression, anything else is
+              // considered failure. When stream is compressed we can read less, but then we need
+              // buffer up remaning data.
+              if (!compression) {
+                throw new IllegalArgumentException(
+                  "Failed to read record: " + numBytesRead + " < " + recordSize);
+              } else {
+                int remaining = recordSize - numBytesRead;
+                int addBytes = stream.read(recordBytes, numBytesRead, remaining);
+                if (addBytes != remaining) {
+                  throw new IllegalArgumentException(
+                    "Failed to read record: " + addBytes + " != " + remaining);
+                }
+              }
+            }
+          } catch (IOException io) {
+            throw new IllegalArgumentException("Unexpected EOF", io);
+          }
+
+          return recordMaterializer.processRow(buffer);
+        }
+
+        @Override
+        public void remove() {
+          throw new UnsupportedOperationException("Remove operation is not supported");
+        }
+      };
+
+      // when ignoring corrupt records, wrap it into iterator with safe termination on failures
+      return ignoreCorrupt ? new SafeIterator<InternalRow>(iter) : iter;
+    }
+
+    @Override
     public String toString() {
       return "Record buffer: " + getClass().getCanonicalName() + "[compression: " + compression +
         ", record size: " + recordSize + ", ignoreCorrupt: " + ignoreCorrupt + "]";
@@ -244,6 +330,11 @@ public final class Buffers {
     @Override
     public Iterator<Object[]> iterator() {
       return new FilterIterator<Object[]>(super.iterator());
+    }
+
+    @Override
+    public Iterator<InternalRow> rowIterator() {
+      return new FilterIterator<InternalRow>(super.rowIterator());
     }
   }
 }
