@@ -18,6 +18,8 @@ package com.github.sadikovi.netflowlib.record;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.spark.sql.catalyst.InternalRow;
+
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
@@ -31,6 +33,8 @@ public abstract class RecordMaterializer {
   RecordMaterializer() { }
 
   public abstract Object[] processRecord(ByteBuf buffer);
+
+  public abstract InternalRow processRow(ByteBuf buffer);
 
   /** Read buffer bytes sequence for column offset */
   public Object readField(Column column, ByteBuf buffer) {
