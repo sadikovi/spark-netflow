@@ -39,7 +39,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
 )
 
-// check deprecation without manual restart
+// check deprecation and unchecked without manual restart
+javacOptions in ThisBuild ++= Seq("-Xlint:unchecked")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
 // Display full-length stacktraces from ScalaTest:

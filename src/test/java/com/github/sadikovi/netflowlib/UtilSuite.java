@@ -16,10 +16,12 @@
 
 package com.github.sadikovi.netflowlib;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Random;
 
 import org.junit.Test;
 import org.junit.Ignore;
@@ -28,6 +30,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.github.sadikovi.netflowlib.util.FilterIterator;
 import com.github.sadikovi.netflowlib.util.SafeIterator;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 public class UtilSuite {
   @Test(expected = NoSuchElementException.class)
@@ -117,7 +120,7 @@ public class UtilSuite {
     values.add("a");
     values.add(null);
     values.add("a");
-    Iterator<String> delegate = new Iterator() {
+    Iterator<String> delegate = new Iterator<String>() {
       private Iterator<String> parent = values.iterator();
       private String current;
 
@@ -156,7 +159,7 @@ public class UtilSuite {
     values.add("a");
     values.add(null);
     values.add("a");
-    Iterator<String> delegate = new Iterator() {
+    Iterator<String> delegate = new Iterator<String>() {
       private Iterator<String> parent = values.iterator();
 
       @Override
@@ -182,5 +185,25 @@ public class UtilSuite {
 
     // Expect one record only, since second record fails with null pointer exception
     assertEquals(count, 1);
+  }
+
+  @Test
+  public void testWrappedByteBufGetters() {
+    // test wrapped byte buf functionality
+    byte[] bytes = new byte[1024];
+    Random rand = new Random();
+    for (int i = 0; i <= bytes.length - 4; i++) {
+      rand.nextBytes(bytes);
+      WrappedByteBuf buf = new WrappedByteBuf(bytes);
+      ByteBuffer javaBuf = ByteBuffer.wrap(bytes);
+
+      assertSame(buf.array(), bytes);
+      assertEquals(buf.getByte(i), javaBuf.get(i));
+      assertEquals(buf.getUnsignedByte(i), (short) (javaBuf.get(i) & 0xff));
+      assertEquals(buf.getShort(i), javaBuf.getShort(i));
+      assertEquals(buf.getUnsignedShort(i), javaBuf.getShort(i) & 0xffff);
+      assertEquals(buf.getInt(i), javaBuf.getInt(i));
+      assertEquals(buf.getUnsignedInt(i), javaBuf.getInt(i) & 0xffffffffL);
+    }
   }
 }
