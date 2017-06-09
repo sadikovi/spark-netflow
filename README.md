@@ -117,37 +117,28 @@ Latest benchmarks:
 - Iterations: 5
 - Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*
 - Version: 5
-Running benchmark: NetFlow full scan
-  Running case: Scan, stringify = F
-  Running case: Scan, stringify = T                                             
 
+Java HotSpot(TM) 64-Bit Server VM 1.7.0_80-b15 on Mac OS X 10.12.4
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
-NetFlow full scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
--------------------------------------------------------------------------------------------
-Scan, stringify = F                       364 /  462       2748.0       36389.9       1.0X
-Scan, stringify = T                       923 /  935       1082.9       92347.8       0.4X
+NetFlow full scan:                       Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------
+Scan, stringify = F                            567 /  633          0.0       56726.7       1.0X
+Scan, stringify = T                            968 / 1049          0.0       96824.6       0.6X
 
-Running benchmark: NetFlow predicate scan
-  Running case: Predicate pushdown = F, high
-  Running case: Predicate pushdown = T, high                                    
-  Running case: Predicate pushdown = F, low                                     
-  Running case: Predicate pushdown = T, low                                     
-
+Java HotSpot(TM) 64-Bit Server VM 1.7.0_80-b15 on Mac OS X 10.12.4
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
-NetFlow predicate scan:             Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
--------------------------------------------------------------------------------------------
-Predicate pushdown = F, high             1009 / 1094        991.2      100892.6       1.0X
-Predicate pushdown = T, high             1056 / 2029        947.2      105570.7       1.0X
-Predicate pushdown = F, low               766 /  833       1304.9       76633.3       1.3X
-Predicate pushdown = T, low               175 /  181       5709.3       17515.4       5.8X
+NetFlow predicate scan:                  Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------
+Predicate pushdown = F, high                  1148 / 1200          0.0      114845.4       1.0X
+Predicate pushdown = T, high                  1208 / 1257          0.0      120818.0       1.0X
+Predicate pushdown = F, low                    706 /  732          0.0       70559.3       1.6X
+Predicate pushdown = T, low                    226 /  243          0.0       22575.0       5.1X
 
-Running benchmark: NetFlow aggregated report
-  Running case: Aggregated report
-
+Java HotSpot(TM) 64-Bit Server VM 1.7.0_80-b15 on Mac OS X 10.12.4
 Intel(R) Core(TM) i5-4258U CPU @ 2.40GHz
-NetFlow aggregated report:          Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
--------------------------------------------------------------------------------------------
-Aggregated report                        1362 / 2242        734.3      136183.3       1.0X
+NetFlow aggregated report:               Best/Avg Time(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------
+Aggregated report                             2171 / 2270          0.0      217089.9       1.0X
 ```
 
 ## Using `netflowlib` library separately
@@ -165,10 +156,6 @@ creates statistics on time, so time filter can be resolved upfront
 to file header and iterator of rows, allows to pass additional predicate and statistics
 - `com.github.sadikovi.netflowlib.NetFlowHeader` header information can be accessed using this
 class from `NetFlowReader.getHeader()`, see class for more information on flags available
-
-Note that library has only one external dependency on `io.netty.buffer.ByteBuf` buffers, which
-could be replaced with standard Java buffer functionality, but since it was built for being used as
-part of a spark-package, this dependency comes with Spark.
 
 Here is the general usage pattern:
 ```scala
