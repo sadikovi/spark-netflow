@@ -16,13 +16,27 @@
 
 package com.github.sadikovi.netflowlib.util;
 
+import java.nio.ByteOrder;
+
 /**
  * Simple alternative to java.nio.ByteBuffer with methods to read unsigned values similar to
  * netty ByteBuf.
  */
-public class WrappedByteBuf {
+public abstract class WrappedByteBuf {
+  protected final byte[] data;
+
+  /**
+   * Create wrapped byte buffer for provided byte array and required endianness of bytes in array.
+   * @param data byte array
+   * @param order endianness of the data in array
+   * @return wrapped big/little endian byte buffer
+   */
+  public static WrappedByteBuf init(byte[] data, ByteOrder order) {
+    return (order == ByteOrder.BIG_ENDIAN) ? new WrappedByteBufB(data) : new WrappedByteBufL(data);
+  }
+
   // only keep reference to the data
-  public WrappedByteBuf(byte[] data) {
+  protected WrappedByteBuf(byte[] data) {
     this.data = data;
   }
 
@@ -31,57 +45,42 @@ public class WrappedByteBuf {
    * @param ordinal start position in buffer
    * @return byte value
    */
-  public byte getByte(int ordinal) {
-    return data[ordinal];
-  }
+  public abstract byte getByte(int ordinal);
 
   /**
    * Gets an unsigned byte at the specified absolute index in this buffer.
    * @param ordinal start position in buffer
    * @return short value that represents unsigned byte
    */
-  public short getUnsignedByte(int ordinal) {
-    return (short) (data[ordinal] & 0xff);
-  }
+  public abstract short getUnsignedByte(int ordinal);
 
   /**
    * Get short at the specified absolute index in this buffer.
    * @param ordinal start position in buffer
    * @return short value
    */
-  public short getShort(int ordinal) {
-    return (short) (data[ordinal] << 8 | data[ordinal + 1] & 0xff);
-  }
+  public abstract short getShort(int ordinal);
 
   /**
    * Gets an unsigned 16-bit short integer at the specified absolute index in this buffer.
    * @param ordinal start position in buffer
    * @return int value that represents unsigned short
    */
-  public int getUnsignedShort(int ordinal) {
-    return ((data[ordinal] & 0xff) << 8) | (data[ordinal + 1] & 0xff);
-  }
+  public abstract int getUnsignedShort(int ordinal);
 
   /**
    * Get int at the specified absolute index in this buffer.
    * @param ordinal start position in buffer
    * @return int value
    */
-  public int getInt(int ordinal) {
-    return ((data[ordinal] & 0xff) << 24) |
-      ((data[ordinal + 1] & 0xff) << 16) |
-      ((data[ordinal + 2] & 0xff) << 8) |
-      (data[ordinal + 3] & 0xff);
-  }
+  public abstract int getInt(int ordinal);
 
   /**
    * Gets an unsigned 32-bit integer at the specified absolute index in this buffer.
    * @param ordinal start position in buffer
    * @return long value that represents unsigned int
    */
-  public long getUnsignedInt(int ordinal) {
-    return getInt(ordinal) & 0xffffffffL;
-  }
+  public abstract long getUnsignedInt(int ordinal);
 
   /**
    * Return reference to the underlying array.
@@ -91,5 +90,83 @@ public class WrappedByteBuf {
     return data;
   }
 
-  private final byte[] data;
+  /** Wrapped byte buffer for little endianness */
+  static class WrappedByteBufL extends WrappedByteBuf {
+    protected WrappedByteBufL(byte[] data) {
+      super(data);
+    }
+
+    @Override
+    public byte getByte(int ordinal) {
+      return data[ordinal];
+    }
+
+    @Override
+    public short getUnsignedByte(int ordinal) {
+      return (short) (data[ordinal] & 0xff);
+    }
+
+    @Override
+    public short getShort(int ordinal) {
+      return (short) (data[ordinal + 1] << 8 | data[ordinal] & 0xff);
+    }
+
+    @Override
+    public int getUnsignedShort(int ordinal) {
+      return ((data[ordinal + 1] & 0xff) << 8) | (data[ordinal] & 0xff);
+    }
+
+    @Override
+    public int getInt(int ordinal) {
+      return ((data[ordinal + 3] & 0xff) << 24) |
+        ((data[ordinal + 2] & 0xff) << 16) |
+        ((data[ordinal + 1] & 0xff) << 8) |
+        (data[ordinal + 0] & 0xff);
+    }
+
+    @Override
+    public long getUnsignedInt(int ordinal) {
+      return getInt(ordinal) & 0xffffffffL;
+    }
+  }
+
+  /** Wrapped byte buffer for big endianness */
+  static class WrappedByteBufB extends WrappedByteBuf {
+    protected WrappedByteBufB(byte[] data) {
+      super(data);
+    }
+
+    @Override
+    public byte getByte(int ordinal) {
+      return data[ordinal];
+    }
+
+    @Override
+    public short getUnsignedByte(int ordinal) {
+      return (short) (data[ordinal] & 0xff);
+    }
+
+    @Override
+    public short getShort(int ordinal) {
+      return (short) (data[ordinal] << 8 | data[ordinal + 1] & 0xff);
+    }
+
+    @Override
+    public int getUnsignedShort(int ordinal) {
+      return ((data[ordinal] & 0xff) << 8) | (data[ordinal + 1] & 0xff);
+    }
+
+    @Override
+    public int getInt(int ordinal) {
+      return ((data[ordinal] & 0xff) << 24) |
+        ((data[ordinal + 1] & 0xff) << 16) |
+        ((data[ordinal + 2] & 0xff) << 8) |
+        (data[ordinal + 3] & 0xff);
+    }
+
+    @Override
+    public long getUnsignedInt(int ordinal) {
+      return getInt(ordinal) & 0xffffffffL;
+    }
+  }
 }

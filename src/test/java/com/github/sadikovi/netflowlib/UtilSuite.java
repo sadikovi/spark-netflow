@@ -17,6 +17,7 @@
 package com.github.sadikovi.netflowlib;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -192,10 +193,26 @@ public class UtilSuite {
     // test wrapped byte buf functionality
     byte[] bytes = new byte[1024];
     Random rand = new Random();
+    // check big endian
     for (int i = 0; i <= bytes.length - 4; i++) {
       rand.nextBytes(bytes);
-      WrappedByteBuf buf = new WrappedByteBuf(bytes);
-      ByteBuffer javaBuf = ByteBuffer.wrap(bytes);
+      WrappedByteBuf buf = WrappedByteBuf.init(bytes, ByteOrder.BIG_ENDIAN);
+      ByteBuffer javaBuf = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
+
+      assertSame(buf.array(), bytes);
+      assertEquals(buf.getByte(i), javaBuf.get(i));
+      assertEquals(buf.getUnsignedByte(i), (short) (javaBuf.get(i) & 0xff));
+      assertEquals(buf.getShort(i), javaBuf.getShort(i));
+      assertEquals(buf.getUnsignedShort(i), javaBuf.getShort(i) & 0xffff);
+      assertEquals(buf.getInt(i), javaBuf.getInt(i));
+      assertEquals(buf.getUnsignedInt(i), javaBuf.getInt(i) & 0xffffffffL);
+    }
+
+    // check little endian
+    for (int i = 0; i <= bytes.length - 4; i++) {
+      rand.nextBytes(bytes);
+      WrappedByteBuf buf = WrappedByteBuf.init(bytes, ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer javaBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
       assertSame(buf.array(), bytes);
       assertEquals(buf.getByte(i), javaBuf.get(i));
