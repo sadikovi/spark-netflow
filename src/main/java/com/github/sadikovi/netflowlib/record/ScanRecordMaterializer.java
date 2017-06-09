@@ -16,34 +16,26 @@
 
 package com.github.sadikovi.netflowlib.record;
 
-import io.netty.buffer.ByteBuf;
-
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
-import com.github.sadikovi.netflowlib.predicate.Columns.ByteColumn;
-import com.github.sadikovi.netflowlib.predicate.Columns.ShortColumn;
-import com.github.sadikovi.netflowlib.predicate.Columns.IntColumn;
-import com.github.sadikovi.netflowlib.predicate.Columns.LongColumn;
-import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 /**
  * [[ScanRecordMaterializer]] is part of [[FullScan]] strategy where we only scan pruned columns.
  * Note that columns might not be unique, e.g. [IntColumn("a"), ShortColumn("b"), IntColumn("a"),
  * LongColumn("c")].
  */
-public final class ScanRecordMaterializer extends RecordMaterializer {
+public final class ScanRecordMaterializer implements RecordMaterializer {
   public ScanRecordMaterializer(Column[] columns) {
     this.columns = columns;
     numColumns = columns.length;
   }
 
   @Override
-  public Object[] processRecord(ByteBuf buffer) {
+  public Object[] processRecord(WrappedByteBuf buffer) {
     Object[] newRecord = new Object[numColumns];
-
-    for (int i=0; i<numColumns; i++) {
-      newRecord[i] = readField(columns[i], buffer);
+    for (int i = 0; i < numColumns; i++) {
+      newRecord[i] = columns[i].readField(buffer);
     }
-
     return newRecord;
   }
 

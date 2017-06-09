@@ -26,6 +26,7 @@ import java.util.Random;
 
 import org.junit.Test;
 import org.junit.Ignore;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertEquals;
 
@@ -189,8 +190,7 @@ public class UtilSuite {
   }
 
   @Test
-  public void testWrappedByteBufGetters() {
-    // test wrapped byte buf functionality
+  public void testWrappedByteBufGetValue() {
     byte[] bytes = new byte[1024];
     Random rand = new Random();
     // check big endian
@@ -222,5 +222,61 @@ public class UtilSuite {
       assertEquals(buf.getInt(i), javaBuf.getInt(i));
       assertEquals(buf.getUnsignedInt(i), javaBuf.getInt(i) & 0xffffffffL);
     }
+  }
+
+  @Test
+  public void testWrappedByteBufGetBytesBigEndian() {
+    byte[] bytes = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+    WrappedByteBuf buf = WrappedByteBuf.init(bytes, ByteOrder.BIG_ENDIAN);
+    ByteBuffer javaBuf = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
+
+    byte[] dst1 = new byte[10];
+    byte[] dst2 = new byte[10];
+
+    buf.getBytes(0, dst1, 0, dst1.length);
+    javaBuf.position(0);
+    javaBuf.get(dst2, 0, dst2.length);
+    assertArrayEquals(dst1, dst2);
+
+    buf.getBytes(4, dst1, 1, 2);
+    javaBuf.position(4);
+    javaBuf.get(dst2, 1, 2);
+    assertArrayEquals(dst1, dst2);
+
+    buf.getBytes(8, dst1, 8, 1);
+    javaBuf.position(8);
+    javaBuf.get(dst2, 8, 1);
+    assertArrayEquals(dst1, dst2);
+
+    // array should not be modified
+    assertArrayEquals(buf.array(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
+  }
+
+  @Test
+  public void testWrappedByteBufGetBytesLittleEndian() {
+    byte[] bytes = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+    WrappedByteBuf buf = WrappedByteBuf.init(bytes, ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer javaBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+
+    byte[] dst1 = new byte[10];
+    byte[] dst2 = new byte[10];
+
+    buf.getBytes(0, dst1, 0, dst1.length);
+    javaBuf.position(0);
+    javaBuf.get(dst2, 0, dst2.length);
+    assertArrayEquals(dst1, dst2);
+
+    buf.getBytes(4, dst1, 1, 2);
+    javaBuf.position(4);
+    javaBuf.get(dst2, 1, 2);
+    assertArrayEquals(dst1, dst2);
+
+    buf.getBytes(8, dst1, 8, 1);
+    javaBuf.position(8);
+    javaBuf.get(dst2, 8, 1);
+    assertArrayEquals(dst1, dst2);
+
+    // array should not be modified
+    assertArrayEquals(buf.array(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
   }
 }

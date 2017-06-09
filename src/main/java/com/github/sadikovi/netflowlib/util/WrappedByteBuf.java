@@ -83,6 +83,16 @@ public abstract class WrappedByteBuf {
   public abstract long getUnsignedInt(int ordinal);
 
   /**
+   * Transfers this buffer's data to the specified destination starting at the specified
+   * absolute index.
+   * @param index start ordinal of this buffer
+   * @param dst destination byte array
+   * @param dstIndex start index of dst array
+   * @param length number of bytes to transfer
+   */
+  public abstract void getBytes(int index, byte[] dst, int dstIndex, int length);
+
+  /**
    * Return reference to the underlying array.
    * @return backed byte array
    */
@@ -128,6 +138,11 @@ public abstract class WrappedByteBuf {
     public long getUnsignedInt(int ordinal) {
       return getInt(ordinal) & 0xffffffffL;
     }
+
+    @Override
+    public void getBytes(int index, byte[] dst, int dstIndex, int length) {
+      System.arraycopy(data, index, dst, dstIndex, length);
+    }
   }
 
   /** Wrapped byte buffer for big endianness */
@@ -167,6 +182,11 @@ public abstract class WrappedByteBuf {
     @Override
     public long getUnsignedInt(int ordinal) {
       return getInt(ordinal) & 0xffffffffL;
+    }
+
+    @Override
+    public void getBytes(int index, byte[] dst, int dstIndex, int length) {
+      System.arraycopy(data, index, dst, dstIndex, length);
     }
   }
 }
