@@ -26,13 +26,11 @@ import java.util.NoSuchElementException;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-
 import com.github.sadikovi.netflowlib.record.RecordMaterializer;
 import com.github.sadikovi.netflowlib.util.FilterIterator;
 import com.github.sadikovi.netflowlib.util.ReadAheadInputStream;
 import com.github.sadikovi.netflowlib.util.SafeIterator;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 /**
  * All buffers supported in NetFlow reader.
@@ -115,7 +113,7 @@ public final class Buffers {
       this.recordSize = recordSize;
       this.ignoreCorrupt = ignoreCorrupt;
       recordBytes = new byte[recordSize];
-      buffer = Unpooled.wrappedBuffer(recordBytes).order(byteOrder);
+      buffer = WrappedByteBuf.init(recordBytes, byteOrder);
       numBytesRead = 0;
     }
 
@@ -141,12 +139,6 @@ public final class Buffers {
               } catch (IOException io) {
                 stream = null;
               }
-
-              // Release buffer after EOF
-              if (buffer != null && buffer.refCnt() > 0) {
-                buffer.release(buffer.refCnt());
-              }
-
               buffer = null;
             }
           }
@@ -190,11 +182,7 @@ public final class Buffers {
       };
 
       // when ignoring corrupt records, wrap it into iterator with safe termination on failures
-      if (ignoreCorrupt) {
-        return new SafeIterator<Object[]>(iter);
-      } else {
-        return iter;
-      }
+      return ignoreCorrupt ? new SafeIterator<Object[]>(iter) : iter;
     }
 
     @Override
@@ -212,7 +200,7 @@ public final class Buffers {
     // Array of bytes for a record, updated partially when compression buffer needs to be refilled
     private final byte[] recordBytes;
     // Buffer for the record
-    private ByteBuf buffer;
+    private WrappedByteBuf buffer;
     // Number of bytes currently have been read
     private int numBytesRead;
     // Size of record, depends on NetFlow format

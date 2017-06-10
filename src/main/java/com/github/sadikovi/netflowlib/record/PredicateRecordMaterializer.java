@@ -19,8 +19,6 @@ package com.github.sadikovi.netflowlib.record;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import io.netty.buffer.ByteBuf;
-
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.Inspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
@@ -28,8 +26,9 @@ import com.github.sadikovi.netflowlib.predicate.Inspectors.AndInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.OrInspector;
 import com.github.sadikovi.netflowlib.predicate.Inspectors.NotInspector;
 import com.github.sadikovi.netflowlib.predicate.Visitor;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
-public final class PredicateRecordMaterializer extends RecordMaterializer implements Visitor {
+public final class PredicateRecordMaterializer implements RecordMaterializer, Visitor {
   public PredicateRecordMaterializer(
       Column[] columns,
       Inspector tree,
@@ -46,9 +45,9 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
   }
 
   @Override
-  public Object[] processRecord(ByteBuf buffer) {
+  public Object[] processRecord(WrappedByteBuf buffer) {
     // Process filter columns, evaluate predicate upfront
-    for (int i=0; i<numFilterColumns; i++) {
+    for (int i = 0; i < numFilterColumns; i++) {
       updateValueInspectors(filterColumns[i], buffer);
     }
 
@@ -57,28 +56,26 @@ public final class PredicateRecordMaterializer extends RecordMaterializer implem
     for (int i=0; i<numFilterColumns; i++) {
       resetValueInspectors(filterColumns[i]);
     }
+    // record does not pass predicate, return null - record is discarded in filter iterator
+    if (!result) return null;
 
-    if (!result) {
-      return null;
-    } else {
-      Object[] newRecord = new Object[numColumns];
-      for (int i=0; i<numColumns; i++) {
-        newRecord[i] = readField(columns[i], buffer);
-      }
-      return newRecord;
+    Object[] newRecord = new Object[numColumns];
+    for (int i = 0; i < numColumns; i++) {
+      newRecord[i] = columns[i].readField(buffer);
     }
+    return newRecord;
   }
 
-  private void updateValueInspectors(Column column, ByteBuf buffer) {
+  private void updateValueInspectors(Column column, WrappedByteBuf buffer) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
-    for (int i=0; i<ins.size(); i++) {
-      updateValueInspector(column, buffer, ins.get(i));
+    for (int i = 0; i < ins.size(); i++) {
+      column.updateValueInspector(buffer, ins.get(i));
     }
   }
 
   private void resetValueInspectors(Column column) {
     ArrayList<ValueInspector> ins = inspectors.get(column.getColumnName());
-    for (int i=0; i<ins.size(); i++) {
+    for (int i = 0; i < ins.size(); i++) {
       ins.get(i).reset();
     }
   }

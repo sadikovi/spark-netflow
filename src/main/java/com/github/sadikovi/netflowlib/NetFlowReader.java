@@ -21,29 +21,23 @@ import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.sadikovi.netflowlib.ScanPlanner;
 import com.github.sadikovi.netflowlib.Strategies.ScanStrategy;
-
 import com.github.sadikovi.netflowlib.Buffers.RecordBuffer;
 import com.github.sadikovi.netflowlib.Buffers.EmptyRecordBuffer;
 import com.github.sadikovi.netflowlib.Buffers.FilterRecordBuffer;
 import com.github.sadikovi.netflowlib.Buffers.ScanRecordBuffer;
-
 import com.github.sadikovi.netflowlib.predicate.Columns.Column;
 import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
-
 import com.github.sadikovi.netflowlib.statistics.Statistics;
 import com.github.sadikovi.netflowlib.statistics.StatisticsTypes.LongStatistics;
-
 import com.github.sadikovi.netflowlib.version.NetFlow;
 import com.github.sadikovi.netflowlib.version.NetFlowV5;
 import com.github.sadikovi.netflowlib.version.NetFlowV7;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 /**
  * [[NetFlowReader]] is a main entry to process input stream of NetFlow file either from local
@@ -116,7 +110,7 @@ public final class NetFlowReader {
     bufferLength = buffer;
     ignoreCorrupt = ignoreCorruptFile;
     byte[] metadata = null;
-    ByteBuf buf = null;
+    WrappedByteBuf buf = null;
 
     try {
       metadata = new byte[METADATA_LENGTH];
@@ -125,7 +119,7 @@ public final class NetFlowReader {
       // Parse metadata, byte order does not really matter, so we go for big endian. Metadata contains
       // magic numbers to verify consistency of the NetFlow file, byte order encoded as either 1 or 2,
       // and stream version which affects header parsing (currently only 1 and 3 are supported).
-      buf = Unpooled.wrappedBuffer(metadata).order(ByteOrder.BIG_ENDIAN);
+      buf = WrappedByteBuf.init(metadata, ByteOrder.BIG_ENDIAN);
       short magic1 = buf.getUnsignedByte(0);
       short magic2 = buf.getUnsignedByte(1);
       short order = buf.getUnsignedByte(2);
@@ -164,10 +158,7 @@ public final class NetFlowReader {
       }
     } finally {
       metadata = null;
-      if (buf != null) {
-        buf.release();
-        buf = null;
-      }
+      buf = null;
     }
   }
 
@@ -183,7 +174,7 @@ public final class NetFlowReader {
     NetFlowHeader internalHeader;
     int numBytesRead = 0;
     int lenRead = 0;
-    ByteBuf buf;
+    WrappedByteBuf buf;
     byte[] headerArray;
 
     // Read header depending on stream version (different from flow version)
@@ -200,7 +191,7 @@ public final class NetFlowReader {
         throw new UnsupportedOperationException("Short read while loading header offset");
       }
 
-      buf = Unpooled.wrappedBuffer(headerArray).order(byteOrder);
+      buf = WrappedByteBuf.init(headerArray, byteOrder);
       int headerSize = (int)buf.getUnsignedInt(0);
       if (headerSize <= 0) {
         throw new UnsupportedOperationException("Failed to load header of size " + headerSize);
@@ -218,7 +209,7 @@ public final class NetFlowReader {
       throw new UnsupportedOperationException("Short read while loading header data");
     }
     // build buffer
-    buf = Unpooled.wrappedBuffer(headerArray).order(byteOrder);
+    buf = WrappedByteBuf.init(headerArray, byteOrder);
 
     // resolve stream version (either 1 or 3)
     if (streamVersion == 1) {
@@ -286,7 +277,7 @@ public final class NetFlowReader {
             break;
           // FT_TLV_EX_VER
           case 0x2:
-            internalHeader.setFlowVersion((short)buf.getUnsignedShort(tlv_v));
+            internalHeader.setFlowVersion((short) buf.getUnsignedShort(tlv_v));
             break;
           // FT_TLV_AGG_VER
           case 0x3:
@@ -396,11 +387,6 @@ public final class NetFlowReader {
             break;
         }
       }
-
-      if (buf != null && buf.refCnt() > 0) {
-        buf.release(buf.refCnt());
-      }
-
       buf = null;
       pr = null;
     }

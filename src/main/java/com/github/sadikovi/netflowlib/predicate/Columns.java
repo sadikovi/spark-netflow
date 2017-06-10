@@ -18,7 +18,9 @@ package com.github.sadikovi.netflowlib.predicate;
 
 import java.io.Serializable;
 
+import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
 import com.github.sadikovi.netflowlib.statistics.Statistics;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 /**
  * [[Column]] is a base class for all typed columns for all NetFlow versions. They contain basic
@@ -55,6 +57,12 @@ public final class Columns {
     public int getColumnOffset() {
       return columnOffset;
     }
+
+    /** Read field from byte buffer and return value that confirms to column class */
+    public abstract Object readField(WrappedByteBuf buffer);
+
+    /** Update value inspector with value from buffer */
+    public abstract void updateValueInspector(WrappedByteBuf buffer, ValueInspector vi);
 
     @Override
     public String toString() {
@@ -103,6 +111,16 @@ public final class Columns {
     }
 
     @Override
+    public Object readField(WrappedByteBuf buffer) {
+      return buffer.getByte(getColumnOffset());
+    }
+
+    @Override
+    public void updateValueInspector(WrappedByteBuf buffer, ValueInspector vi) {
+      vi.update(buffer.getByte(getColumnOffset()));
+    }
+
+    @Override
     public Object getMin() {
       return minValue;
     }
@@ -128,6 +146,16 @@ public final class Columns {
 
     public ShortColumn(String name, int offset) {
       this(name, offset, (short) 0, Short.MAX_VALUE);
+    }
+
+    @Override
+    public Object readField(WrappedByteBuf buffer) {
+      return buffer.getUnsignedByte(getColumnOffset());
+    }
+
+    @Override
+    public void updateValueInspector(WrappedByteBuf buffer, ValueInspector vi) {
+      vi.update(buffer.getUnsignedByte(getColumnOffset()));
     }
 
     @Override
@@ -159,6 +187,16 @@ public final class Columns {
     }
 
     @Override
+    public Object readField(WrappedByteBuf buffer) {
+      return buffer.getUnsignedShort(getColumnOffset());
+    }
+
+    @Override
+    public void updateValueInspector(WrappedByteBuf buffer, ValueInspector vi) {
+      vi.update(buffer.getUnsignedShort(getColumnOffset()));
+    }
+
+    @Override
     public Object getMin() {
       return minValue;
     }
@@ -184,6 +222,16 @@ public final class Columns {
 
     public LongColumn(String name, int offset) {
       this(name, offset, (long) 0, Long.MAX_VALUE);
+    }
+
+    @Override
+    public Object readField(WrappedByteBuf buffer) {
+      return buffer.getUnsignedInt(getColumnOffset());
+    }
+
+    @Override
+    public void updateValueInspector(WrappedByteBuf buffer, ValueInspector vi) {
+      vi.update(buffer.getUnsignedInt(getColumnOffset()));
     }
 
     @Override

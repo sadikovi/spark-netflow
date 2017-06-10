@@ -16,50 +16,23 @@
 
 package com.github.sadikovi.netflowlib.record;
 
-import io.netty.buffer.ByteBuf;
-
-import com.github.sadikovi.netflowlib.predicate.Columns.Column;
-import com.github.sadikovi.netflowlib.predicate.Inspectors.ValueInspector;
-import com.github.sadikovi.netflowlib.predicate.Operators.FilterPredicate;
+import com.github.sadikovi.netflowlib.util.WrappedByteBuf;
 
 /**
  * [[RecordMaterializer]] interface provides all necessary methods to parse single record and return
  * either array of values that match list and order of pruned columns, or null, if record does not
  * pass predicate. Predicate check is optional and should depend on implementation.
  */
-public abstract class RecordMaterializer {
-  RecordMaterializer() { }
+public interface RecordMaterializer {
 
-  public abstract Object[] processRecord(ByteBuf buffer);
-
-  /** Read buffer bytes sequence for column offset */
-  public Object readField(Column column, ByteBuf buffer) {
-    Class<?> type = column.getColumnType();
-    if (type.equals(Byte.class)) {
-      return buffer.getByte(column.getColumnOffset());
-    } else if (type.equals(Short.class)) {
-      return buffer.getUnsignedByte(column.getColumnOffset());
-    } else if (type.equals(Integer.class)) {
-      return buffer.getUnsignedShort(column.getColumnOffset());
-    } else if (type.equals(Long.class)) {
-      return buffer.getUnsignedInt(column.getColumnOffset());
-    } else {
-      throw new UnsupportedOperationException("Unsupported read type " + type);
-    }
-  }
-
-  public void updateValueInspector(Column column, ByteBuf buffer, ValueInspector vi) {
-    Class<?> type = column.getColumnType();
-    if (type.equals(Byte.class)) {
-      vi.update(buffer.getByte(column.getColumnOffset()));
-    } else if (type.equals(Short.class)) {
-      vi.update(buffer.getUnsignedByte(column.getColumnOffset()));
-    } else if (type.equals(Integer.class)) {
-      vi.update(buffer.getUnsignedShort(column.getColumnOffset()));
-    } else if (type.equals(Long.class)) {
-      vi.update(buffer.getUnsignedInt(column.getColumnOffset()));
-    } else {
-      throw new UnsupportedOperationException("Unsupported read type " + type);
-    }
-  }
+  /**
+   * Process record using wrapped byte buffer, array holds value for each column in projection.
+   * Returned values should have the same type as corresponding columns.
+   *
+   * Can return null array.
+   *
+   * @param buffer wrapped byte buffer
+   * @return list of values
+   */
+  Object[] processRecord(WrappedByteBuf buffer);
 }

@@ -50,7 +50,7 @@ object NetFlowReadBenchmark {
 
   // Initialize Spark context
   val sparkConf = new SparkConf().
-    setMaster("local[4]").
+    setMaster("local[1]").
     setAppName("spark-netflow-benchmark")
   val spark = SparkSession.builder().config(sparkConf).getOrCreate()
 
