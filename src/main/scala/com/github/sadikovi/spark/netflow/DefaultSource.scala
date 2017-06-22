@@ -157,8 +157,8 @@ class DefaultSource extends FileFormat with DataSourceRegister {
       val opts = optsBroadcast.value
       val conf = confBroadcast.value.value
 
-      val fs = FileSystem.get(conf)
       val path = new Path(file.filePath)
+      val fs = path.getFileSystem(conf)
       val fileLength = file.length
 
       // Prepare file stream
