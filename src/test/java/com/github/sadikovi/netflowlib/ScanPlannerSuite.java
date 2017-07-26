@@ -58,14 +58,6 @@ public class ScanPlannerSuite {
     ScanPlanner.buildStrategy(cols, tree, null);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testColumnsEmptyFailure() {
-    IntColumn[] cols = new IntColumn[0];
-    FilterPredicate tree = null;
-
-    ScanPlanner.buildStrategy(cols, tree, null);
-  }
-
   @Test
   public void testSkipScan1() {
     IntColumn[] cols = new IntColumn[] {new IntColumn("col1", 0), new IntColumn("col2", 4)};

@@ -159,7 +159,6 @@ class from `NetFlowReader.getHeader()`, see class for more information on flags 
 
 Here is the general usage pattern:
 ```scala
-
 import com.github.sadikovi.netflowlib.NetFlowReader
 import com.github.sadikovi.netflowlib.version.NetFlowV5
 
