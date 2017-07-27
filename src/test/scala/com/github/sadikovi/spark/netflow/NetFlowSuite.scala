@@ -437,7 +437,7 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
     fields3.map(_.convertFunction.isDefined) should be (Array(false, false))
   }
 
-  test("issue #5 - prune only one column when running count directly") {
+  test("issue #5 - prune zero columns when running count directly") {
     val format = new DefaultSource()
     // run test for version 5
     val schema = format.inferSchema(spark, Map("version" -> "5"), Seq.empty)
@@ -446,8 +446,8 @@ class NetFlowSuite extends SparkNetFlowTestSuite {
       Map.empty, new Configuration(false))
     val iter = func(PartitionedFile(InternalRow.empty, path1, 0, 1024))
     iter.hasNext should be (true)
-    // should be only one column (unix_secs) which is "0" for generated data
-    iter.next() should be (InternalRow(0))
+    // should be no columns in internal row
+    iter.next() should be (InternalRow())
   }
 
   test("filter values when reading file, if predicate-pushdown is enabled") {

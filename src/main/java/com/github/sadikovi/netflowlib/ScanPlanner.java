@@ -81,7 +81,7 @@ public final class ScanPlanner implements PredicateTransform {
     // predicate tree and applying statistics to modified predicate; next step is converting
     // predicate tree into inspector tree + mapping of columns to [[ValueInspector]], so it can be
     // used in [[RecordMaterializer]].
-    if (columns == null || columns.length == 0) {
+    if (columns == null) {
       throw new IllegalArgumentException("Expected columns to select, got " + columns +
         ". Make sure that you provide correct Column instances when requesting a scan");
     }

@@ -104,8 +104,7 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     // Convert SQL columns to internal mapped columns, also check if statistics are enabled, so
     // schema is adjusted to include statistics columns
     val resolvedColumns: Array[MappedColumn] = if (requiredSchema.isEmpty) {
-      log.info("Required columns are empty, using first column instead")
-      Array(interface.getFirstColumn())
+      Array.empty
     } else {
       requiredSchema.fieldNames.map { col => interface.getColumn(col) }
     }
