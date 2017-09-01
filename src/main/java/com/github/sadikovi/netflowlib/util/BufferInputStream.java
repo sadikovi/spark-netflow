@@ -24,13 +24,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class AsyncInputStream extends InputStream {
+public class BufferInputStream extends InputStream {
   // Create single thread executor service
   private ExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final ReentrantLock lock = new ReentrantLock();
-  private final Condition swapFinished = lock.newCondition();
+  private final Condition readAsyncFinished = lock.newCondition();
+  private final InputStream in;
+  private final byte[] oneByte;
+  private ByteBuffer buffer;
+  private byte[] active;
+  private byte[] async;
+  private int readAsyncBytes;
+  private RuntimeException asyncError;
+  private boolean canSwap;
 
-  public AsyncInputStream(InputStream in, int size) throws IOException {
+  public BufferInputStream(InputStream in, int size) {
     this.in = in;
     // for `read()` calls
     oneByte = new byte[1];
@@ -38,33 +46,26 @@ public class AsyncInputStream extends InputStream {
     active = new byte[size];
     async = new byte[size];
     asyncError = null;
-    readAsyncBytes = in.read(active, 0, active.length);
+    readAsyncBytes = 0;
+    canSwap = false;
     buffer = ByteBuffer.wrap(active);
-    buffer.limit(readAsyncBytes);
-    readAsync();
+    buffer.flip();
   }
 
-  private void fill() {
-    if (asyncError != null) throw asyncError;
-    if (buffer.remaining() > 0) return;
-    swapBuffers();
-    readAsync();
-  }
-
-  private void swapBuffers() {
+  private void swap() {
     lock.lock();
     try {
+      while (!canSwap) {
+        readAsyncFinished.await();
+      }
       byte[] tmp = active;
       active = async;
       async = tmp;
-      buffer.clear();
-      if (readAsyncBytes < 0) {
-        // indicates EOF
-        readAsyncBytes = 0;
-      }
-      buffer.limit(readAsyncBytes);
+      // when it is EOF, assign 0 bytes as length, buffer will have 0 bytes remaining
+      buffer = ByteBuffer.wrap(active, 0, Math.max(0, readAsyncBytes));
+    } catch (Exception err) {
+      throw new RuntimeException(err);
     } finally {
-      swapFinished.signal();
       lock.unlock();
     }
   }
@@ -74,16 +75,25 @@ public class AsyncInputStream extends InputStream {
       @Override
       public void run() {
         lock.lock();
+        canSwap = false;
         try {
-          swapFinished.await();
           readAsyncBytes = in.read(async, 0, async.length);
         } catch (Exception err) {
           asyncError = new RuntimeException(err);
         } finally {
+          canSwap = true;
+          readAsyncFinished.signalAll();
           lock.unlock();
         }
       }
     });
+  }
+
+  private void fill() {
+    if (asyncError != null) throw asyncError;
+    if (buffer.remaining() > 0) return;
+    readAsync();
+    swap();
   }
 
   @Override
@@ -94,7 +104,13 @@ public class AsyncInputStream extends InputStream {
 
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
-    if (buffer.remaining() == 0) return -1;
+    fill();
+    // EOF is reached
+    if (buffer.remaining() == 0) {
+      return -1;
+    }
+    // at this point we know that there is at least 1 byte available
+    // try inserting as many bytes as possible
     int left = len, offset = 0;
     while (left > 0 && buffer.remaining() > 0) {
       int copyLen = Math.min(left, buffer.remaining());
@@ -117,16 +133,16 @@ public class AsyncInputStream extends InputStream {
   public long skip(long n) throws IOException {
     if (buffer.remaining() > n) {
       buffer.position(buffer.position() + (int) n);
-      fill();
       return n;
     } else {
       long left = n - buffer.remaining();
-      buffer.position(buffer.limit());
-      fill();
-      while (left > 0 && buffer.remaining() > 0) {
+      while (left > 0) {
+        fill();
+        // reached EOF, return bytes skipped so far
+        if (buffer.remaining() == 0) break;
+        // continue reading bytes, if available skipping full buffer if necessary
         int skipBytes = left < buffer.remaining() ? (int) left : buffer.remaining();
         buffer.position(buffer.position() + skipBytes);
-        fill();
         left -= skipBytes;
       }
       return n - left;
@@ -138,12 +154,4 @@ public class AsyncInputStream extends InputStream {
     in.close();
     service.shutdownNow();
   }
-
-  private byte[] active;
-  private byte[] async;
-  private int readAsyncBytes;
-  private RuntimeException asyncError;
-  private ByteBuffer buffer;
-  private final byte[] oneByte;
-  private final InputStream in;
 }
