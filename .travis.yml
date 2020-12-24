@@ -5,23 +5,16 @@ cache:
     - $HOME/.ivy2
 matrix:
   include:
-    # Scala 2.11
+    # Scala 2.12
     - jdk: openjdk7
-      scala: 2.11.7
-      env: TEST_SPARK_VERSION="2.0.0"
+      scala: 2.12.12
+      env: TEST_SPARK_VERSION="3.0.0"
     - jdk: openjdk7
-      scala: 2.11.7
-      env: TEST_SPARK_VERSION="2.0.1"
-    - jdk: openjdk7
-      scala: 2.11.7
-      env: TEST_SPARK_VERSION="2.1.0"
-    # Scala 2.10
-    - jdk: openjdk7
-      scala: 2.10.4
-      env: TEST_SPARK_VERSION="2.0.1"
-    - jdk: openjdk7
-      scala: 2.10.4
-      env: TEST_SPARK_VERSION="2.1.0"
+      scala: 2.12.12
+      env: TEST_SPARK_VERSION="3.0.1"
+    - jdk: openjdk8
+      scala: 2.12.12
+      env: TEST_SPARK_VERSION="3.0.1"
 script:
   - sbt ++$TRAVIS_SCALA_VERSION scalastyle
   - sbt ++$TRAVIS_SCALA_VERSION "test:scalastyle"
