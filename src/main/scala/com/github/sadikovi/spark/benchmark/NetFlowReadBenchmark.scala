@@ -98,13 +98,13 @@ object NetFlowReadBenchmark {
     sqlBenchmark.addCase("Scan, stringify = F") { iter =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "false").load(files)
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.addCase("Scan, stringify = T") { iter =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("stringify", "true").load(files)
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.run()
@@ -118,28 +118,28 @@ object NetFlowReadBenchmark {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "false").load(files).
         filter(col("srcport") =!= 10)
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.addCase("Predicate pushdown = T, high") { iter =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "true").load(files).
         filter(col("srcport") =!= 10)
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.addCase("Predicate pushdown = F, low") { iter =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "false").load(files).
         filter(col("srcip") === "127.0.0.1")
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.addCase("Predicate pushdown = T, low") { iter =>
       val df = spark.read.format("com.github.sadikovi.spark.netflow").
         option("version", version).option("predicate-pushdown", "true").load(files).
         filter(col("srcip") === "127.0.0.1")
-      df.foreach(_ => Unit)
+      df.foreach(_ => ())
     }
 
     sqlBenchmark.run()
@@ -156,7 +156,7 @@ object NetFlowReadBenchmark {
         select("srcip", "dstip", "srcport", "dstport", "packets", "octets")
 
       val agg = df.groupBy(col("srcip"), col("dstip"), col("srcport"), col("dstport")).count()
-      agg.foreach(_ => Unit)
+      agg.foreach(_ => ())
     }
 
     sqlBenchmark.run()

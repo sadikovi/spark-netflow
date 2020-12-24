@@ -526,7 +526,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
   }
 
   test("return empty iterator, when file is not a NetFlow file (header failure)") {
-    withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
+    withSQLConf("spark.sql.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path3")
       df.count should be (0)
@@ -534,7 +534,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
   }
 
   test("return empty iterator, when file is not a NetFlow file (metadata is wrong)") {
-    withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
+    withSQLConf("spark.sql.files.ignoreCorruptFiles" -> "true") {
       withTempDir { dir =>
         // write file of 4 bytes, first 2 should be magic numbers, byte order is set to correct
         // value and stream version is wrong, which will trigger unsupported operation exception
@@ -551,7 +551,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
   }
 
   test("return partial data, when NetFlow file is corrupt") {
-    withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
+    withSQLConf("spark.sql.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path4")
       df.count should be (553)
@@ -559,7 +559,7 @@ class NetFlowIgnoreCorruptSuite extends SparkNetFlowTestSuite {
   }
 
   test("return full data, when NetFlow file is correct") {
-    withSQLConf("spark.files.ignoreCorruptFiles" -> "true") {
+    withSQLConf("spark.sql.files.ignoreCorruptFiles" -> "true") {
       val df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
         load(s"file:$path2")
       df.count should be (1000)
