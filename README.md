@@ -12,6 +12,7 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 | 1.6.x | [1.3.1](http://spark-packages.org/package/sadikovi/spark-netflow) |
 | 2.0.x | [2.0.4](http://spark-packages.org/package/sadikovi/spark-netflow) |
 | 2.1.x | [2.0.4](http://spark-packages.org/package/sadikovi/spark-netflow) |
+| 3.0.x | [2.1.0](http://spark-packages.org/package/sadikovi/spark-netflow) |
 
 > Documentation reflects changes in master branch, for documentation on a specific version, please
 > select corresponding version tag or branch.
