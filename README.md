@@ -20,9 +20,9 @@ A library for reading NetFlow files from [Spark SQL](http://spark.apache.org/doc
 The spark-netflow library can be added to Spark by using the `--packages` command line option. For
 example, run this to include it when starting the spark shell:
 ```shell
- $SPARK_HOME/bin/spark-shell --packages com.github.sadikovi:spark-netflow_2.11:2.0.4
+ $SPARK_HOME/bin/spark-shell --packages com.github.sadikovi:spark-netflow_2.12:2.1.0
 ```
-Change to `com.github.sadikovi:spark-netflow_2.10:2.0.4` for Scala 2.10.x
+See other available versions at http://spark-packages.org/package/sadikovi/spark-netflow.
 
 ## Features
 - Column pruning
@@ -44,7 +44,7 @@ Currently supported options:
 | `predicate-pushdown` | _true, false_ | enable predicate pushdown at NetFlow library level (default `true`)
 
 ### Dealing with corrupt files
-Package supports Spark option `spark.files.ignoreCorruptFiles`. When set to `true`, corrupt files
+Package supports Spark option `spark.sql.files.ignoreCorruptFiles`. When set to `true`, corrupt files
 are ignored (corrupt header, wrong format) or partially read (corrupt data block in a middle of a
 file). By default, option is set to `false`, meaning exception will be raised when such file is
 encountered, this behaviour is similar to Spark.
@@ -106,7 +106,7 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.11/spark-netflow_2.11-2.0.4.jar \
+  target/scala-2.11/spark-netflow_2.12-2.1.0.jar \
   --iterations 5 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*' \
   --version 5

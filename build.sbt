@@ -2,13 +2,11 @@ name := "spark-netflow"
 
 organization := "com.github.sadikovi"
 
-scalaVersion := "2.11.7"
-
-crossScalaVersions := Seq("2.10.5", "2.11.7")
+scalaVersion := "2.12.12"
 
 spName := "sadikovi/spark-netflow"
 
-val defaultSparkVersion = "2.0.1"
+val defaultSparkVersion = "3.0.1"
 
 sparkVersion := sys.props.getOrElse("spark.testVersion", defaultSparkVersion)
 
@@ -27,9 +25,7 @@ spIgnoreProvided := true
 sparkComponents := Seq("sql")
 
 libraryDependencies ++= Seq(
-  // Spark build requires this transient dependency
-  "io.netty" % "netty" % "3.6.2.Final" % "provided",
-  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.0" % "test",
   "com.novocode" % "junit-interface" % "0.11" % "test"
 )
 
@@ -52,14 +48,10 @@ parallelExecution in Test := false
 // Skip tests during assembly
 test in assembly := {}
 
-ScoverageSbtPlugin.ScoverageKeys.coverageHighlighting := {
-  if (scalaBinaryVersion.value == "2.10") false
-  else true
-}
-
-ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 80
-ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
-ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := ".*.benchmark"
+coverageMinimum := 80
+coverageHighlighting := true
+coverageFailOnMinimum := true
+coverageExcludedPackages := ".*.benchmark"
 
 EclipseKeys.eclipseOutput := Some("target/eclipse")
 

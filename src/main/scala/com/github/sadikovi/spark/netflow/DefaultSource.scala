@@ -145,8 +145,7 @@ class DefaultSource extends FileFormat with DataSourceRegister {
     // Number of columns to process
     val numColumns = resolvedColumns.length
     // when true, ignore corrupt files, either with wrong header or corrupt data block
-    val ignoreCorruptFiles =
-      spark.conf.getOption("spark.files.ignoreCorruptFiles").map(_.toBoolean).getOrElse(false)
+    val ignoreCorruptFiles = spark.sessionState.conf.ignoreCorruptFiles
     val confBroadcast = spark.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
     val optsBroadcast = spark.sparkContext.broadcast(opts)
 
@@ -243,7 +242,7 @@ class DefaultSource extends FileFormat with DataSourceRegister {
         // Ensure that the reader is closed even if the task fails or doesn't consume the entire
         // iterator of records.
         Option(TaskContext.get()).foreach { taskContext =>
-          taskContext.addTaskCompletionListener { _ =>
+          taskContext.addTaskCompletionListener[Unit] { _ =>
             rawIterator.closeIfNeeded
           }
         }
