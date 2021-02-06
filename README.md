@@ -39,10 +39,10 @@ Currently supported options:
 
 | Name | Example | Description |
 |------|:-------:|-------------|
-| `version` | _5, 7_ | version to use when parsing NetFlow files, can be your own version provider as class name. Optional, by default will resolve from provided files
-| `buffer` | _1024, 32Kb, 3Mb, etc_ | buffer size for NetFlow compressed stream (default `1Mb`)
-| `stringify` | _true, false_ | convert certain supported fields (e.g. IP, protocol) into human-readable format. If performance is essential consider disabling feature (default `true`)
-| `predicate-pushdown` | _true, false_ | enable predicate pushdown at NetFlow library level (default `true`)
+| `version` | _5, 7_ | Version to use when parsing NetFlow files. This setting is optional, by default the package will resolve the version from provided files
+| `buffer` | _1024, 32Kb, 3Mb, etc_ | Buffer size for NetFlow compressed stream (default `1Mb`)
+| `stringify` | _true, false_ | Enables conversion of certain supported fields (e.g. IP, protocol) into human-readable format. If performance is essential, consider disabling the feature (default `true`)
+| `predicate-pushdown` | _true, false_ | Enables predicate pushdown at NetFlow library level (default `true`)
 
 ### Dealing with corrupt files
 Package supports Spark option `spark.sql.files.ignoreCorruptFiles`. When set to `true`, corrupt files
@@ -50,39 +50,47 @@ are ignored (corrupt header, wrong format) or partially read (corrupt data block
 file). By default, option is set to `false`, meaning exception will be raised when such file is
 encountered, this behaviour is similar to Spark.
 
+### Other NetFlow formats
+If you would like to have the package support NetFlow files for other formats, e.g. NetFlow 9, feel free to open an issue or a pull request.
+
 ## Example
 
 ### Scala API
 ```scala
-// You can provide only format, package will infer version from provided files, or you can enforce
-// version of the files with `version` option.
+// You can provide only format, package will infer version from provided files,
+// or you can enforce version of the files with `version` option.
 val df = spark.read.format("com.github.sadikovi.spark.netflow").load("...")
 
-// You can read files from local file system or HDFS
-val df = spark.read.format("com.github.sadikovi.spark.netflow").
-  option("version", "5").load("file:/...").
-  select("srcip", "dstip", "packets")
+// You can read files from local file system or HDFS.
+val df = spark.read.format("com.github.sadikovi.spark.netflow")
+  .option("version", "5")
+  .load("file:/...")
+  .select("srcip", "dstip", "packets")
 
-// You can also specify buffer size when reading compressed NetFlow files
-val df = spark.read.format("com.github.sadikovi.spark.netflow").
-  option("version", "5").option("buffer", "50Mb").load("hdfs://sandbox:8020/tmp/...")
+// You can also specify buffer size when reading compressed NetFlow files.
+val df = spark.read.format("com.github.sadikovi.spark.netflow")
+  .option("version", "5")
+  .option("buffer", "2Mb")
+  .load("hdfs://sandbox:8020/tmp/...")
 ```
 
 Alternatively you can use shortcuts for NetFlow files
 ```scala
 import com.github.sadikovi.spark.netflow._
 
-// this will read version 5 with default buffer size
+// This will read version 5 with default buffer size.
 val df = spark.read.netflow5("hdfs:/...")
 
-// this will read version 7 without fields conversion
+// This will read version 7 without fields conversion.
 val df = spark.read.option("stringify", "false").netflow7("file:/...")
 ```
 
 ### Python API
 ```python
-df = spark.read.format("com.github.sadikovi.spark.netflow").option("version", "5").
-  load("file:/...").select("srcip", "srcport")
+df = spark.read.format("com.github.sadikovi.spark.netflow") \
+  .option("version", "5") \
+  .load("file:/...") \
+  .select("srcip", "srcport")
 
 res = df.where("srcip > 10")
 ```
@@ -98,7 +106,6 @@ SELECT srcip, dstip, srcport, dstport FROM ips LIMIT 10;
 
 ## Building From Source
 This library is built using `sbt`, to build a JAR file simply run `sbt package` from project root.
-To build jars for Scala 2.10.x and 2.11.x run `sbt +package`.
 
 ## Testing
 Run `sbt test` from project root.
@@ -107,7 +114,7 @@ Run `sbt test` from project root.
 Run `sbt package` to package project, next run `spark-submit` with following options:
 ```shell
 $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark \
-  target/scala-2.11/spark-netflow_2.12-2.1.0.jar \
+  target/scala-2.12/spark-netflow_2.12-2.1.0.jar \
   --iterations 5 \
   --files 'file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*' \
   --version 5
@@ -116,7 +123,7 @@ $ spark-submit --class com.github.sadikovi.spark.benchmark.NetFlowReadBenchmark 
 Latest benchmarks:
 ```
 - Iterations: 5
-- Files: file:/Users/sadikovi/developer/spark-netflow/temp/ftn/0[1,2,3]/ft*
+- Files: file:/tmp/spark-netflow/files/0[1,2,3]/ft*
 - Version: 5
 
 Java HotSpot(TM) 64-Bit Server VM 1.7.0_80-b15 on Mac OS X 10.12.4
